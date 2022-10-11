@@ -131,5 +131,3 @@ class MDCNN(nn.Module):
         x2 = torch.fft.fftshift(torch.fft.ifft2(torch.fft.ifftshift(fftshifted, dim = (-2, -1))), dim = (-2, -1))
         x3 = torch.stack([x2.real, x2.imag], dim=-1)
         return self.imspacem(x3).pow(2).sum(-1).pow(0.5)
-
-m = MDCNN(8,7)
