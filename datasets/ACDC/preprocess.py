@@ -21,6 +21,8 @@ def read_nib_preprocess(path, heq = True):
 		for i in range(img.shape[2]):
 			for j in range(img.shape[3]):
 				img[:,:,i,j] = match_histograms(img[:,:,i,j], histogram_target, channel_axis=None)
+				img[:,:,i,j] = img[:,:,i,j] - img[:,:,i,j].min()
+				img[:,:,i,j] = img[:,:,i,j] / img[:,:,i,j].max()
 	return img
 
 def num_to_str(num):
@@ -30,10 +32,10 @@ def num_to_str(num):
 	return './raw/patient{}/patient{}_4d.nii.gz'.format(x,x)
 
 NUM_PATIENTS = 150
+RES=256
+data = torch.zeros(NUM_PATIENTS, 10, 30, 1, RES, RES).type(torch.uint8)
 
-data = torch.zeros(NUM_PATIENTS, 10, 30, 1, 256, 256)
-
-transform = torchvision.transforms.Resize((256,256))
+transform = torchvision.transforms.Resize((RES,RES))
 
 squared_sum = 0
 sum = 0
@@ -44,14 +46,15 @@ for i in tqdm(range(1,NUM_PATIENTS+1)):
 	d = read_nib_preprocess(path)
 	r,c,d1,d2 = d.shape
 	d = torch.permute(torch.FloatTensor(d).unsqueeze(4), (2,3,4,0,1)) # d1, d2, 1, r, c
-	data[i] = transform(d.reshape(d1*d2, 1, r, c)).reshape(d1, d2, 1, 256, 256)
+	data[i] = ((transform(d.reshape(d1*d2, 1, r, c)).reshape(d1, d2, 1, RES, RES))*255).type(torch.uint8)
 	sum += data[i].sum()
 	squared_sum += (data[i]**2).sum()
-	n_samples += d1*d2*256*256
+	n_samples += d1*d2*RES*RES
+	
 
 dic = {}
 mu = sum/n_samples
 std = ((squared_sum/n_samples) - (mu **2)) ** 0.5
 dic['data'] = data
 dic['normalisation_constants'] = (mu, std)
-torch.save('processed/processed_data.pth', dic)
+torch.save(dic, 'processed/processed_data_{}.pth'.format(RES))
