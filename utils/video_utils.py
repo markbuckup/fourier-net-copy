@@ -1,6 +1,9 @@
 import torch
 import torchvision
 
+def images2video(images, out_path, fps = 15, video_codec = 'libx264'):
+    write_video(out_path, images, fps= fps, video_codec = video_codec)
+
 def read_video(video_object, start=0, end=None, read_video=True, read_audio=False):
     if end is None:
         end = float("inf")
