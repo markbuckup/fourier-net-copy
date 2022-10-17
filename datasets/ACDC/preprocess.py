@@ -87,6 +87,7 @@ for i in tqdm(range(1,NUM_PATIENTS+1)):
     sum += (data[-1].type(torch.float64)/255.).sum().item()
     squared_sum += ((data[-1].type(torch.float64)/255.)**2).sum().item()
     n_samples += data[-1].numel()
+    
 
 
 dic = {}
@@ -98,6 +99,6 @@ mu = sum/n_samples
 std = ((squared_sum/n_samples) - (mu **2)) ** 0.5
 dic['data'] = data
 dic['normalisation_constants'] = (mu, std, ft_mu_r, ft_mu_i, ft_std_r, ft_std_i)
-print(mu, std, ft_mu, ft_std)
+print(mu, std, ft_mu_r, ft_mu_i, ft_std_r, ft_std_i)
 dic['patient_num_videos'] = patient_num_videos
 torch.save(dic, 'processed/processed_data_{}.pth'.format(RES))
