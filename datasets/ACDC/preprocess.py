@@ -33,20 +33,22 @@ def num_to_str(num):
 
 NUM_PATIENTS = 150
 RES=256
-data = torch.zeros(NUM_PATIENTS, 10, 30, 1, RES, RES).type(torch.uint8)
+data = []
 
 transform = torchvision.transforms.Resize((RES,RES))
 
 squared_sum = 0
 sum = 0
 n_samples = 0
+patient_num_videos = {}
 
 for i in tqdm(range(1,NUM_PATIENTS+1)):
 	path = num_to_str(i)
 	d = read_nib_preprocess(path)
 	r,c,d1,d2 = d.shape
 	d = torch.permute(torch.FloatTensor(d).unsqueeze(4), (2,3,4,0,1)) # d1, d2, 1, r, c
-	data[i] = ((transform(d.reshape(d1*d2, 1, r, c)).reshape(d1, d2, 1, RES, RES))*255).type(torch.uint8)
+	data.append(((transform(d.reshape(d1*d2, 1, r, c)).reshape(d1, d2, 1, RES, RES))*255).type(torch.uint8))
+	patient_num_videos[i] = (data[-1].shape[0], data[-1].shape[1])
 	sum += data[i].sum()
 	squared_sum += (data[i]**2).sum()
 	n_samples += d1*d2*RES*RES
@@ -57,4 +59,5 @@ mu = sum/n_samples
 std = ((squared_sum/n_samples) - (mu **2)) ** 0.5
 dic['data'] = data
 dic['normalisation_constants'] = (mu, std)
+dic['patient_num_videos'] = patient_num_videos
 torch.save(dic, 'processed/processed_data_{}.pth'.format(RES))
