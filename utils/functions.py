@@ -42,20 +42,20 @@ def fetch_loss_function(loss_str, device, loss_params):
         reduction = 'mean'
         if loss_params['grayscale']:
             if loss_params['deterministic']:
-                loss = WatsonDistanceFft(reduction=reduction)
+                loss = WatsonDistanceFft(reduction=reduction).to(device)
                 if loss_params['watson_pretrained']: 
                     loss.load_state_dict(load_state_dict('gray_watson_fft_trial0.pth'))
             else:
-                loss = ShiftWrapper(WatsonDistanceFft, (), {'reduction': reduction})
+                loss = ShiftWrapper(WatsonDistanceFft, (), {'reduction': reduction}).to(device)
                 if loss_params['watson_pretrained']: 
                     loss.loss.load_state_dict(load_state_dict('gray_watson_fft_trial0.pth'))
         else:
             if loss_params['deterministic']:
-                loss = ColorWrapper(WatsonDistanceFft, (), {'reduction': reduction})
+                loss = ColorWrapper(WatsonDistanceFft, (), {'reduction': reduction}).to(device)
                 if loss_params['watson_pretrained']: 
                     loss.load_state_dict(load_state_dict('rgb_watson_fft_trial0.pth'))
             else:
-                loss = ShiftWrapper(ColorWrapper, (WatsonDistanceFft, (), {'reduction': reduction}), {})
+                loss = ShiftWrapper(ColorWrapper, (WatsonDistanceFft, (), {'reduction': reduction}), {}).to(device)
                 if loss_params['watson_pretrained']: 
                     loss.loss.load_state_dict(load_state_dict('rgb_watson_fft_trial0.pth'))
         if loss_params['watson_pretrained']: 
