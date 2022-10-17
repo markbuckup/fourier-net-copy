@@ -36,17 +36,20 @@ def seed_torch(seed=0):
 parser = argparse.ArgumentParser()
 parser.add_argument('--resume', action = 'store_true')
 parser.add_argument('--eval', action = 'store_true')
+parser.add_argument('--test_only', action = 'store_true')
+parser.add_argument('--visualise_only', action = 'store_true')
 parser.add_argument('--seed', type = int, default = 0)
 parser.add_argument('--state', type = int, default = -1)
-parser.add_argument('--gpu', type = int, default = '-1')
+parser.add_argument('--gpu', nargs='+', type = int, default = [-1])
+# parser.add_argument('--gpu', type = int, default = '-1')
 args = parser.parse_args()
 seed_torch(args.seed)
 
 parameters = {}
-parameters['train_batch_size'] = 70
-parameters['test_batch_size'] = 70
+parameters['train_batch_size'] = 40
+parameters['test_batch_size'] = 40
 parameters['lr'] = 1e-3
-parameters['num_epochs'] = 1000
+parameters['num_epochs'] = 50
 parameters['train_test_split'] = 0.8
 parameters['normalisation'] = True
 parameters['image_resolution'] = 128
@@ -56,17 +59,13 @@ parameters['predicted_frame'] = 'middle'
 parameters['num_coils'] = 8
 parameters['optimizer'] = 'Adam'
 parameters['optimizer_params'] = (0.5, 0.999)
-parameters['loss'] = 'Cosine-Watson'
+parameters['loss'] = 'L1'
 parameters['loss_FT'] = 'None'
-parameters['loss_reconstructed_FT'] = 'Cosine-L1'
+parameters['loss_reconstructed_FT'] = 'Cosine-Watson'
 parameters['train_losses'] = []
 parameters['test_losses'] = []
 parameters['beta1'] = 1
-parameters['beta2'] = 1
-if args.eval:
-    parameters['GPUS'] = [1]
-else:
-    parameters['GPUS'] = [2,3]
+parameters['beta2'] = 0.5
 parameters['loss_params'] = {
     # 'SSIM_window': 11,
     'alpha_phase': 1,
@@ -77,16 +76,15 @@ parameters['loss_params'] = {
 } 
 assert(parameters['predicted_frame']) in ['last', 'middle']
 assert(parameters['optimizer']) in ['Adam', 'SGD']
-assert(parameters['loss']) in ['L1', 'L2', 'SSIM', 'MS_SSIM', 'Cosine-Watson']
+assert(parameters['loss']) in ['L1', 'L2', 'SSIM', 'MS_SSIM']
 assert(parameters['loss_FT']) in ['Cosine-L1', 'Cosine-L2', 'Cosine-SSIM', 'Cosine-MS_SSIM', 'None']
-assert(parameters['loss_reconstructed_FT']) in ['Cosine-L1', 'Cosine-L2', 'Cosine-SSIM', 'Cosine-MS_SSIM', 'None']
+assert(parameters['loss_reconstructed_FT']) in ['Cosine-L1', 'Cosine-L2', 'Cosine-SSIM', 'Cosine-MS_SSIM', 'None', 'Cosine-Watson']
 
-if args.gpu == -1:
+if args.gpu[0] == -1:
     device = torch.device("cpu")
 else:
 
-    device = torch.device("cuda:{}".format(parameters['GPUS'][0]) if torch.cuda.is_available() else "cpu")
-    # device = torch.device("cuda".format(args.gpu) if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:{}".format(args.gpu[0]) if torch.cuda.is_available() else "cpu")
 SAVE_INTERVAL = 1
 torch.autograd.set_detect_anomaly(True)
 
@@ -137,7 +135,7 @@ testloader = torch.utils.data.DataLoader(
                     batch_size=parameters['test_batch_size'],
                     shuffle = False)
 
-model = nn.DataParallel(MDCNN(8,7), device_ids = parameters['GPUS'])
+model = nn.DataParallel(MDCNN(8,7), device_ids = args.gpu)
 model.to(f'cuda:{model.device_ids[0]}')
 
 if parameters['optimizer'] == 'Adam':
@@ -174,9 +172,9 @@ else:
     print('Starting Training', flush = True)
 
 def train(epoch):
-    totlossrecon = 0
-    totlossft = 0
-    totlossreconft = 0
+    avglossrecon = 0
+    avglossft = 0
+    avglossreconft = 0
     beta1 = parameters['beta1']
     beta2 = parameters['beta2']
     for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(trainloader), total = len(trainloader), desc = "[{}] | Epoch {}".format(os.getpid(), epoch)):
@@ -194,27 +192,30 @@ def train(epoch):
         if criterion_FT is not None:
             loss_ft = criterion_FT(ft_preds.to(device), target_fts.to(device))
         if criterion_reconFT is not None:
-            predfft = torch.fft.fft2(preds.to(device)).log()
-            predfft = torch.stack((predfft.real, predfft.imag),-1)
-            targetfft = torch.fft.fft2(targets.to(device)).log()
-            targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
-            loss_reconft = criterion_reconFT(predfft, targetfft)
+            if parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
+                loss_reconft = criterion_reconFT(preds.to(device), targets.to(device))
+            else:
+                predfft = torch.fft.fft2(preds.to(device)).log()
+                predfft = torch.stack((predfft.real, predfft.imag),-1)
+                targetfft = torch.fft.fft2(targets.to(device)).log()
+                targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
+                loss_reconft = criterion_reconFT(predfft, targetfft)
         loss = loss_recon + beta1*loss_ft + beta2*loss_reconft
         # print('Computing backward', fts_masked.shape, flush = True)
         # t = time.process_time()      
         loss.backward()
         optim.step()
         # print('Computed backward', time.process_time()-t, flush = True)
-        totlossrecon += loss_recon.item()
-        totlossft += loss_ft.item()
-        totlossreconft += loss_reconft.item()
+        avglossrecon += loss_recon.item()/(len(trainloader))
+        avglossft += loss_ft.item()/(len(trainloader))
+        avglossreconft += loss_reconft.item()/(len(trainloader))
 
-    print('Average Recon Loss for Epoch {} = {}' .format(epoch, totlossrecon/(len(trainloader))), flush = True)
+    print('Average Recon Loss for Epoch {} = {}' .format(epoch, avglossrecon), flush = True)
     if criterion_FT is not None:
-        print('Average FT Loss for Epoch {} = {}' .format(epoch, totlossft/(len(trainloader))), flush = True)
+        print('Average FT Loss for Epoch {} = {}' .format(epoch, avglossft), flush = True)
     if criterion_reconFT is not None:
-        print('Average Recon FT Loss for Epoch {} = {}' .format(epoch, totlossreconft/(len(trainloader))), flush = True)
-    return totlossrecon/(len(trainloader)), totlossft/(len(trainloader)), totlossreconft/(len(trainloader))
+        print('Average Recon FT Loss for Epoch {} = {}' .format(epoch, avglossreconft), flush = True)
+    return avglossrecon, avglossft, avglossreconft
 
 def evaluate(epoch, train = False):
     if train:
@@ -225,31 +226,34 @@ def evaluate(epoch, train = False):
         dloader = testloader
         dset = testset
         dstr = 'Test'
-    totlossrecon = 0
-    totlossft = 0
-    totlossreconft = 0
+    avglossrecon = 0
+    avglossft = 0
+    avglossreconft = 0
     with torch.no_grad():
         for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr)):
             ft_preds, preds = model(fts_masked.to(device))
-            totlossrecon += criterion(preds.to(device), targets.to(device)).item()
+            avglossrecon += criterion(preds.to(device), targets.to(device)).item()/(len(dloader))
             if criterion_FT is not None:
-                totlossft += criterion_FT(ft_preds.to(device), target_fts.to(device)).item()
+                avglossft += criterion_FT(ft_preds.to(device), target_fts.to(device)).item()/(len(dloader))
             if criterion_reconFT is not None:
-                predfft = torch.fft.fft2(preds.to(device)).log()
-                predfft = torch.stack((predfft.real, predfft.imag),-1)
-                targetfft = torch.fft.fft2(targets.to(device)).log()
-                targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
-                totlossreconft += criterion_reconFT(predfft, targetfft).item()
+                if parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
+                    avglossreconft += criterion_reconFT(preds.to(device), targets.to(device)).item()/(len(dloader))
+                else:
+                    predfft = torch.fft.fft2(preds.to(device)).log()
+                    predfft = torch.stack((predfft.real, predfft.imag),-1)
+                    targetfft = torch.fft.fft2(targets.to(device)).log()
+                    targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
+                    avglossreconft += criterion_reconFT(predfft, targetfft).item()/(len(dloader))
 
     print('{} Loss After {} Epochs:'.format(dstr, epoch), flush = True)
-    print('Loss = {}'.format(totlossrecon/(len(dloader))), flush = True)
+    print('Recon Loss = {}'.format(avglossrecon), flush = True)
     if criterion_FT is not None:
-        print('Loss = {}'.format(totlossft/(len(dloader))), flush = True)
+        print('FT Loss = {}'.format(avglossft), flush = True)
     if criterion_reconFT is not None:
-        print('Loss = {}'.format(totlossreconft/(len(dloader))), flush = True)
-    return totlossrecon/(len(dloader)), totlossft/(len(dloader)), totlossreconft/(len(dloader))
+        print('Recon FT Loss = {}'.format(avglossreconft), flush = True)
+    return avglossrecon, avglossft, avglossreconft
 
-def visualise(epoch, num_plots = parameters['test_batch_size'], train = False):
+def visualise(epoch, num_plots = min(parameters['test_batch_size'], 10), train = False):
     if train:
         dloader = traintestloader
         dset = trainset
@@ -305,28 +309,31 @@ def visualise(epoch, num_plots = parameters['test_batch_size'], train = False):
             plt.close('all')
 
 if args.eval:
-    evaluate(pre_e, train = False)
-    evaluate(pre_e, train = True)
+    if not args.visualise_only:
+        evaluate(pre_e, train = False)
+        if not args.test_only:
+            evaluate(pre_e, train = True)
     visualise(pre_e, train = False)
     visualise(pre_e, train = True)
+    print(losses)
     plt.figure()
     plt.title('Train Loss')
-    plt.plot([x[0] for x in losses], label = 'Recon Loss', color = 'b')
+    plt.plot(range(len(losses)), [x[0] for x in losses], label = 'Recon Loss: {}'.format(parameters['loss']), color = 'b')
     if criterion_FT is not None:
-        plt.plot([x[1] for x in losses], label = 'FT Loss', color = 'r')
+        plt.plot(range(len(losses)), [x[1] for x in losses], label = 'FT Loss: {}'.format(parameters['loss_FT']), color = 'r')
     if criterion_reconFT is not None:
-        plt.plot([x[2] for x in losses], label = 'Recon FT Loss', color = 'g')
+        plt.plot(range(len(losses)), [x[2] for x in losses], label = 'Recon FT Loss: {}'.format(parameters['loss_reconstructed_FT']), color = 'g')
     plt.xlabel('epoch')
     plt.ylabel('loss')
     plt.legend()
     plt.savefig('results/train_loss.png')
     plt.figure()
     plt.title('Test Loss')
-    plt.plot([x[0] for x in test_losses], label = 'Recon Loss', color = 'b')
+    plt.plot(range(len(test_losses)), [x[0] for x in test_losses], label = 'Recon Loss: {}'.format(parameters['loss']), color = 'b')
     if criterion_FT is not None:
-        plt.plot([x[1] for x in test_losses], label = 'FT Loss', color = 'r')
+        plt.plot(range(len(test_losses)), [x[1] for x in test_losses], label = 'FT Loss: {}'.format(parameters['loss_FT']), color = 'r')
     if criterion_reconFT is not None:
-        plt.plot([x[2] for x in test_losses], label = 'Recon FT Loss', color = 'g')
+        plt.plot(range(len(test_losses)), [x[2] for x in test_losses], label = 'Recon FT Loss: {}'.format(parameters['loss_reconstructed_FT']), color = 'g')
     plt.xlabel('epoch')
     plt.ylabel('loss')
     plt.legend()
@@ -361,4 +368,4 @@ for e in range(parameters['num_epochs']):
         torch.save(dic, checkpoint_path + 'checkpoint_{}.pth'.format(model_state))
         torch.save({'state': model_state}, checkpoint_path + 'state.pth')
         # model_state += 1
-        print('Saving model after {} Epochs'.format(e+1), flush = True)
+        print('Saving model after {} Epochs\n'.format(e+1), flush = True)
