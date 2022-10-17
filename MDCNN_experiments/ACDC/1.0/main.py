@@ -63,7 +63,10 @@ parameters['train_losses'] = []
 parameters['test_losses'] = []
 parameters['beta1'] = 1
 parameters['beta2'] = 1
-parameters['GPUS'] = [2,3]
+if args.eval:
+    parameters['GPUS'] = [1]
+else:
+    parameters['GPUS'] = [2,3]
 parameters['loss_params'] = {
     # 'SSIM_window': 11,
     'alpha_phase': 1,
@@ -134,11 +137,8 @@ testloader = torch.utils.data.DataLoader(
                     batch_size=parameters['test_batch_size'],
                     shuffle = False)
 
-if len(parameters['GPUS']) > 1: 
-    model = nn.DataParallel(MDCNN(8,7), device_ids = parameters['GPUS'])
-    model.to(f'cuda:{model.device_ids[0]}')
-else:
-    model = MDCNN(8,7).to(device)
+model = nn.DataParallel(MDCNN(8,7), device_ids = parameters['GPUS'])
+model.to(f'cuda:{model.device_ids[0]}')
 
 if parameters['optimizer'] == 'Adam':
     optim = optim.Adam(model.parameters(), lr=parameters['lr'], betas=parameters['optimizer_params'])
@@ -242,8 +242,6 @@ def evaluate(epoch, train = False):
                 totlossreconft += criterion_reconFT(predfft, targetfft).item()
 
     print('{} Loss After {} Epochs:'.format(dstr, epoch), flush = True)
-    print(dloader)
-    print(len(dloader))
     print('Loss = {}'.format(totlossrecon/(len(dloader))), flush = True)
     if criterion_FT is not None:
         print('Loss = {}'.format(totlossft/(len(dloader))), flush = True)

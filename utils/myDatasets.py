@@ -113,18 +113,18 @@ class ACDC(Dataset):
         dic = torch.load(os.path.join(self.path, 'processed/processed_data_{}.pth'.format(self.resolution)))
         self.data = dic['data']
         (self.mu, self.std, self.ft_mu_r, self.ft_mu_i, self.ft_std_r, self.ft_std_i) = dic['normalisation_constants']
-        self.patient_num_videos = dic['patient_num_videos'] # dic {patient_number} --> (number of videos, frames per video)
+        # self.patient_num_videos = dic['patient_num_videos'] # dic {patient_number} --> (number of videos, frames per video)
         # print('Loaded processed data', time.process_time()-t, flush = True)
         tot = len(self.data)
-        train_len = int(tot*self.train_split)
+        self.train_len = int(tot*self.train_split)
         if self.train:
-            self.data = self.data[:train_len]
+            self.data = self.data[:self.train_len]
         else:
-            self.data = self.data[train_len:]
+            self.data = self.data[self.train_len:]
 
         self.num_patients = len(self.data)
         self.num_vids_per_patient = np.array([x.shape[0] for x in self.data])
-        self.frames_per_vid_per_patient = np.array([self.patient_num_videos[i][1] for i in range(self.num_patients)])
+        self.frames_per_vid_per_patient = np.array([x.shape[1] for x in self.data])
         self.vid_frame_cumsum = np.cumsum(self.num_vids_per_patient*self.frames_per_vid_per_patient)
         
         self.ft_data = [None for i in range(self.num_patients)]
@@ -150,7 +150,10 @@ class ACDC(Dataset):
             # vnum, fnum, 1, r, c
             indata = ((self.data[p_num].type(torch.float64)/255.).expand(-1,-1,self.num_coils, -1,-1)*self.coil_mask.unsqueeze(0).unsqueeze(0))
             self.ft_data[p_num] = torch.fft.fftshift(torch.fft.fft2(indata) ,dim = (-2,-1)).log()
-            print('Memoising for patient {}'.format(p_num), flush = True)
+            if self.train:
+                print('Memoising for patient {}'.format(p_num), flush = True)
+            else:
+                print('Memoising for patient {}'.format(p_num+self.train_len), flush = True)
             self.num_mem += 1 
             if self.num_mem == len(self.data):
                 print('#########################')
