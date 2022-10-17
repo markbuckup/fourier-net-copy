@@ -2,6 +2,7 @@ import torch
 import torchvision
 import os
 import PIL
+import numpy as np
 from tqdm import tqdm
 import kornia
 from kornia.metrics import ssim
@@ -55,10 +56,10 @@ def mask_theta(theta, size):
     endx += moveright
     return draw_line(torch.zeros(size), torch.tensor([startx, starty]), torch.tensor([endx, endy]), torch.tensor([1.]))
 
-def get_window_mask(window_size = 7, number_of_radial_views = 14)
+def get_window_mask(window_size = 7, number_of_radial_views = 14, resolution = 128):
     window_thetas = []
-    window_mask = torch.zeros(window_size, 128, 128)
-    for i in range(14):
+    window_mask = torch.zeros(window_size, resolution, resolution)
+    for i in range(number_of_radial_views):
         window_thetas.append(i*(180/number_of_radial_views))
     theta_translations = []
     for i in range(window_size):
@@ -66,7 +67,43 @@ def get_window_mask(window_size = 7, number_of_radial_views = 14)
 
     for wi in range(window_size):
         for thetai in window_thetas:
-            m = mask_theta(thetai + theta_translations[wi] , (1,128,128))
+            m = mask_theta(thetai + theta_translations[wi] , (1,resolution,resolution))
             window_mask[wi,:,:] += m.squeeze()
     window_mask = torch.sign(window_mask)
     return window_mask
+
+def get_coil_mask(n_coils = 8, resolution = 128):
+    temp_mask = get_window_mask(window_size = 1, number_of_radial_views = n_coils, resolution = resolution)[0,:,:]
+    centres = []
+    ri = 0
+    for ci in range(resolution):
+        if temp_mask[ri,ci] == 1 and (ri,ci) not in centres:
+            centres.append((ri,ci))
+    ci = resolution-1
+    for ri in range(resolution):
+        if temp_mask[ri,ci] == 1 and (ri,ci) not in centres:
+            centres.append((ri,ci))
+    ri = resolution-1
+    for ci in reversed(range(resolution)):
+        if temp_mask[ri,ci] == 1 and (ri,ci) not in centres:
+            centres.append((ri,ci))
+    ci = 0
+    for ri in reversed(range(resolution)):
+        if temp_mask[ri,ci] == 1 and (ri,ci) not in centres:
+            centres.append((ri,ci))
+
+    centres = centres[::2]
+
+    assert(len(centres) == n_coils)
+
+    ans = torch.zeros(n_coils, resolution, resolution)
+    ar,ac = resolution//2, resolution//2
+    halfline = resolution//2
+    for i,(rc, cc) in enumerate(centres):
+        scale = (((rc-ar)**2 + (cc - ac)**2)**0.5 / halfline)**0.5
+        sigma = (resolution/3) * scale
+        m1,m2 = torch.meshgrid(torch.arange(resolution),torch.arange(resolution), indexing='ij')
+        dists = ((m1-rc)**2 + (m2-cc)**2)**0.5
+        ans[i,:,:] = np.exp(-((dists**2)/(2*(sigma**2))))
+    return ans
+    

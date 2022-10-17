@@ -125,6 +125,7 @@ class MDCNN(nn.Module):
         self.imspacem = ImageSpaceModel(num_coils = num_coils, num_window = num_window)
 
     def forward(self, x):
+        # FT data - b_num, num_coils, num_windows, 256, 256
         x1 = self.kspacem(x)
         real, imag = torch.unbind(x1, -1)
         fftshifted = torch.complex(real, imag)
