@@ -49,7 +49,7 @@ else:
 TRAIN_BATCH_SIZE = 50
 TEST_BATCH_SIZE = 50
 lr = 1e-3
-NUM_EPOCHS = 100
+NUM_EPOCHS = 1000
 SAVE_INTERVAL = 1
 torch.autograd.set_detect_anomaly(True)
 
@@ -144,11 +144,18 @@ def visualise(epoch, num_plots = 10, train = False):
         for i in range(num_plots):
             targi = targets[i].squeeze().cpu().numpy()
             predi = preds[i].squeeze().cpu().numpy()
-            fig = plt.figure(figsize = (8,4))
-            plt.subplot(1,2,1)
+            fig = plt.figure(figsize = (8,8))
+            plt.subplot(2,2,1)
+            ft = torch.complex(fts_masked[i,0,3,:,:,0],fts_masked[i,0,3,:,:,1])
+            plt.imshow(ft.abs(), cmap = 'gray')
+            plt.title('Undersampled FFT Frame')
+            plt.subplot(2,2,2)
+            plt.imshow(torch.fft.ifft2(torch.fft.ifftshift(ft.exp())).real, cmap = 'gray')
+            plt.title('IFFT of the Input')
+            plt.subplot(2,2,3)
             plt.imshow(predi, cmap = 'gray')
-            plt.title('Predicted Frame')
-            plt.subplot(1,2,2)
+            plt.title('Our Predicted Frame')
+            plt.subplot(2,2,4)
             plt.imshow(targi, cmap = 'gray')
             plt.title('Actual Frame')
             plt.suptitle("{} data window index {}".format(dstr, indices[i]))
