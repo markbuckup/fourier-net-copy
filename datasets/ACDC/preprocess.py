@@ -49,8 +49,8 @@ for i in tqdm(range(1,NUM_PATIENTS+1)):
 	d = torch.permute(torch.FloatTensor(d).unsqueeze(4), (2,3,4,0,1)) # d1, d2, 1, r, c
 	data.append(((transform(d.reshape(d1*d2, 1, r, c)).reshape(d1, d2, 1, RES, RES))*255).type(torch.uint8))
 	patient_num_videos[i] = (data[-1].shape[0], data[-1].shape[1])
-	sum += data[i].sum()
-	squared_sum += (data[i]**2).sum()
+	sum += data[-1].sum()
+	squared_sum += (data[-1]**2).sum()
 	n_samples += d1*d2*RES*RES
 	
 
