@@ -68,8 +68,6 @@ class Trainer(nn.Module):
         beta1 = self.parameters['beta1']
         beta2 = self.parameters['beta2']
         for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | Epoch {}".format(os.getpid(), epoch)):
-            if i> 5:#XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-                break
             self.optim.zero_grad()
             # print('Computing forward', fts_masked.shape, flush = True)
             # t = time.process_time()
@@ -123,8 +121,6 @@ class Trainer(nn.Module):
         avglossreconft = 0
         with torch.no_grad():
             for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr)):
-                if i> 5:#XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-                    break
                 ft_preds, preds = self.model(fts_masked.to(self.device))
                 avglossrecon += self.criterion(preds.to(self.device), targets.to(self.device)).item()/(len(dloader))
                 if self.criterion_FT is not None:

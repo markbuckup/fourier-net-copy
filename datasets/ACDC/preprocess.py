@@ -4,7 +4,7 @@ import os
 import PIL
 import argparse
 import sys
-sys.path.append('../../')
+sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
 from tqdm import tqdm
 import kornia
 from kornia.metrics import ssim
@@ -14,11 +14,13 @@ import kornia
 from kornia.utils import draw_line
 import numpy as np
 import nibabel as nib
-from utils.utils import get_window_mask, get_coil_mask
 from skimage.exposure import match_histograms
+
+from utils.functions import get_window_mask, get_coil_mask
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--resolution', type = int, default = 128)
+args = parser.parse_args()
 
 histogram_target = nib.load('raw/patient001/patient001_4d.nii.gz').get_fdata()[:,:,0,7]
 

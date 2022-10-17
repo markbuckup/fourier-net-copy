@@ -46,14 +46,14 @@ args = parser.parse_args()
 seed_torch(args.seed)
 
 parameters = {}
-parameters['train_batch_size'] = 2
-parameters['test_batch_size'] = 2
+parameters['train_batch_size'] = 40
+parameters['test_batch_size'] = 40
 parameters['lr'] = 1e-3
 parameters['num_epochs'] = 50
 parameters['train_test_split'] = 0.8
 parameters['dataset_path'] = '../../../datasets/ACDC'
 parameters['normalisation'] = True
-parameters['image_resolution'] = 128
+parameters['image_resolution'] = 64
 parameters['window_size'] = 7
 parameters['FT_radial_sampling'] = 14
 parameters['predicted_frame'] = 'middle'
