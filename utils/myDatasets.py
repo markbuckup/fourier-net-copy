@@ -16,6 +16,7 @@ from tqdm import tqdm
 from torchvision import transforms, datasets
 from torch.utils.data.dataset import Dataset
 from utils import get_window_mask, get_coil_mask
+from MDCNN import MDCNN
 
 def seed_torch(seed=0):
     random.seed(seed)
@@ -148,16 +149,21 @@ class ACDC(Dataset):
             r_ft_data.real = (r_ft_data.real-self.ft_mu_r)/self.ft_std_r
             r_ft_data.imag = (r_ft_data.imag-self.ft_mu_i)/self.ft_std_i
         r_ft_data = torch.stack((r_ft_data.real, r_ft_data.imag), -1)
-        ft_masked = r_ft_data * self.window_mask.unsqueeze(0).unsqueeze(-1)
+        ft_masked = r_ft_data * self.window_mask.float().unsqueeze(0).unsqueeze(-1)
 
-        return i, r_ft_data, ft_masked, target
+        return i, r_ft_data.float(), ft_masked.float(), target.float()
 
         
     def __len__(self):
         return self.num_videos
 
-a = ACDC('../datasets/ACDC/', resolution = 256, norm = False)
-x1, ft, ft_masked, targ = a[0]
-for i in range(8):
-    plt.imsave('dir/window_0_coil_{}.jpg'.format(i), torch.fft.ifft2(torch.fft.ifftshift(ft[i,0,:,:].exp(), dim = (-2,-1))).real, cmap = 'gray')
-plt.imsave('dir/window_0_coil_all.jpg'.format(i), torch.fft.ifft2(torch.fft.ifftshift(ft_compunded.exp(), dim = (-2,-1))).real, cmap = 'gray')
+# a = ACDC('../datasets/ACDC/', resolution = 256, norm = False)
+# x1, ft, ft_masked, targ = a[0]
+# print(ft_masked.type())
+# for i in range(8):
+#     tft = torch.complex(ft[i,0,:,:,0], ft[i,0,:,:,1])
+#     plt.imsave('dir/window_0_coil_{}.jpg'.format(i), torch.fft.ifft2(torch.fft.ifftshift(tft.exp(), dim = (-2,-1))).real, cmap = 'gray')
+
+# m = MDCNN(8, 7).to(torch.device('cuda:1'))
+# print(ft_masked.type())
+# print(m(ft_masked.unsqueeze(0).to(torch.device('cuda:1'))).shape)
