@@ -71,10 +71,6 @@ for i in tqdm(range(1,NUM_PATIENTS+1)):
 	sum += data[-1].sum()
 	squared_sum += (data[-1]**2).sum()
 	n_samples += d1*d2*RES*RES
-	for i in range(d1):
-		for j in range(d2):
-			plt.imsave('sam2/img_{}_{}.jpg'.format(i,j), data[-1][i,j,0,:,:].numpy(), cmap = 'gray')
-	
 
 dic = {}
 mu = sum/n_samples
