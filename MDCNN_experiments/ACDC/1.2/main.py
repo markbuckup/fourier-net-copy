@@ -58,9 +58,9 @@ parameters['window_size'] = 7
 parameters['FT_radial_sampling'] = 14
 parameters['predicted_frame'] = 'middle'
 parameters['num_coils'] = 8
-parameters['optimizer'] = 'Adam'
+parameters['optimizer'] = 'SGD'
 parameters['scheduler'] = 'StepLR'
-parameters['optimizer_params'] = (0.5, 0.999)
+parameters['optimizer_params'] = (0.9, 1e-4)
 parameters['scheduler_params'] = {
     'step_size': parameters['num_epochs']//3,
     'gamma': 0.1,

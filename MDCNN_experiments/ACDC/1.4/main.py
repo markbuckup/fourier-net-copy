@@ -66,7 +66,7 @@ parameters['scheduler_params'] = {
     'gamma': 0.1,
     'verbose': True
 }
-parameters['loss_recon'] = 'L1'
+parameters['loss_recon'] = 'SSIM'
 parameters['loss_FT'] = 'None'
 parameters['loss_reconstructed_FT'] = 'None'
 parameters['train_losses'] = []
@@ -74,7 +74,7 @@ parameters['test_losses'] = []
 parameters['beta1'] = 1
 parameters['beta2'] = 0.5
 parameters['loss_params'] = {
-    # 'SSIM_window': 11,
+    'SSIM_window': 11,
     'alpha_phase': 1,
     'alpha_amp': 1,
     'grayscale': True,
