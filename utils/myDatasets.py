@@ -16,7 +16,8 @@ from PIL import Image
 from tqdm import tqdm
 from torchvision import transforms, datasets
 from torch.utils.data.dataset import Dataset
-from utils.functions import get_window_mask, get_coil_mask
+# from utils.functions import get_window_mask
+from utils.functions import get_coil_mask, get_golden_bars
 from utils.MDCNN import MDCNN
 
 def seed_torch(seed=0):
@@ -99,22 +100,12 @@ class ACDC(Dataset):
             self.target_frame = (self.window_size-1)//2
         else:
             self.target_frame = self.window_size-1
-        # print('Generating window mask', flush = True)
-        # t = time.process_time()
-        self.window_mask = get_window_mask(window_size = self.window_size, number_of_radial_views = self.ft_num_radial_views, resolution = self.resolution)
-        # print('Generated window mask', time.process_time()-t, flush = True)
-        # print('Generating coil mask', flush = True)
-        # t = time.process_time()
+        self.golden_bars = get_golden_bars(resolution = self.resolution) # returns 1000 golden bars 
+        self.num_golden_cycle = self.golden_bars.shape[0]
         self.coil_mask = get_coil_mask(n_coils = self.num_coils, resolution = self.resolution)
-        # print('Generated coil mask', time.process_time()-t, flush = True)
-
-        # print('Loading processed data', flush = True)
-        # t - time.process_time()
         dic = torch.load(os.path.join(self.path, 'processed/processed_data_{}.pth'.format(self.resolution)))
         self.data = dic['data']
         (self.mu, self.std, self.ft_mu_r, self.ft_mu_i, self.ft_std_r, self.ft_std_i) = dic['normalisation_constants']
-        # self.patient_num_videos = dic['patient_num_videos'] # dic {patient_number} --> (number of videos, frames per video)
-        # print('Loaded processed data', time.process_time()-t, flush = True)
         tot = len(self.data)
         self.train_len = int(tot*self.train_split)
         if self.train:
@@ -168,7 +159,12 @@ class ACDC(Dataset):
             r_ft_data.real = (r_ft_data.real-self.ft_mu_r)/self.ft_std_r
             r_ft_data.imag = (r_ft_data.imag-self.ft_mu_i)/self.ft_std_i
         r_ft_data = torch.stack((r_ft_data.real, r_ft_data.imag), -1)
-        ft_masked = r_ft_data * self.window_mask.float().unsqueeze(0).unsqueeze(-1)
+        
+        golden_bars_indices = torch.arange(i,i+self.ft_num_radial_views*self.window_size)%self.num_golden_cycle
+        selection = self.golden_bars[golden_bars_indices,:,:].reshape(self.window_size, self.ft_num_radial_views, self.resolution, self.resolution)
+        current_window_mask = selection.sum(1).sign().float()
+        
+        ft_masked = r_ft_data * current_window_mask.unsqueeze(0).unsqueeze(-1)
         
         target_ft = torch.fft.fftshift(torch.fft.fft2(target.float()))
         target_ft = torch.stack((target_ft.real, target_ft.imag), -1)
@@ -178,13 +174,13 @@ class ACDC(Dataset):
     def __len__(self):
         return self.num_videos
 
-# a = ACDC('../datasets/ACDC/', resolution = 256, norm = False)
-# x1, ft, ft_masked, targ = a[0]
-# print(ft_masked.type(), flush = True)
-# for i in range(8):
-#     tft = torch.complex(ft[i,0,:,:,0], ft[i,0,:,:,1])
-#     plt.imsave('dir/window_0_coil_{}.jpg'.format(i), torch.fft.ifft2(torch.fft.ifftshift(tft.exp(), dim = (-2,-1))).real, cmap = 'gray')
+a = ACDC('../datasets/ACDC/', resolution = 256, norm = False)
+x1, ft, ft_masked, targ, target_ft = a[0]
+for i in range(8):
+    tft = torch.complex(ft[i,0,:,:,0], ft[i,0,:,:,1])
+    for j in range(7):
+        plt.imsave('dir/input_ft_coil_{}_win_{}.jpg'.format(i,j), (ft_masked[i,j,:,:,:]**2).sum(2)**0.5, cmap = 'gray')
+    plt.imsave('dir/window_0_coil_{}.jpg'.format(i), torch.fft.ifft2(torch.fft.ifftshift(tft.exp(), dim = (-2,-1))).real, cmap = 'gray')
 
-# m = MDCNN(8, 7).to(torch.device('cuda:1'))
-# print(ft_masked.type(), flush = True)
+m = MDCNN(8, 7).to(torch.device('cuda:1'))
 # print(m(ft_masked.unsqueeze(0).to(torch.device('cuda:1'))).shape, flush = True)
