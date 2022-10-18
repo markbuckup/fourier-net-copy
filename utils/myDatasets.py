@@ -174,13 +174,13 @@ class ACDC(Dataset):
     def __len__(self):
         return self.num_videos
 
-a = ACDC('../datasets/ACDC/', resolution = 256, norm = False)
-x1, ft, ft_masked, targ, target_ft = a[0]
-for i in range(8):
-    tft = torch.complex(ft[i,0,:,:,0], ft[i,0,:,:,1])
-    for j in range(7):
-        plt.imsave('dir/input_ft_coil_{}_win_{}.jpg'.format(i,j), (ft_masked[i,j,:,:,:]**2).sum(2)**0.5, cmap = 'gray')
-    plt.imsave('dir/window_0_coil_{}.jpg'.format(i), torch.fft.ifft2(torch.fft.ifftshift(tft.exp(), dim = (-2,-1))).real, cmap = 'gray')
+# a = ACDC('../datasets/ACDC/', resolution = 256, norm = False)
+# x1, ft, ft_masked, targ, target_ft = a[0]
+# for i in range(8):
+#     tft = torch.complex(ft[i,0,:,:,0], ft[i,0,:,:,1])
+#     for j in range(7):
+#         plt.imsave('dir/input_ft_coil_{}_win_{}.jpg'.format(i,j), (ft_masked[i,j,:,:,:]**2).sum(2)**0.5, cmap = 'gray')
+#     plt.imsave('dir/window_0_coil_{}.jpg'.format(i), torch.fft.ifft2(torch.fft.ifftshift(tft.exp(), dim = (-2,-1))).real, cmap = 'gray')
 
-m = MDCNN(8, 7).to(torch.device('cuda:1'))
-# print(m(ft_masked.unsqueeze(0).to(torch.device('cuda:1'))).shape, flush = True)
+# m = MDCNN(8, 7).to(torch.device('cuda:1'))
+# # print(m(ft_masked.unsqueeze(0).to(torch.device('cuda:1'))).shape, flush = True)
