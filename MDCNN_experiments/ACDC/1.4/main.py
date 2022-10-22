@@ -64,7 +64,7 @@ parameters['window_size'] = 7
 parameters['FT_radial_sampling'] = 14
 parameters['predicted_frame'] = 'middle'
 parameters['num_coils'] = 8
-parameters['dataloader_num_workers'] = 2
+parameters['dataloader_num_workers'] = 0
 parameters['optimizer'] = 'Adam'
 parameters['scheduler'] = 'StepLR'
 parameters['optimizer_params'] = (0.5, 0.999)
@@ -143,6 +143,7 @@ def train_paradigm(rank, world_size):
                         device = device,
                         rank = rank
                     )
+    dist.barrier()
     testset = ACDC(
                         parameters['dataset_path'], 
                         train = False, 
@@ -271,6 +272,7 @@ def test_paradigm(rank, world_size):
                         device = device,
                         rank = rank
                     )
+    dist.barrier()
     testset = ACDC(
                         parameters['dataset_path'], 
                         train = False, 
