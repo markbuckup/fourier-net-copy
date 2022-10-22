@@ -73,7 +73,7 @@ parameters['scheduler_params'] = {
     'gamma': 0.1,
     'verbose': True
 }
-parameters['loss_recon'] = 'L2'
+parameters['loss_recon'] = 'L1'
 parameters['loss_FT'] = 'None'
 parameters['loss_reconstructed_FT'] = 'None'
 parameters['train_losses'] = []
