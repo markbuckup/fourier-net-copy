@@ -73,6 +73,7 @@ parameters['train_losses'] = []
 parameters['test_losses'] = []
 parameters['beta1'] = 1
 parameters['beta2'] = 0.5
+parameters['Automatic_Mixed_Precision'] = False
 parameters['loss_params'] = {
     'SSIM_window': 11,
     'alpha_phase': 1,
@@ -93,7 +94,11 @@ else:
 
     device = torch.device("cuda:{}".format(args.gpu[0]) if torch.cuda.is_available() else "cpu")
 SAVE_INTERVAL = 1
-torch.autograd.set_detect_anomaly(True)
+# torch.autograd.set_detect_anomaly(True)
+torch.backends.cudnn.benchmark = True
+torch.autograd.set_detect_anomaly(False)
+torch.autograd.profiler.profile(False)
+torch.autograd.profiler.emit_nvtx(False)
 
 checkpoint_path = './checkpoints/'
 if not os.path.isdir(checkpoint_path):
@@ -114,7 +119,8 @@ trainset = ACDC(
                     window_size = parameters['window_size'], 
                     ft_num_radial_views = parameters['FT_radial_sampling'], 
                     predict_mode = parameters['predicted_frame'], 
-                    num_coils = parameters['num_coils']
+                    num_coils = parameters['num_coils'],
+                    device = device
                 )
 testset = ACDC(
                     parameters['dataset_path'], 
@@ -125,7 +131,8 @@ testset = ACDC(
                     window_size = parameters['window_size'], 
                     ft_num_radial_views = parameters['FT_radial_sampling'], 
                     predict_mode = parameters['predicted_frame'], 
-                    num_coils = parameters['num_coils']
+                    num_coils = parameters['num_coils'],
+                    device = device
                 )
 
 model = nn.DataParallel(MDCNN(8,7), device_ids = args.gpu)
@@ -141,6 +148,7 @@ if args.resume:
     pre_e = dic['e']
     trainer.model.load_state_dict(dic['model'])
     trainer.optim.load_state_dict(dic['optim'])
+    trainer.scaler.load_state_dict(dic['scaler'])
     if parameters['scheduler'] != 'None':
         trainer.scheduler.load_state_dict(dic['scheduler'])
     losses = dic['losses']
@@ -209,6 +217,7 @@ for e in range(parameters['num_epochs']):
         dic['scheduler'] = trainer.scheduler.state_dict()
     dic['losses'] = losses
     dic['test_losses'] = test_losses
+    dic['scaler'] = trainer.scaler.state_dict()
 
 
     if (e+1) % SAVE_INTERVAL == 0:

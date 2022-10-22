@@ -83,7 +83,7 @@ class ToyVideoSet(Dataset):
 
 
 class ACDC(Dataset):
-    def __init__(self, path, train = True, train_split = 0.8, norm = True, resolution = 128, window_size = 7, ft_num_radial_views = 14, predict_mode = 'middle', num_coils = 8):
+    def __init__(self, path, train = True, train_split = 0.8, norm = True, resolution = 128, window_size = 7, ft_num_radial_views = 14, predict_mode = 'middle', num_coils = 8, device = torch.device('cpu')):
         super(ACDC, self).__init__()
         self.path = path
         self.train = train
@@ -92,6 +92,7 @@ class ACDC(Dataset):
         self.window_size = window_size
         self.ft_num_radial_views = ft_num_radial_views
         self.norm = norm
+        self.device = device
         self.num_coils = num_coils
         assert(self.window_size % 2 != 0)
         self.predict_mode = predict_mode
@@ -100,7 +101,7 @@ class ACDC(Dataset):
             self.target_frame = (self.window_size-1)//2
         else:
             self.target_frame = self.window_size-1
-        self.golden_bars = get_golden_bars(resolution = self.resolution) # returns 1000 golden bars 
+        self.golden_bars = get_golden_bars(resolution = self.resolution).to(self.device)
         self.num_golden_cycle = self.golden_bars.shape[0]
         self.coil_mask = get_coil_mask(n_coils = self.num_coils, resolution = self.resolution)
         dic = torch.load(os.path.join(self.path, 'processed/processed_data_{}.pth'.format(self.resolution)))
@@ -112,6 +113,8 @@ class ACDC(Dataset):
             self.data = self.data[:self.train_len]
         else:
             self.data = self.data[self.train_len:]
+        self.data_fft = [torch.fft.fftshift(torch.fft.fft2(x.float()/255.),dim = (-2,-1)) for x in self.data]
+        self.data_fft = [torch.stack((x.real, x.imag), -1) for x in self.data_fft]
 
         self.num_patients = len(self.data)
         self.num_vids_per_patient = np.array([x.shape[0] for x in self.data])
@@ -141,6 +144,7 @@ class ACDC(Dataset):
             # vnum, fnum, 1, r, c
             indata = ((self.data[p_num].type(torch.float64)/255.).expand(-1,-1,self.num_coils, -1,-1)*self.coil_mask.unsqueeze(0).unsqueeze(0))
             self.ft_data[p_num] = torch.fft.fftshift(torch.fft.fft2(indata) ,dim = (-2,-1)).log()
+            self.ft_data[p_num] = torch.stack((self.ft_data[p_num].real, self.ft_data[p_num].imag), -1)
             if self.train:
                 print('Memoising for patient {}'.format(p_num), flush = True)
             else:
@@ -151,23 +155,23 @@ class ACDC(Dataset):
                 print('Memoised all patients!')
                 print('#########################', flush = True)
 
-        indices = torch.arange(f_num,f_num + self.window_size)%self.frames_per_vid_per_patient[p_num]
-        r_ft_data = self.ft_data[p_num][v_num, indices,:,:,:].permute(1,0,2,3)
-        target = self.data[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:].type(torch.float64)/255.
+        indexed_ft_data = self.ft_data[p_num][v_num,:,:,:,:].to(self.device)
+        indices = torch.arange(f_num,f_num + self.window_size).to(self.device)%self.frames_per_vid_per_patient[p_num]
+        r_ft_data = indexed_ft_data[indices,:,:,:].permute(1,0,2,3,4).to(self.device)
+        target = self.data[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:].type(torch.float64).to(self.device)
+        target = target/255.
         if self.norm:
             target = (target-self.mu)/self.std
-            r_ft_data.real = (r_ft_data.real-self.ft_mu_r)/self.ft_std_r
-            r_ft_data.imag = (r_ft_data.imag-self.ft_mu_i)/self.ft_std_i
-        r_ft_data = torch.stack((r_ft_data.real, r_ft_data.imag), -1)
+            r_ft_data[:,:,:,:,0] = (r_ft_data[:,:,:,:,0]-self.ft_mu_r)/self.ft_std_r
+            r_ft_data[:,:,:,:,1] = (r_ft_data[:,:,:,:,1]-self.ft_mu_i)/self.ft_std_i
         
-        golden_bars_indices = torch.arange(i,i+self.ft_num_radial_views*self.window_size)%self.num_golden_cycle
+        golden_bars_indices = torch.arange(i,i+self.ft_num_radial_views*self.window_size).to(self.device)%self.num_golden_cycle
         selection = self.golden_bars[golden_bars_indices,:,:].reshape(self.window_size, self.ft_num_radial_views, self.resolution, self.resolution)
         current_window_mask = selection.sum(1).sign().float()
         
         ft_masked = r_ft_data * current_window_mask.unsqueeze(0).unsqueeze(-1)
+        target_ft = self.data_fft[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:].to(self.device)
         
-        target_ft = torch.fft.fftshift(torch.fft.fft2(target.float()))
-        target_ft = torch.stack((target_ft.real, target_ft.imag), -1)
         return i, r_ft_data.float(), ft_masked.float(), target.float(), target_ft
 
         

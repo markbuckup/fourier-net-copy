@@ -15,6 +15,7 @@ from tqdm import tqdm
 from torch import nn, optim
 from torch.nn import functional as F
 from torchvision import transforms, models, datasets
+from torch.cuda.amp import GradScaler, autocast
 
 import sys
 sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
@@ -30,6 +31,7 @@ class Trainer(nn.Module):
         self.testset = testset
         self.parameters = parameters
         self.device = device
+        self.scaler = GradScaler(enabled=self.parameters['Automatic_Mixed_Precision'])
         self.trainloader = torch.utils.data.DataLoader(
                             trainset, 
                             batch_size=self.parameters['train_batch_size'], 
@@ -43,7 +45,8 @@ class Trainer(nn.Module):
         self.testloader = torch.utils.data.DataLoader(
                             testset, 
                             batch_size=self.parameters['test_batch_size'],
-                            shuffle = False)
+                            shuffle = False
+                        )
 
         if self.parameters['optimizer'] == 'Adam':
             self.optim = optim.Adam(self.model.parameters(), lr=self.parameters['lr'], betas=self.parameters['optimizer_params'])
@@ -60,6 +63,10 @@ class Trainer(nn.Module):
         self.criterion = fetch_loss_function(self.parameters['loss_recon'], self.device, self.parameters['loss_params']).to(self.device)
         self.criterion_FT = fetch_loss_function(self.parameters['loss_FT'], self.device, self.parameters['loss_params'])
         self.criterion_reconFT = fetch_loss_function(self.parameters['loss_reconstructed_FT'], self.device, self.parameters['loss_params'])
+        if self.criterion_FT is not None:
+            self.criterion_FT = self.criterion_FT.to(self.device)
+        if self.criterion_reconFT is not None:
+            self.criterion_reconFT = self.criterion_reconFT.to(self.device)
 
     def train(self, epoch):
         avglossrecon = 0
@@ -68,34 +75,31 @@ class Trainer(nn.Module):
         beta1 = self.parameters['beta1']
         beta2 = self.parameters['beta2']
         for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | Epoch {}".format(os.getpid(), epoch)):
-            self.optim.zero_grad()
-            # print('Computing forward', fts_masked.shape, flush = True)
-            # t = time.process_time()
-            ft_preds, preds = self.model(fts_masked.to(self.device)) # B, 1, X, Y
-            # print('Computed forward', time.process_time()-t, flush = True)
-            # print('Computing loss', flush = True)
-            # t = time.process_time()
-            loss_recon = self.criterion(preds.to(self.device), targets.to(self.device))
-            # print('Computed loss', time.process_time()-t, flush = True)
-            loss_ft = torch.tensor([0]).to(self.device)
-            loss_reconft = torch.tensor([0]).to(self.device)
-            if self.criterion_FT is not None:
-                loss_ft = self.criterion_FT(ft_preds.to(self.device), target_fts.to(self.device))
-            if self.criterion_reconFT is not None:
-                if self.parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
-                    loss_reconft = self.criterion_reconFT(preds.to(self.device), targets.to(self.device))
-                else:
-                    predfft = torch.fft.fft2(preds.to(self.device)).log()
-                    predfft = torch.stack((predfft.real, predfft.imag),-1)
-                    targetfft = torch.fft.fft2(targets.to(self.device)).log()
-                    targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
-                    loss_reconft = self.criterion_reconFT(predfft, targetfft)
-            loss = loss_recon + beta1*loss_ft + beta2*loss_reconft
-            # print('Computing backward', fts_masked.shape, flush = True)
-            # t = time.process_time()      
-            loss.backward()
-            self.optim.step()
-            # print('Computed backward', time.process_time()-t, flush = True)
+            for param in self.model.parameters():
+                param.grad = None
+            # with autocast(enabled = self.parameters['Automatic_Mixed_Precision'], dtype=torch.float32):
+            with autocast(enabled = self.parameters['Automatic_Mixed_Precision']):
+                ft_preds, preds = self.model(fts_masked) # B, 1, X, Y
+                loss_recon = self.criterion(preds, targets)
+                loss_ft = torch.tensor([0]).to(self.device)
+                loss_reconft = torch.tensor([0]).to(self.device)
+                if self.criterion_FT is not None:
+                    loss_ft = self.criterion_FT(ft_preds, target_fts)
+                if self.criterion_reconFT is not None:
+                    if self.parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
+                        loss_reconft = self.criterion_reconFT(preds, targets)
+                    else:
+                        predfft = torch.fft.fft2(preds).log()
+                        predfft = torch.stack((predfft.real, predfft.imag),-1)
+                        targetfft = torch.fft.fft2(targets).log()
+                        targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
+                        loss_reconft = self.criterion_reconFT(predfft, targetfft)
+                loss = loss_recon + beta1*loss_ft + beta2*loss_reconft
+
+            self.scaler.scale(loss).backward()
+            self.scaler.step(self.optim)
+            self.scaler.update()
+
             avglossrecon += loss_recon.item()/(len(self.trainloader))
             avglossft += loss_ft.item()/(len(self.trainloader))
             avglossreconft += loss_reconft.item()/(len(self.trainloader))
@@ -121,17 +125,17 @@ class Trainer(nn.Module):
         avglossreconft = 0
         with torch.no_grad():
             for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr)):
-                ft_preds, preds = self.model(fts_masked.to(self.device))
-                avglossrecon += self.criterion(preds.to(self.device), targets.to(self.device)).item()/(len(dloader))
+                ft_preds, preds = self.model(fts_masked)
+                avglossrecon += self.criterion(preds, targets).item()/(len(dloader))
                 if self.criterion_FT is not None:
-                    avglossft += self.criterion_FT(ft_preds.to(self.device), target_fts.to(self.device)).item()/(len(dloader))
+                    avglossft += self.criterion_FT(ft_preds, target_fts).item()/(len(dloader))
                 if self.criterion_reconFT is not None:
                     if self.parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
-                        avglossreconft += self.criterion_reconFT(preds.to(self.device), targets.to(self.device)).item()/(len(dloader))
+                        avglossreconft += self.criterion_reconFT(preds, targets).item()/(len(dloader))
                     else:
-                        predfft = torch.fft.fft2(preds.to(self.device)).log()
+                        predfft = torch.fft.fft2(preds).log()
                         predfft = torch.stack((predfft.real, predfft.imag),-1)
-                        targetfft = torch.fft.fft2(targets.to(self.device)).log()
+                        targetfft = torch.fft.fft2(targets).log()
                         targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
                         avglossreconft += self.criterion_reconFT(predfft, targetfft).item()/(len(dloader))
 
@@ -160,7 +164,7 @@ class Trainer(nn.Module):
         print('Saving plots for {} data'.format(dstr), flush = True)
         with torch.no_grad():
             for i, (indices, fts, fts_masked, targets, target_fts) in enumerate(dloader):
-                ft_preds, preds = self.model(fts_masked.to(self.device))
+                ft_preds, preds = self.model(fts_masked)
                 break
             for i in range(num_plots):
                 targi = targets[i].squeeze().cpu().numpy()
