@@ -83,7 +83,7 @@ class ToyVideoSet(Dataset):
 
 
 class ACDC(Dataset):
-    def __init__(self, path, train = True, train_split = 0.8, norm = True, resolution = 128, window_size = 7, ft_num_radial_views = 14, predict_mode = 'middle', num_coils = 8, device = torch.device('cpu')):
+    def __init__(self, path, train = True, train_split = 0.8, norm = True, resolution = 128, window_size = 7, ft_num_radial_views = 14, predict_mode = 'middle', num_coils = 8, device = torch.device('cpu'), rank = 0):
         super(ACDC, self).__init__()
         self.path = path
         self.train = train
@@ -92,7 +92,8 @@ class ACDC(Dataset):
         self.window_size = window_size
         self.ft_num_radial_views = ft_num_radial_views
         self.norm = norm
-        self.device = device
+        self.device = torch.device('cpu')
+        # self.device = device
         self.num_coils = num_coils
         assert(self.window_size % 2 != 0)
         self.predict_mode = predict_mode
@@ -101,7 +102,7 @@ class ACDC(Dataset):
             self.target_frame = (self.window_size-1)//2
         else:
             self.target_frame = self.window_size-1
-        self.golden_bars = get_golden_bars(resolution = self.resolution).to(self.device)
+        self.golden_bars = get_golden_bars(resolution = self.resolution)
         self.num_golden_cycle = self.golden_bars.shape[0]
         self.coil_mask = get_coil_mask(n_coils = self.num_coils, resolution = self.resolution)
         dic = torch.load(os.path.join(self.path, 'processed/processed_data_{}.pth'.format(self.resolution)))
@@ -123,6 +124,7 @@ class ACDC(Dataset):
         
         self.ft_data = [None for i in range(self.num_patients)]
         self.num_mem = 0
+        self.rank = rank
 
         self.num_videos = int((self.num_vids_per_patient*self.frames_per_vid_per_patient).sum())
 
@@ -145,15 +147,16 @@ class ACDC(Dataset):
             indata = ((self.data[p_num].type(torch.float64)/255.).expand(-1,-1,self.num_coils, -1,-1)*self.coil_mask.unsqueeze(0).unsqueeze(0))
             self.ft_data[p_num] = torch.fft.fftshift(torch.fft.fft2(indata) ,dim = (-2,-1)).log()
             self.ft_data[p_num] = torch.stack((self.ft_data[p_num].real, self.ft_data[p_num].imag), -1)
-            if self.train:
-                print('Memoising for patient {}'.format(p_num), flush = True)
-            else:
-                print('Memoising for patient {}'.format(p_num+self.train_len), flush = True)
-            self.num_mem += 1 
-            if self.num_mem == len(self.data):
-                print('#########################')
-                print('Memoised all patients!')
-                print('#########################', flush = True)
+            if self.rank == 0:
+                if self.train:
+                    print('Memoising for patient {}'.format(p_num), flush = True)
+                else:
+                    print('Memoising for patient {}'.format(p_num+self.train_len), flush = True)
+                self.num_mem += 1 
+                if self.num_mem == len(self.data):
+                    print('#########################')
+                    print('Memoised all patients!')
+                    print('#########################', flush = True)
 
         indexed_ft_data = self.ft_data[p_num][v_num,:,:,:,:].to(self.device)
         indices = torch.arange(f_num,f_num + self.window_size).to(self.device)%self.frames_per_vid_per_patient[p_num]
@@ -166,13 +169,13 @@ class ACDC(Dataset):
             r_ft_data[:,:,:,:,1] = (r_ft_data[:,:,:,:,1]-self.ft_mu_i)/self.ft_std_i
         
         golden_bars_indices = torch.arange(i,i+self.ft_num_radial_views*self.window_size).to(self.device)%self.num_golden_cycle
-        selection = self.golden_bars[golden_bars_indices,:,:].reshape(self.window_size, self.ft_num_radial_views, self.resolution, self.resolution)
+        selection = self.golden_bars.to(self.device)[golden_bars_indices,:,:].reshape(self.window_size, self.ft_num_radial_views, self.resolution, self.resolution)
         current_window_mask = selection.sum(1).sign().float()
         
         ft_masked = r_ft_data * current_window_mask.unsqueeze(0).unsqueeze(-1)
         target_ft = self.data_fft[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:].to(self.device)
         
-        return i, r_ft_data.float(), ft_masked.float(), target.float(), target_ft
+        return i, r_ft_data.float().cpu(), ft_masked.float().cpu(), target.float().cpu(), target_ft.cpu()
 
         
     def __len__(self):
