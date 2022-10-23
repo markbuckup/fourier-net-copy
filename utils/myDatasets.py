@@ -87,6 +87,8 @@ class ACDC(Dataset):
     test_data = []
     train_mem_ft_data = []
     test_mem_ft_data = []
+    train_mem_ft_data_filled = []
+    test_mem_ft_data_filled = []
     train_data_fft = []
     test_data_fft = []
     train_num_mem = [0]
@@ -94,9 +96,23 @@ class ACDC(Dataset):
     data_init_done = False
     mu, std, ft_mu_r, ft_mu_i, ft_std_r, ft_std_i = 0,0,0,0,0,0
 
+    @classmethod
+    def set_mem_ft(cls, train, i,val):
+        if train:
+            cls.train_mem_ft_data[i] += val
+            cls.train_mem_ft_data_filled[i] += 1
+        else:
+            cls.test_mem_ft_data[i] += val
+            cls.test_mem_ft_data_filled[i] += 1
+    @classmethod
+    def get_mem_filled(cls, train, i):
+        if train:
+            return cls.train_mem_ft_data_filled[i].item()
+        else:
+            return cls.test_mem_ft_data_filled[i].item()
 
     @classmethod
-    def data_init(cls, path, resolution, train_split):
+    def data_init(cls, path, resolution, train_split, num_coils):
         if cls.data_init_done:
             return
         cls.data_init_done = True
@@ -109,20 +125,63 @@ class ACDC(Dataset):
         cls.test_data = data[train_len:]
         num_train_patients = len(cls.train_data)
         num_test_patients = len(cls.test_data)
-        cls.train_mem_ft_data = [None for i in range(num_train_patients)]
-        cls.test_mem_ft_data = [None for i in range(num_test_patients)]
+        cls.train_mem_ft_data = [torch.zeros(x.shape[0],x.shape[1],num_coils,x.shape[3],x.shape[4],2) for x in cls.train_data]
+        cls.test_mem_ft_data = [torch.zeros(x.shape[0],x.shape[1],num_coils,x.shape[3],x.shape[4],2) for x in cls.test_data]
+        cls.train_mem_ft_data_filled = [torch.zeros(1,) for x in range(num_train_patients)]
+        cls.test_mem_ft_data_filled = [torch.zeros(1,) for x in range(num_test_patients)]
         cls.train_data_fft = [torch.fft.fftshift(torch.fft.fft2(x.float()/255.),dim = (-2,-1)) for x in cls.train_data]
         cls.train_data_fft = [torch.stack((x.real, x.imag), -1) for x in cls.train_data_fft]
         cls.test_data_fft = [torch.fft.fftshift(torch.fft.fft2(x.float()/255.),dim = (-2,-1)) for x in cls.test_data]
         cls.test_data_fft = [torch.stack((x.real, x.imag), -1) for x in cls.test_data_fft]
-            
-    def __init__(self, path, train = True, train_split = 0.8, norm = True, resolution = 128, window_size = 7, ft_num_radial_views = 14, predict_mode = 'middle', num_coils = 8, device = torch.device('cpu'), rank = 0):
+
+        [x.share_memory_() for x in cls.train_data]
+        [x.share_memory_() for x in cls.test_data]
+        [x.share_memory_() for x in cls.train_data_fft]
+        [x.share_memory_() for x in cls.train_data_fft]
+        [x.share_memory_() for x in cls.test_data_fft]
+        [x.share_memory_() for x in cls.test_data_fft]
+        [x.share_memory_() for x in cls.train_mem_ft_data]
+        [x.share_memory_() for x in cls.test_mem_ft_data]
+        [x.share_memory_() for x in cls.train_mem_ft_data_filled]
+        [x.share_memory_() for x in cls.test_mem_ft_data_filled]
+    
+    @classmethod
+    def get_shared_lists(cls):
+        ans = []
+        ans.append(cls.train_data)
+        ans.append(cls.test_data)
+        ans.append(cls.train_data_fft)
+        ans.append(cls.train_data_fft)
+        ans.append(cls.test_data_fft)
+        ans.append(cls.test_data_fft)
+        ans.append(cls.train_mem_ft_data)
+        ans.append(cls.test_mem_ft_data)
+        ans.append(cls.train_mem_ft_data_filled)
+        ans.append(cls.test_mem_ft_data_filled)
+        ans.append((cls.mu, cls.std, cls.ft_mu_r, cls.ft_mu_i, cls.ft_std_r, cls.ft_std_i))
+        return ans
+    @classmethod
+    def set_shared_lists(cls, data):
+        cls.train_data = data[0]
+        cls.test_data = data[1]
+        cls.train_data_fft = data[2]
+        cls.train_data_fft = data[3]
+        cls.test_data_fft = data[4]
+        cls.test_data_fft = data[5]
+        cls.train_mem_ft_data = data[6]
+        cls.test_mem_ft_data = data[7]
+        cls.train_mem_ft_data_filled = data[8]
+        cls.test_mem_ft_data_filled = data[9]
+        cls.mu, cls.std, cls.ft_mu_r, cls.ft_mu_i, cls.ft_std_r, cls.ft_std_i = data[10]
+
+    def __init__(self, path, train = True, train_split = 0.8, norm = True, resolution = 128, window_size = 7, ft_num_radial_views = 14, predict_mode = 'middle', num_coils = 8):
         super(ACDC, self).__init__()
         self.path = path
         self.train = train
         self.train_split = train_split
         self.resolution = resolution
-        ACDC.data_init(self.path, self.resolution, self.train_split)
+        self.num_coils = num_coils
+        ACDC.data_init(self.path, self.resolution, self.train_split, self.num_coils)
         (self.mu, self.std, self.ft_mu_r, self.ft_mu_i, self.ft_std_r, self.ft_std_i) = (ACDC.mu, ACDC.std, ACDC.ft_mu_r, ACDC.ft_mu_i, ACDC.ft_std_r, ACDC.ft_std_i)
         if train:
             self.data = ACDC.train_data
@@ -137,10 +196,6 @@ class ACDC(Dataset):
         self.window_size = window_size
         self.ft_num_radial_views = ft_num_radial_views
         self.norm = norm
-        self.rank = rank
-        self.device = torch.device('cpu')
-        # self.device = device
-        self.num_coils = num_coils
         assert(self.window_size % 2 != 0)
         self.predict_mode = predict_mode
         assert(self.predict_mode in ['middle', 'last'])
@@ -174,11 +229,11 @@ class ACDC(Dataset):
     def __getitem__(self, i):
         # FT data - num_coils,num_windows, 256, 256
         p_num, v_num, f_num = self.index_to_location(i)
-        if self.ft_data[p_num] is None:
+        if ACDC.get_mem_filled(self.train, p_num) == 0:
             # vnum, fnum, 1, r, c
             indata = ((self.data[p_num].type(torch.float64)/255.).expand(-1,-1,self.num_coils, -1,-1)*self.coil_mask.unsqueeze(0).unsqueeze(0))
-            self.ft_data[p_num] = torch.fft.fftshift(torch.fft.fft2(indata) ,dim = (-2,-1)).log()
-            self.ft_data[p_num] = torch.stack((self.ft_data[p_num].real, self.ft_data[p_num].imag), -1)
+            temp = torch.fft.fftshift(torch.fft.fft2(indata) ,dim = (-2,-1)).log()
+            ACDC.set_mem_ft(self.train, p_num, torch.stack((temp.real, temp.imag), -1))
             if self.train:
                 print('Memoising for patient {}'.format(p_num), flush = True)
             else:
@@ -189,22 +244,22 @@ class ACDC(Dataset):
                 print('Memoised all patients!')
                 print('#########################', flush = True)
 
-        indexed_ft_data = self.ft_data[p_num][v_num,:,:,:,:].to(self.device)
-        indices = torch.arange(f_num,f_num + self.window_size).to(self.device)%self.frames_per_vid_per_patient[p_num]
-        r_ft_data = indexed_ft_data[indices,:,:,:].permute(1,0,2,3,4).to(self.device)
-        target = self.data[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:].type(torch.float64).to(self.device)
+        indexed_ft_data = self.ft_data[p_num][v_num,:,:,:,:]
+        indices = torch.arange(f_num,f_num + self.window_size)%self.frames_per_vid_per_patient[p_num]
+        r_ft_data = indexed_ft_data[indices,:,:,:].permute(1,0,2,3,4)
+        target = self.data[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:].type(torch.float64)
         target = target/255.
         if self.norm:
             target = (target-self.mu)/self.std
             r_ft_data[:,:,:,:,0] = (r_ft_data[:,:,:,:,0]-self.ft_mu_r)/self.ft_std_r
             r_ft_data[:,:,:,:,1] = (r_ft_data[:,:,:,:,1]-self.ft_mu_i)/self.ft_std_i
         
-        golden_bars_indices = torch.arange(i,i+self.ft_num_radial_views*self.window_size).to(self.device)%self.num_golden_cycle
-        selection = self.golden_bars.to(self.device)[golden_bars_indices,:,:].reshape(self.window_size, self.ft_num_radial_views, self.resolution, self.resolution)
+        golden_bars_indices = torch.arange(i,i+self.ft_num_radial_views*self.window_size)%self.num_golden_cycle
+        selection = self.golden_bars[golden_bars_indices,:,:].reshape(self.window_size, self.ft_num_radial_views, self.resolution, self.resolution)
         current_window_mask = selection.sum(1).sign().float()
         
         ft_masked = r_ft_data * current_window_mask.unsqueeze(0).unsqueeze(-1)
-        target_ft = self.data_fft[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:].to(self.device)
+        target_ft = self.data_fft[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:]
         
         return i, r_ft_data.float().cpu(), ft_masked.float().cpu(), target.float().cpu(), target_ft.cpu()
 

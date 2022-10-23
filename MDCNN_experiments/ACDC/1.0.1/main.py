@@ -126,10 +126,11 @@ if not os.path.isdir('./results/train'):
 if not os.path.isdir('./results/test'):
     os.mkdir('./results/test')
 
-def train_paradigm(rank, world_size):
+def train_paradigm(rank, world_size, shared_data):
     torch.cuda.set_device(args.gpu[rank])
     setup(rank, world_size)
     proc_device = torch.device('cuda:{}'.format(args.gpu[rank]))
+
     trainset = ACDC(
                         parameters['dataset_path'], 
                         train = True, 
@@ -139,11 +140,8 @@ def train_paradigm(rank, world_size):
                         window_size = parameters['window_size'], 
                         ft_num_radial_views = parameters['FT_radial_sampling'], 
                         predict_mode = parameters['predicted_frame'], 
-                        num_coils = parameters['num_coils'],
-                        device = device,
-                        rank = rank
+                        num_coils = parameters['num_coils']
                     )
-    dist.barrier()
     testset = ACDC(
                         parameters['dataset_path'], 
                         train = False, 
@@ -153,10 +151,11 @@ def train_paradigm(rank, world_size):
                         window_size = parameters['window_size'], 
                         ft_num_radial_views = parameters['FT_radial_sampling'], 
                         predict_mode = parameters['predicted_frame'], 
-                        num_coils = parameters['num_coils'],
-                        device = device,
-                        rank = rank
+                        num_coils = parameters['num_coils']
                     )
+
+    trainset.set_shared_lists(shared_data)
+    testset.set_shared_lists(shared_data)
 
     model = MDCNN(8,7).to(proc_device)
 
@@ -252,12 +251,10 @@ def train_paradigm(rank, world_size):
 
     cleanup()
 
-def test_paradigm(rank, world_size):
+def test_paradigm(rank, world_size, shared_data):
     torch.cuda.set_device(args.gpu[rank])
     setup(rank, world_size)
     proc_device = torch.device('cuda:{}'.format(args.gpu[rank]))
-
-    model = MDCNN(8,7).to(proc_device)
 
     trainset = ACDC(
                         parameters['dataset_path'], 
@@ -268,11 +265,8 @@ def test_paradigm(rank, world_size):
                         window_size = parameters['window_size'], 
                         ft_num_radial_views = parameters['FT_radial_sampling'], 
                         predict_mode = parameters['predicted_frame'], 
-                        num_coils = parameters['num_coils'],
-                        device = device,
-                        rank = rank
+                        num_coils = parameters['num_coils']
                     )
-    dist.barrier()
     testset = ACDC(
                         parameters['dataset_path'], 
                         train = False, 
@@ -282,10 +276,13 @@ def test_paradigm(rank, world_size):
                         window_size = parameters['window_size'], 
                         ft_num_radial_views = parameters['FT_radial_sampling'], 
                         predict_mode = parameters['predicted_frame'], 
-                        num_coils = parameters['num_coils'],
-                        device = device,
-                        rank = rank
+                        num_coils = parameters['num_coils']
                     )
+
+    # trainset.set_shared_lists(shared_data)
+    # testset.set_shared_lists(shared_data)
+
+    model = MDCNN(8,7).to(proc_device)
 
     if args.resume:
         model_state = torch.load(checkpoint_path + 'state.pth', map_location = torch.device('cpu'))['state']
@@ -374,15 +371,27 @@ def test_paradigm(rank, world_size):
 
 if __name__ == '__main__':
     world_size = len(args.gpu) 
+    trainset = ACDC(
+                        parameters['dataset_path'], 
+                        train = True, 
+                        train_split = parameters['train_test_split'], 
+                        norm = parameters['normalisation'], 
+                        resolution = parameters['image_resolution'], 
+                        window_size = parameters['window_size'], 
+                        ft_num_radial_views = parameters['FT_radial_sampling'], 
+                        predict_mode = parameters['predicted_frame'], 
+                        num_coils = parameters['num_coils']
+                    )
+    shared_data = trainset.get_shared_lists()
     if args.eval:
         mp.spawn(
             test_paradigm,
-            args=[world_size],
+            args=[world_size, shared_data],
             nprocs=world_size
         )
         os._exit(0)
     mp.spawn(
         train_paradigm,
-        args=[world_size],
+        args=[world_size, shared_data],
         nprocs=world_size
     )
