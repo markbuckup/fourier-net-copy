@@ -91,8 +91,8 @@ class ACDC(Dataset):
     test_mem_ft_data_filled = []
     train_data_fft = []
     test_data_fft = []
-    train_num_mem = [0]
-    test_num_mem = [0]
+    train_num_mem = None
+    test_num_mem = None
     data_init_done = False
     mu, std, ft_mu_r, ft_mu_i, ft_std_r, ft_std_i = 0,0,0,0,0,0
 
@@ -110,6 +110,20 @@ class ACDC(Dataset):
             return cls.train_mem_ft_data_filled[i].item()
         else:
             return cls.test_mem_ft_data_filled[i].item()
+    @classmethod
+    def inc_num_mem(cls, train,i):
+        if train:
+            if cls.train_num_mem[i] == 0:
+                cls.train_num_mem[i] += 1
+        else:
+            if cls.test_num_mem[i] == 0:
+                cls.test_num_mem[i] += 1
+    @classmethod
+    def get_num_mem(cls, train):
+        if train:
+            return cls.train_num_mem.sum()
+        else:
+            return cls.test_num_mem.sum()
 
     @classmethod
     def data_init(cls, path, resolution, train_split, num_coils):
@@ -134,6 +148,9 @@ class ACDC(Dataset):
         cls.test_data_fft = [torch.fft.fftshift(torch.fft.fft2(x.float()/255.),dim = (-2,-1)) for x in cls.test_data]
         cls.test_data_fft = [torch.stack((x.real, x.imag), -1) for x in cls.test_data_fft]
 
+        cls.train_num_mem = torch.zeros((len(cls.train_data)))
+        cls.test_num_mem = torch.zeros((len(cls.test_data)))
+
         [x.share_memory_() for x in cls.train_data]
         [x.share_memory_() for x in cls.test_data]
         [x.share_memory_() for x in cls.train_data_fft]
@@ -144,6 +161,8 @@ class ACDC(Dataset):
         [x.share_memory_() for x in cls.test_mem_ft_data]
         [x.share_memory_() for x in cls.train_mem_ft_data_filled]
         [x.share_memory_() for x in cls.test_mem_ft_data_filled]
+        cls.train_num_mem.share_memory_()
+        cls.test_num_mem.share_memory_()
     
     @classmethod
     def get_shared_lists(cls):
@@ -159,6 +178,8 @@ class ACDC(Dataset):
         ans.append(cls.train_mem_ft_data_filled)
         ans.append(cls.test_mem_ft_data_filled)
         ans.append((cls.mu, cls.std, cls.ft_mu_r, cls.ft_mu_i, cls.ft_std_r, cls.ft_std_i))
+        ans.append(cls.train_num_mem)
+        ans.append(cls.test_num_mem)
         return ans
     @classmethod
     def set_shared_lists(cls, data):
@@ -173,17 +194,32 @@ class ACDC(Dataset):
         cls.train_mem_ft_data_filled = data[8]
         cls.test_mem_ft_data_filled = data[9]
         cls.mu, cls.std, cls.ft_mu_r, cls.ft_mu_i, cls.ft_std_r, cls.ft_std_i = data[10]
+        cls.train_num_mem = data[11]
+        cls.test_num_mem = data[12]
 
-    def __init__(self, path, train = True, train_split = 0.8, norm = True, resolution = 128, window_size = 7, ft_num_radial_views = 14, predict_mode = 'middle', num_coils = 8):
+    def __init__(self, path, train = True, train_split = 0.8, norm = True, resolution = 128, window_size = 7, ft_num_radial_views = 14, predict_mode = 'middle', num_coils = 8, blank = False):
         super(ACDC, self).__init__()
         self.path = path
         self.train = train
         self.train_split = train_split
         self.resolution = resolution
+        self.blank = blank
         self.num_coils = num_coils
-        ACDC.data_init(self.path, self.resolution, self.train_split, self.num_coils)
-        (self.mu, self.std, self.ft_mu_r, self.ft_mu_i, self.ft_std_r, self.ft_std_i) = (ACDC.mu, ACDC.std, ACDC.ft_mu_r, ACDC.ft_mu_i, ACDC.ft_std_r, ACDC.ft_std_i)
-        if train:
+        self.window_size = window_size
+        self.ft_num_radial_views = ft_num_radial_views
+        self.norm = norm
+        assert(self.window_size % 2 != 0)
+        self.predict_mode = predict_mode
+        assert(self.predict_mode in ['middle', 'last'])
+        if self.predict_mode == 'middle':
+            self.target_frame = (self.window_size-1)//2
+        else:
+            self.target_frame = self.window_size-1
+        if not self.blank:
+            ACDC.data_init(self.path, self.resolution, self.train_split, self.num_coils)
+        
+    def rest_init(self):
+        if self.train:
             self.data = ACDC.train_data
             self.data_fft = ACDC.train_data_fft
             self.ft_data = ACDC.train_mem_ft_data
@@ -193,17 +229,8 @@ class ACDC(Dataset):
             self.data_fft = ACDC.test_data_fft
             self.ft_data = ACDC.test_mem_ft_data
             self.num_mem = ACDC.test_num_mem
-        self.window_size = window_size
-        self.ft_num_radial_views = ft_num_radial_views
-        self.norm = norm
-        assert(self.window_size % 2 != 0)
-        self.predict_mode = predict_mode
-        assert(self.predict_mode in ['middle', 'last'])
+        (self.mu, self.std, self.ft_mu_r, self.ft_mu_i, self.ft_std_r, self.ft_std_i) = (ACDC.mu, ACDC.std, ACDC.ft_mu_r, ACDC.ft_mu_i, ACDC.ft_std_r, ACDC.ft_std_i)
         
-        if self.predict_mode == 'middle':
-            self.target_frame = (self.window_size-1)//2
-        else:
-            self.target_frame = self.window_size-1
         self.golden_bars = get_golden_bars(resolution = self.resolution)
         self.num_golden_cycle = self.golden_bars.shape[0]
         self.coil_mask = get_coil_mask(n_coils = self.num_coils, resolution = self.resolution)
@@ -238,8 +265,8 @@ class ACDC(Dataset):
                 print('Memoising for patient {}'.format(p_num), flush = True)
             else:
                 print('Memoising for patient {}'.format(p_num+len(ACDC.train_data)), flush = True)
-            self.num_mem[0] += 1 
-            if self.num_mem[0] == len(self.data):
+            ACDC.inc_num_mem(self.train, p_num)
+            if ACDC.get_num_mem(self.train) == len(self.data):
                 print('#########################')
                 print('Memoised all patients!')
                 print('#########################', flush = True)
