@@ -141,7 +141,8 @@ def train_paradigm(rank, world_size, shared_data):
                         window_size = parameters['window_size'], 
                         ft_num_radial_views = parameters['FT_radial_sampling'], 
                         predict_mode = parameters['predicted_frame'], 
-                        num_coils = parameters['num_coils']
+                        num_coils = parameters['num_coils'],
+                        blank = True
                     )
     testset = ACDC(
                         parameters['dataset_path'], 
@@ -152,11 +153,15 @@ def train_paradigm(rank, world_size, shared_data):
                         window_size = parameters['window_size'], 
                         ft_num_radial_views = parameters['FT_radial_sampling'], 
                         predict_mode = parameters['predicted_frame'], 
-                        num_coils = parameters['num_coils']
+                        num_coils = parameters['num_coils'],
+                        blank = True
                     )
 
     trainset.set_shared_lists(shared_data)
     testset.set_shared_lists(shared_data)
+
+    trainset.rest_init()
+    testset.rest_init()
 
     model = MDCNN(8,7).to(proc_device)
 
@@ -266,7 +271,8 @@ def test_paradigm(rank, world_size, shared_data):
                         window_size = parameters['window_size'], 
                         ft_num_radial_views = parameters['FT_radial_sampling'], 
                         predict_mode = parameters['predicted_frame'], 
-                        num_coils = parameters['num_coils']
+                        num_coils = parameters['num_coils'],
+                        blank = True
                     )
     testset = ACDC(
                         parameters['dataset_path'], 
@@ -277,11 +283,15 @@ def test_paradigm(rank, world_size, shared_data):
                         window_size = parameters['window_size'], 
                         ft_num_radial_views = parameters['FT_radial_sampling'], 
                         predict_mode = parameters['predicted_frame'], 
-                        num_coils = parameters['num_coils']
+                        num_coils = parameters['num_coils'],
+                        blank = True
                     )
 
-    # trainset.set_shared_lists(shared_data)
-    # testset.set_shared_lists(shared_data)
+    trainset.set_shared_lists(shared_data)
+    testset.set_shared_lists(shared_data)
+
+    trainset.rest_init()
+    testset.rest_init()
 
     model = MDCNN(8,7).to(proc_device)
 
