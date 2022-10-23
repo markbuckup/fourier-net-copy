@@ -45,6 +45,7 @@ parser.add_argument('--eval', action = 'store_true')
 parser.add_argument('--test_only', action = 'store_true')
 parser.add_argument('--visualise_only', action = 'store_true')
 parser.add_argument('--seed', type = int, default = 0)
+parser.add_argument('--port', type = int, default = 12355)
 parser.add_argument('--state', type = int, default = -1)
 parser.add_argument('--gpu', nargs='+', type = int, default = [-1])
 # parser.add_argument('--gpu', type = int, default = '-1')
@@ -64,7 +65,7 @@ parameters['window_size'] = 7
 parameters['FT_radial_sampling'] = 14
 parameters['predicted_frame'] = 'middle'
 parameters['num_coils'] = 8
-parameters['dataloader_num_workers'] = 0
+parameters['dataloader_num_workers'] = 2
 parameters['optimizer'] = 'Adam'
 parameters['scheduler'] = 'StepLR'
 parameters['optimizer_params'] = (0.5, 0.999)
@@ -98,7 +99,7 @@ assert(parameters['loss_reconstructed_FT']) in ['Cosine-L1', 'Cosine-L2', 'Cosin
 
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
+    os.environ['MASTER_PORT'] = '{}'.format(args.port)
     if args.gpu[0] == -1:
         dist.init_process_group("gloo", rank=rank, world_size=world_size)
     else:
