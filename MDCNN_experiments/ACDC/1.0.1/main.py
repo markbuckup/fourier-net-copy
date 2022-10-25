@@ -9,12 +9,14 @@ import pickle
 import argparse
 import numpy as np
 import torchvision
+import neptune.new as neptune
 import matplotlib.pyplot as plt
 import torch.distributed as dist
 import torch.multiprocessing as mp
 
 from tqdm import tqdm
 from torch import nn, optim
+from neptune.new.types import File
 from torch.nn import functional as F
 from torchvision import transforms, models, datasets
 from torch.utils.data.distributed import DistributedSampler
@@ -48,6 +50,7 @@ parser.add_argument('--seed', type = int, default = 0)
 parser.add_argument('--port', type = int, default = 12355)
 parser.add_argument('--state', type = int, default = -1)
 parser.add_argument('--gpu', nargs='+', type = int, default = [-1])
+parser.add_argument('--neptune_log', action = 'store_true')
 # parser.add_argument('--gpu', type = int, default = '-1')
 args = parser.parse_args()
 seed_torch(args.seed)
@@ -56,7 +59,7 @@ parameters = {}
 parameters['train_batch_size'] = 150
 parameters['test_batch_size'] = 150
 parameters['lr'] = 1e-3
-parameters['num_epochs'] = 100
+parameters['num_epochs'] = 50
 parameters['train_test_split'] = 0.8
 parameters['dataset_path'] = '../../../datasets/ACDC'
 parameters['normalisation'] = True
@@ -165,6 +168,34 @@ def train_paradigm(rank, world_size, shared_data):
 
     model = MDCNN(8,7).to(proc_device)
 
+    if rank == 0:
+        if args.neptune_log:
+            if os.path.isfile(checkpoint_path + 'neptune_run.pth'):
+                run_id = torch.load(checkpoint_path + 'neptune_run.pth', map_location = torch.device('cpu'))['run_id']
+                run = neptune.init_run(
+                    project="nirajmahajan/MDCNN-ACDC",
+                    with_id=run_id,
+                    name = os.getcwd().split('/')[-1],
+                    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZDU2NDJjMy1lNzczLTRkZDEtODAwYy01MWFlM2VmN2Q4ZTEifQ==",
+                )
+            else:
+                run = neptune.init_run(
+                    project="nirajmahajan/MDCNN-ACDC",
+                    name = os.getcwd().split('/')[-1],
+                    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZDU2NDJjMy1lNzczLTRkZDEtODAwYy01MWFlM2VmN2Q4ZTEifQ==",
+                )
+                torch.save({'run_id': run["sys/id"].fetch()}, checkpoint_path + 'neptune_run.pth')
+            run["parameters"] = parameters
+            if not args.resume:
+                if run.exists("train"):
+                    run["train"].pop()
+                if run.exists("test"):
+                    run["test"].pop()
+                if run.exists("visualize"):
+                    run["visualize"].pop()
+        else:
+            run = None
+
     if args.resume:
         model_state = torch.load(checkpoint_path + 'state.pth', map_location = torch.device('cpu'))['state']
         if (not args.state == -1):
@@ -211,9 +242,13 @@ def train_paradigm(rank, world_size, shared_data):
         lossrecon, lossft, lossreconft = trainer.train(e)
         dist.all_gather(collected_train_losses, torch.tensor([lossrecon, lossft, lossreconft]).to(proc_device))
         if rank == 0:
-            avg_train_recon_loss = sum([x[0] for x in collected_train_losses]).item()
-            avg_train_ft_loss = sum([x[1] for x in collected_train_losses]).item()
-            avg_train_recon_ft_loss = sum([x[2] for x in collected_train_losses]).item()
+            avg_train_recon_loss = sum([x[0] for x in collected_train_losses]).item()/len(args.gpu)
+            avg_train_ft_loss = sum([x[1] for x in collected_train_losses]).item()/len(args.gpu)
+            avg_train_recon_ft_loss = sum([x[2] for x in collected_train_losses]).item()/len(args.gpu)
+            if args.neptune_log and rank == 0:
+                run["train/train_recon_loss"].log(avg_train_recon_loss)
+                run["train/train_ft_loss"].log(avg_train_ft_loss)
+                run["train/train_recon_ft_loss"].log(avg_train_recon_ft_loss)
             print('Average Train Recon Loss for Epoch {} = {}' .format(e, avg_train_recon_loss), flush = True)
             if trainer.criterion_FT is not None:
                 print('Average Train FT Loss for Epoch {} = {}' .format(e, avg_train_ft_loss), flush = True)
@@ -223,9 +258,13 @@ def train_paradigm(rank, world_size, shared_data):
         test_lossrecon, test_lossft, test_lossreconft = trainer.evaluate(e, train = False)
         dist.all_gather(collected_test_losses, torch.tensor([test_lossrecon, test_lossft, test_lossreconft]).to(proc_device))
         if rank == 0:
-            avg_test_recon_loss = sum([x[0] for x in collected_test_losses]).item()
-            avg_test_ft_loss = sum([x[1] for x in collected_test_losses]).item()
-            avg_test_recon_ft_loss = sum([x[2] for x in collected_test_losses]).item()
+            avg_test_recon_loss = sum([x[0] for x in collected_test_losses]).item()/len(args.gpu)
+            avg_test_ft_loss = sum([x[1] for x in collected_test_losses]).item()/len(args.gpu)
+            avg_test_recon_ft_loss = sum([x[2] for x in collected_test_losses]).item()/len(args.gpu)
+            if args.neptune_log and rank == 0:
+                run["train/test_recon_loss"].log(avg_test_recon_loss)
+                run["train/test_ft_loss"].log(avg_test_ft_loss)
+                run["train/test_recon_ft_loss"].log(avg_test_recon_ft_loss)
             print('Test Loss After {} Epochs:'.format(e), flush = True)
             print('Recon Loss = {}'.format(avg_test_recon_loss), flush = True)
             if trainer.criterion_FT is not None:
@@ -295,6 +334,33 @@ def test_paradigm(rank, world_size, shared_data):
 
     model = MDCNN(8,7).to(proc_device)
 
+    if rank == 0:
+        if args.neptune_log:
+            if os.path.isfile(checkpoint_path + 'neptune_run.pth'):
+                run_id = torch.load(checkpoint_path + 'neptune_run.pth', map_location = torch.device('cpu'))['run_id']
+                run = neptune.init_run(
+                    project="nirajmahajan/MDCNN-ACDC",
+                    with_id=run_id,
+                    name = os.getcwd().split('/')[-1],
+                    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZDU2NDJjMy1lNzczLTRkZDEtODAwYy01MWFlM2VmN2Q4ZTEifQ==",
+                )
+            else:
+                run = neptune.init_run(
+                    project="nirajmahajan/MDCNN-ACDC",
+                    name = os.getcwd().split('/')[-1],
+                    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZDU2NDJjMy1lNzczLTRkZDEtODAwYy01MWFlM2VmN2Q4ZTEifQ==",
+                )
+                torch.save({'run_id': run["sys/id"].fetch()}, checkpoint_path + 'neptune_run.pth')
+            if not args.resume:
+                if run.exists("train"):
+                    run["train"].pop()
+                if run.exists("test"):
+                    run["test"].pop()
+                if run.exists("visualize"):
+                    run["visualize"].pop()
+        else:
+            run = None
+
     if args.resume:
         model_state = torch.load(checkpoint_path + 'state.pth', map_location = torch.device('cpu'))['state']
         if (not args.state == -1):
@@ -327,9 +393,13 @@ def test_paradigm(rank, world_size, shared_data):
         collected_test_losses = [torch.zeros(3,).to(proc_device) for _ in range(world_size)]
         dist.all_gather(collected_test_losses, torch.tensor([test_lossrecon, test_lossft, test_lossreconft]).to(proc_device))
         if rank == 0:
-            avg_test_recon_loss = sum([x[0] for x in collected_test_losses])
-            avg_test_ft_loss = sum([x[1] for x in collected_test_losses])
-            avg_test_recon_ft_loss = sum([x[2] for x in collected_test_losses])
+            avg_test_recon_loss = sum([x[0] for x in collected_test_losses])/len(args.gpu)
+            avg_test_ft_loss = sum([x[1] for x in collected_test_losses])/len(args.gpu)
+            avg_test_recon_ft_loss = sum([x[2] for x in collected_test_losses])/len(args.gpu)
+            if args.neptune_log and rank == 0:
+                run["test/test_recon_loss"] = avg_test_recon_loss
+                run["test/test_ft_loss"] = avg_test_ft_loss
+                run["test/test_recon_ft_loss"] = avg_test_recon_ft_loss
             print('Test Loss After {} Epochs:'.format(pre_e), flush = True)
             print('Recon Loss = {}'.format(avg_test_recon_loss), flush = True)
             if trainer.criterion_FT is not None:
@@ -341,10 +411,14 @@ def test_paradigm(rank, world_size, shared_data):
             collected_train_losses = [torch.zeros(3,).to(proc_device) for _ in range(world_size)]
             dist.all_gather(collected_train_losses, torch.tensor([train_lossrecon, train_lossft, train_lossreconft]).to(proc_device))
             if rank == 0:
-                avg_train_recon_loss = sum([x[0] for x in collected_train_losses])
-                avg_train_ft_loss = sum([x[1] for x in collected_train_losses])
-                avg_train_recon_ft_loss = sum([x[2] for x in collected_train_losses])
-                print('Test Loss After {} Epochs:'.format(pre_e), flush = True)
+                avg_train_recon_loss = sum([x[0] for x in collected_train_losses])/len(args.gpu)
+                avg_train_ft_loss = sum([x[1] for x in collected_train_losses])/len(args.gpu)
+                avg_train_recon_ft_loss = sum([x[2] for x in collected_train_losses])/len(args.gpu)
+                if args.neptune_log and rank == 0:
+                    run["test/train_recon_loss"] = avg_train_recon_loss
+                    run["test/train_ft_loss"] = avg_train_ft_loss
+                    run["test/train_recon_ft_loss"] = avg_train_recon_ft_loss
+                print('Train Loss After {} Epochs:'.format(pre_e), flush = True)
                 print('Recon Loss = {}'.format(avg_train_recon_loss), flush = True)
                 if trainer.criterion_FT is not None:
                     print('FT Loss = {}'.format(avg_train_ft_loss), flush = True)
@@ -353,6 +427,13 @@ def test_paradigm(rank, world_size, shared_data):
     if rank == 0:
         trainer.visualise(pre_e, train = False)
         trainer.visualise(pre_e, train = True)
+        if args.neptune_log and rank == 0:
+            for x in sorted(os.listdir('results/train')):
+                run['train/{}'.format(x)].upload(File('results/train/{}'.format(x)))
+                break
+            for x in sorted(os.listdir('results/test')):
+                run['test/{}'.format(x)].upload(File('results/test/{}'.format(x)))
+                break
         plt.figure()
         plt.title('Train Loss after {} epochs'.format(pre_e))
         plt.plot(range(len(losses)), [x[0] for x in losses], label = 'Recon Loss: {}'.format(parameters['loss_recon']), color = 'b')
