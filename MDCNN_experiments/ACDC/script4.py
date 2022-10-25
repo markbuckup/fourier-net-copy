@@ -20,7 +20,7 @@ for task in task_list:
 	os.chdir(task)
 	os.system("rm status.txt 2> /dev/null")
 	print("Now Running Task {}".format(task), flush = True)
-	os.system('python3 -Wignore main.py --gpu {} > train.log 2>&1 && python3 -Wignore main.py --gpu {} --resume --eval > test.log 2>&1'.format(GPUSTR, 1))
+	os.system('python3 -Wignore main.py --neptune_log --gpu {} > train.log 2>&1 && python3 -wignore main.py --neptune_log --gpu {} --resume --eVAL > test.log 2>&1'.format(GPUSTR, 1))
 	print("Task {} Terminated".format(task), flush = True)
 	prev_task = task
 	os.chdir('../')
