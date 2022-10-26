@@ -24,6 +24,98 @@ sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
 
 from utils.functions import fetch_loss_function
 
+def myimshow(x, cmap = None):
+    x = x-x.min()
+    x = x/x.max()
+    if cmap is not None:
+        plt.imshow(x, cmap = cmap)
+    else:
+        plt.imshow(x)
+
+# takes FT, FT_mask
+# num_coils, num_window, 256, 256, 2
+def input_save(fts, fts_masked, targets, path):
+    num_coils = fts.shape[0]
+    num_windows = fts.shape[1]
+    avg_FT = fts.mean(1)
+    avg_FT = torch.complex(avg_FT[:,:,:,0], avg_FT[:,:,:,1])
+    combined_ft_undersampled = avg_FT.clone()*0
+    averager = torch.zeros(combined_ft_undersampled.shape)
+    for wi in range(num_windows):
+        x = torch.complex(fts_masked[:,wi,:,:,0], fts_masked[:,wi,:,:,1])
+        combined_ft_undersampled += x
+        averager[x != 0] += 1
+    combined_ft_undersampled[averager != 0] /= averager[averager != 0]
+
+    for coili in range(num_coils):
+        fig = plt.figure(figsize = (28,16))
+        iter = 1
+        for wi in range(num_windows):
+            plt.subplot(4,num_windows,iter)
+            ft = torch.complex(fts[coili,wi,:,:,0],fts[coili,wi,:,:,1])
+            myimshow(ft.abs(), cmap = 'gray')
+            if wi == 3:
+                plt.title('Complete FFT')
+            iter += 1
+        for wi in range(num_windows):
+            plt.subplot(4,num_windows,iter)
+            ft = torch.complex(fts[coili,wi,:,:,0],fts[coili,wi,:,:,1])
+            outp = torch.fft.ifft2(torch.fft.ifftshift(ft.exp(), dim = (-2, -1))).real
+            myimshow(outp, cmap = 'gray')
+            if wi == 3:
+                plt.title('Original Image')
+            iter += 1
+        for wi in range(num_windows):
+            plt.subplot(4,num_windows,iter)
+            ft = torch.complex(fts_masked[coili,wi,:,:,0],fts_masked[coili,wi,:,:,1])
+            myimshow(ft.abs(), cmap = 'gray')
+            if wi == 3:
+                plt.title('Undersampled FFT')
+            iter += 1
+        for wi in range(num_windows):
+            plt.subplot(4,num_windows,iter)
+            ft = torch.complex(fts_masked[coili,wi,:,:,0],fts_masked[coili,wi,:,:,1])
+            outp = torch.fft.ifft2(torch.fft.ifftshift(ft.exp(), dim = (-2, -1))).real
+            myimshow(outp, cmap = 'gray')
+            if wi == 3:
+                plt.title('Partial Image')
+            iter += 1
+        plt.suptitle("Coil {}".format(coili))
+        plt.savefig(os.path.join(path, 'coil_{}.png'.format(coili)))
+        plt.close('all')
+        fig = plt.figure(figsize = (8,8))
+        plt.subplot(2,2,1)
+        myimshow(avg_FT[coili,:,:].abs(), cmap = 'gray')
+        plt.title('Averaged Complete FTs')
+        plt.subplot(2,2,2)
+        ft = avg_FT[coili,:,:]
+        outp = torch.fft.ifft2(torch.fft.ifftshift(ft.exp(), dim = (-2, -1))).real
+        myimshow(outp, cmap = 'gray')
+        plt.title('Complete FT - Image')
+        plt.subplot(2,2,3)
+        myimshow(combined_ft_undersampled[coili,:,:].abs(), cmap = 'gray')
+        plt.title('Averaged Complete FTs')
+        plt.subplot(2,2,4)
+        ft = combined_ft_undersampled[coili,:,:]
+        outp = torch.fft.ifft2(torch.fft.ifftshift(ft.exp(), dim = (-2, -1))).real
+        myimshow(outp, cmap = 'gray')
+        plt.title('Undersampled FT - Image')
+        plt.savefig(os.path.join(path, 'combined_coil_{}.png'.format(coili)))
+        plt.close('all')
+    fig = plt.figure(figsize = (4,4))
+    myimshow(targets.squeeze().numpy(), cmap = 'gray')
+    plt.title('Target')
+    plt.savefig(os.path.join(path, 'target.png'))
+    plt.close('all')
+
+        
+
+
+
+
+
+
+
 class Trainer(nn.Module):
     def __init__(self, model, trainset, testset, parameters, device, ddp_rank, ddp_world_size):
         super(Trainer, self).__init__()
@@ -118,6 +210,7 @@ class Trainer(nn.Module):
             self.optim.zero_grad(set_to_none=True)
             # with autocast(enabled = self.parameters['Automatic_Mixed_Precision'], dtype=torch.float32):
             with autocast(enabled = self.parameters['Automatic_Mixed_Precision']):
+                # self.model.module.train_mode_set(True)
                 ft_preds, preds = self.model(fts_masked.to(self.device)) # B, 1, X, Y
                 loss_recon = self.criterion(preds, targets.to(self.device))
                 loss_ft = torch.tensor([0]).to(self.device)
@@ -169,6 +262,7 @@ class Trainer(nn.Module):
         avglossreconft = 0
         with torch.no_grad():
             for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr)):
+                # self.model.module.train_mode_set(False)
                 ft_preds, preds = self.model(fts_masked.to(self.device))
                 avglossrecon += self.criterion(preds, targets.to(self.device)).item()/(len(dloader))
                 if self.criterion_FT is not None:
@@ -207,6 +301,10 @@ class Trainer(nn.Module):
         print('Saving plots for {} data'.format(dstr), flush = True)
         with torch.no_grad():
             for i, (indices, fts, fts_masked, targets, target_fts) in enumerate(dloader):
+                if not os.path.exists('./results/input/'):
+                    os.mkdir('./results/input/')
+                input_save(fts[0], fts_masked[0], targets[0], './results/input/')
+                # self.model.module.train_mode_set(False)
                 ft_preds, preds = self.model(fts_masked.to(self.device))
                 break
             for i in range(num_plots):
@@ -215,16 +313,16 @@ class Trainer(nn.Module):
                 # fig = plt.figure(figsize = (8,8))
                 # plt.subplot(2,2,1)
                 # ft = torch.complex(fts_masked[i,0,3,:,:,0],fts_masked[i,0,3,:,:,1])
-                # plt.imshow(ft.abs(), cmap = 'gray')
+                # myimshow(ft.abs(), cmap = 'gray')
                 # plt.title('Undersampled FFT Frame')
                 # plt.subplot(2,2,2)
-                # plt.imshow(torch.fft.ifft2(torch.fft.ifftshift(ft.exp())).real, cmap = 'gray')
+                # myimshow(torch.fft.ifft2(torch.fft.ifftshift(ft.exp())).real, cmap = 'gray')
                 # plt.title('IFFT of the Input')
                 # plt.subplot(2,2,3)
-                # plt.imshow(predi, cmap = 'gray')
+                # myimshow(predi, cmap = 'gray')
                 # plt.title('Our Predicted Frame')
                 # plt.subplot(2,2,4)
-                # plt.imshow(targi, cmap = 'gray')
+                # myimshow(targi, cmap = 'gray')
                 # plt.title('Actual Frame')
                 # plt.suptitle("{} data window index {}".format(dstr, indices[i]))
                 # plt.savefig(os.path.join(path, '{}_result_epoch{}_{}'.format(dstr, epoch, i)))
@@ -232,16 +330,16 @@ class Trainer(nn.Module):
                 fig = plt.figure(figsize = (8,4))
                 # plt.subplot(2,2,1)
                 # ft = torch.complex(fts_masked[i,0,3,:,:,0],fts_masked[i,0,3,:,:,1])
-                # plt.imshow(ft.abs(), cmap = 'gray')
+                # myimshow(ft.abs(), cmap = 'gray')
                 # plt.title('Undersampled FFT Frame')
                 # plt.subplot(2,2,2)
-                # plt.imshow(torch.fft.ifft2(torch.fft.ifftshift(ft.exp())).real, cmap = 'gray')
+                # myimshow(torch.fft.ifft2(torch.fft.ifftshift(ft.exp())).real, cmap = 'gray')
                 # plt.title('IFFT of the Input')
                 plt.subplot(1,2,1)
-                plt.imshow(predi, cmap = 'gray')
+                myimshow(predi, cmap = 'gray')
                 plt.title('Our Predicted Frame')
                 plt.subplot(1,2,2)
-                plt.imshow(targi, cmap = 'gray')
+                myimshow(targi, cmap = 'gray')
                 plt.title('Actual Frame')
                 plt.suptitle("{} data window index {}".format(dstr, indices[i]))
                 plt.savefig(os.path.join(path, '{}_result_epoch{}_{}'.format(dstr, epoch, i)))

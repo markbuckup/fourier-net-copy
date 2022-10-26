@@ -166,7 +166,7 @@ def train_paradigm(rank, world_size, shared_data):
     trainset.rest_init()
     testset.rest_init()
 
-    model = MDCNN(8,7).to(proc_device)
+    model = MDCNN(parameters['num_coils'],parameters['window_size']).to(proc_device)
 
     if rank == 0:
         if args.neptune_log:
@@ -332,7 +332,7 @@ def test_paradigm(rank, world_size, shared_data):
     trainset.rest_init()
     testset.rest_init()
 
-    model = MDCNN(8,7).to(proc_device)
+    model = MDCNN(parameters['num_coils'],parameters['window_size']).to(proc_device)
 
     if rank == 0:
         if args.neptune_log:

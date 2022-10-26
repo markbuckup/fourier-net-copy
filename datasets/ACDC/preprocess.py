@@ -55,9 +55,12 @@ NUM_PATIENTS = 150
 RES=args.resolution
 data = []
 
-transform = torchvision.transforms.Resize((RES,RES))
+transform = torch.nn.Sequential(
+    transforms.Resize((256,256)),
+    transforms.CenterCrop(RES),
+)
 
-if os.path.isfile('processed/processed_data_{}.pth'.format(RES)):
+if os.path.isfile('processed/processed_data_{}.pth'.format(RES)) and 0:
     dic = torch.load('processed/processed_data_{}.pth'.format(RES))
     data = dic['data']
     (mu, std) = dic['normalisation_constants']
