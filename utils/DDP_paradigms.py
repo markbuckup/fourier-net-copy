@@ -79,6 +79,7 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
     model = MDCNN(parameters['num_coils'],parameters['window_size']).to(proc_device)
     checkpoint_path = os.path.join(args.run_id, './checkpoints/')
 
+    parameters['GPUs'] = args.gpu
     if rank == 0:
         if args.neptune_log:
             if os.path.isfile(checkpoint_path + 'neptune_run.pth'):
