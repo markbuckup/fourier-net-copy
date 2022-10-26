@@ -12,7 +12,7 @@ parameters['predicted_frame'] = 'middle'
 parameters['num_coils'] = 8
 parameters['dataloader_num_workers'] = 0
 parameters['optimizer'] = 'Adam'
-parameters['scheduler'] = 'StepLR'
+parameters['scheduler'] = 'CyclicLR'
 parameters['optimizer_params'] = (0.5, 0.999)
 parameters['scheduler_params'] = {
     'base_lr': 3e-4,

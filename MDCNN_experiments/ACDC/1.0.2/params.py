@@ -1,6 +1,6 @@
 parameters = {}
-parameters['train_batch_size'] = 2
-parameters['test_batch_size'] = 2
+parameters['train_batch_size'] = 150
+parameters['test_batch_size'] = 150
 parameters['lr'] = 1e-3
 parameters['num_epochs'] = 3
 parameters['train_test_split'] = 0.8
