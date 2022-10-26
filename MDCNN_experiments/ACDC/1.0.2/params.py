@@ -2,7 +2,7 @@ parameters = {}
 parameters['train_batch_size'] = 150
 parameters['test_batch_size'] = 150
 parameters['lr'] = 1e-3
-parameters['num_epochs'] = 3
+parameters['num_epochs'] = 50
 parameters['train_test_split'] = 0.8
 parameters['normalisation'] = False
 parameters['image_resolution'] = 64
@@ -23,7 +23,7 @@ parameters['scheduler_params'] = {
     'gamma': 0.5,
     'verbose': True
 }
-parameters['loss_recon'] = 'L1'
+parameters['loss_recon'] = 'L2'
 parameters['loss_FT'] = 'None'
 parameters['loss_reconstructed_FT'] = 'None'
 parameters['train_losses'] = []
