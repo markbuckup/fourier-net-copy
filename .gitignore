@@ -6,6 +6,7 @@
 *.big
 *.log
 __pycache__/
+.neptune/
 dataset/
 results/
 datasets/
