@@ -117,7 +117,7 @@ def input_save(fts, fts_masked, targets, path):
 
 
 class Trainer(nn.Module):
-    def __init__(self, model, trainset, testset, parameters, device, ddp_rank, ddp_world_size):
+    def __init__(self, model, trainset, testset, parameters, device, ddp_rank, ddp_world_size, args):
         super(Trainer, self).__init__()
         self.model = model
         self.trainset = trainset
@@ -126,6 +126,7 @@ class Trainer(nn.Module):
         self.device = device
         self.ddp_rank = ddp_rank
         self.ddp_world_size = ddp_world_size
+        self.args = args
         self.scaler = GradScaler(enabled=self.parameters['Automatic_Mixed_Precision'])
         self.train_sampler = DistributedSampler(
                                 self.trainset, 
@@ -178,9 +179,11 @@ class Trainer(nn.Module):
 
         if self.parameters['optimizer'] == 'Adam':
             self.optim = optim.Adam(self.model.parameters(), lr=self.parameters['lr'], betas=self.parameters['optimizer_params'])
+            self.parameters['scheduler_params']['cycle_momentum'] = False
         elif self.parameters['optimizer'] == 'SGD':
             mom, wt_dec = self.parameters['optimizer_params']
             self.optim = optim.SGD(self.model.parameters(), lr=self.parameters['lr'], momentum = mom, weight_decay = wt_dec)
+            self.parameters['scheduler_params']['cycle_momentum'] = True
             
         if self.parameters['scheduler'] == 'None':
             self.scheduler = None
@@ -190,6 +193,12 @@ class Trainer(nn.Module):
                 self.scheduler = optim.lr_scheduler.StepLR(self.optim, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
             else:
                 self.scheduler = optim.lr_scheduler.StepLR(self.optim, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
+        if self.parameters['scheduler'] == 'CyclicLR':
+            mydic = self.parameters['scheduler_params']
+            if self.ddp_rank == 0:
+                self.scheduler = optim.lr_scheduler.CyclicLR(self.optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
+            else:
+                self.scheduler = optim.lr_scheduler.CyclicLR(self.optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
 
         self.criterion = fetch_loss_function(self.parameters['loss_recon'], self.device, self.parameters['loss_params']).to(self.device)
         self.criterion_FT = fetch_loss_function(self.parameters['loss_FT'], self.device, self.parameters['loss_params'])
@@ -277,6 +286,7 @@ class Trainer(nn.Module):
                         targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
                         avglossreconft += self.criterion_reconFT(predfft, targetfft).item()/(len(dloader))
 
+
         if print_loss:
             print('{} Loss After {} Epochs:'.format(dstr, epoch), flush = True)
             print('Recon Loss = {}'.format(avglossrecon), flush = True)
@@ -292,18 +302,18 @@ class Trainer(nn.Module):
             dloader = self.traintestloader
             dset = self.trainset
             dstr = 'Train'
-            path = './results/train'
+            path = os.path.join(self.args.run_id, './results/train')
         else:
             dloader = self.testloader
             dset = self.testset
             dstr = 'Test'
-            path = './results/test'
+            path = os.path.join(self.args.run_id, './results/test')
         print('Saving plots for {} data'.format(dstr), flush = True)
         with torch.no_grad():
             for i, (indices, fts, fts_masked, targets, target_fts) in enumerate(dloader):
-                if not os.path.exists('./results/input/'):
-                    os.mkdir('./results/input/')
-                input_save(fts[0], fts_masked[0], targets[0], './results/input/')
+                if not os.path.exists(os.path.join(self.args.run_id, './results/input/')):
+                    os.mkdir(os.path.join(self.args.run_id, './results/input/'))
+                input_save(fts[0], fts_masked[0], targets[0], os.path.join(self.args.run_id, './results/input/'))
                 # self.model.module.train_mode_set(False)
                 ft_preds, preds = self.model(fts_masked.to(self.device))
                 break
