@@ -119,8 +119,7 @@ trainset = ACDC(
                     window_size = parameters['window_size'], 
                     ft_num_radial_views = parameters['FT_radial_sampling'], 
                     predict_mode = parameters['predicted_frame'], 
-                    num_coils = parameters['num_coils'],
-                    device = device
+                    num_coils = parameters['num_coils']
                 )
 testset = ACDC(
                     parameters['dataset_path'], 
@@ -131,10 +130,10 @@ testset = ACDC(
                     window_size = parameters['window_size'], 
                     ft_num_radial_views = parameters['FT_radial_sampling'], 
                     predict_mode = parameters['predicted_frame'], 
-                    num_coils = parameters['num_coils'],
-                    device = device
+                    num_coils = parameters['num_coils']
                 )
-
+trainset.rest_init()
+testset.rest_init()
 model = nn.DataParallel(MDCNN(8,7), device_ids = args.gpu)
 model.to(f'cuda:{model.device_ids[0]}')
 trainer = Trainer(model, trainset, testset, parameters, device)
@@ -148,7 +147,7 @@ if args.resume:
     pre_e = dic['e']
     trainer.model.load_state_dict(dic['model'])
     trainer.optim.load_state_dict(dic['optim'])
-    trainer.scaler.load_state_dict(dic['scaler'])
+    # trainer.scaler.load_state_dict(dic['scaler'])
     if parameters['scheduler'] != 'None':
         trainer.scheduler.load_state_dict(dic['scheduler'])
     losses = dic['losses']
@@ -217,11 +216,11 @@ for e in range(parameters['num_epochs']):
         dic['scheduler'] = trainer.scheduler.state_dict()
     dic['losses'] = losses
     dic['test_losses'] = test_losses
-    dic['scaler'] = trainer.scaler.state_dict()
+    # dic['scaler'] = trainer.scaler.state_dict()
 
 
-    if (e+1) % SAVE_INTERVAL == 0:
-        torch.save(dic, checkpoint_path + 'checkpoint_{}.pth'.format(model_state))
-        torch.save({'state': model_state}, checkpoint_path + 'state.pth')
-        # model_state += 1
-        print('Saving model after {} Epochs\n'.format(e+1), flush = True)
+    # if (e+1) % SAVE_INTERVAL == 0:
+    #     torch.save(dic, checkpoint_path + 'checkpoint_{}.pth'.format(model_state))
+    #     torch.save({'state': model_state}, checkpoint_path + 'state.pth')
+    #     # model_state += 1
+    #     print('Saving model after {} Epochs\n'.format(e+1), flush = True)

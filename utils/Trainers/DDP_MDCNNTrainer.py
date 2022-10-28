@@ -15,7 +15,7 @@ import torch.distributed as dist
 from tqdm import tqdm
 from torch import nn, optim
 from torch.nn import functional as F
-from torch.cuda.amp import GradScaler, autocast
+# from torch.cuda.amp import GradScaler, autocast
 from torchvision import transforms, models, datasets
 from torch.utils.data.distributed import DistributedSampler
 
@@ -127,7 +127,7 @@ class Trainer(nn.Module):
         self.ddp_rank = ddp_rank
         self.ddp_world_size = ddp_world_size
         self.args = args
-        self.scaler = GradScaler(enabled=self.parameters['Automatic_Mixed_Precision'])
+        # self.scaler = GradScaler(enabled=self.parameters['Automatic_Mixed_Precision'])
         self.train_sampler = DistributedSampler(
                                 self.trainset, 
                                 num_replicas=self.ddp_world_size, 
@@ -218,28 +218,30 @@ class Trainer(nn.Module):
         for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | Epoch {}".format(os.getpid(), epoch)):
             self.optim.zero_grad(set_to_none=True)
             # with autocast(enabled = self.parameters['Automatic_Mixed_Precision'], dtype=torch.float32):
-            with autocast(enabled = self.parameters['Automatic_Mixed_Precision']):
+            # with autocast(enabled = self.parameters['Automatic_Mixed_Precision']):
                 # self.model.module.train_mode_set(True)
-                ft_preds, preds = self.model(fts_masked.to(self.device)) # B, 1, X, Y
-                loss_recon = self.criterion(preds, targets.to(self.device))
-                loss_ft = torch.tensor([0]).to(self.device)
-                loss_reconft = torch.tensor([0]).to(self.device)
-                if self.criterion_FT is not None:
-                    loss_ft = self.criterion_FT(ft_preds, target_fts.to(self.device))
-                if self.criterion_reconFT is not None:
-                    if self.parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
-                        loss_reconft = self.criterion_reconFT(preds, targets.to(self.device))
-                    else:
-                        predfft = torch.fft.fft2(preds).log()
-                        predfft = torch.stack((predfft.real, predfft.imag),-1)
-                        targetfft = torch.fft.fft2(targets.to(self.device)).log()
-                        targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
-                        loss_reconft = self.criterion_reconFT(predfft, targetfft)
-                loss = loss_recon + beta1*loss_ft + beta2*loss_reconft
+            ft_preds, preds = self.model(fts_masked.to(self.device)) # B, 1, X, Y
+            loss_recon = self.criterion(preds, targets.to(self.device))
+            loss_ft = torch.tensor([0]).to(self.device)
+            loss_reconft = torch.tensor([0]).to(self.device)
+            if self.criterion_FT is not None:
+                loss_ft = self.criterion_FT(ft_preds, target_fts.to(self.device))
+            if self.criterion_reconFT is not None:
+                if self.parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
+                    loss_reconft = self.criterion_reconFT(preds, targets.to(self.device))
+                else:
+                    predfft = torch.fft.fft2(preds).log()
+                    predfft = torch.stack((predfft.real, predfft.imag),-1)
+                    targetfft = torch.fft.fft2(targets.to(self.device)).log()
+                    targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
+                    loss_reconft = self.criterion_reconFT(predfft, targetfft)
+            loss = loss_recon + beta1*loss_ft + beta2*loss_reconft
 
-            self.scaler.scale(loss).backward()
-            self.scaler.step(self.optim)
-            self.scaler.update()
+            loss.backward()
+            self.optim.step()
+            # self.scaler.scale(loss).backward()
+            # self.scaler.step(self.optim)
+            # self.scaler.update()
 
             avglossrecon += loss_recon.item()/(len(self.trainloader))
             avglossft += loss_ft.item()/(len(self.trainloader))

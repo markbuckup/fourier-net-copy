@@ -118,7 +118,7 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
         pre_e = dic['e']
         model.load_state_dict(dic['model'])
         opt_dict = dic['optim']
-        scaler_dict = dic['scaler']
+        # scaler_dict = dic['scaler']
         if parameters['scheduler'] != 'None':
             scheduler_dict = dic['scheduler']
         losses = dic['losses']
@@ -131,7 +131,7 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
         losses = []
         test_losses = []
         opt_dict = None
-        scaler_dict = None
+        # scaler_dict = None
         scheduler_dict = None
         if rank == 0:
             print('Starting Training', flush = True)
@@ -140,9 +140,9 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
     trainer = Trainer(model, trainset, testset, parameters, proc_device, rank, world_size, args)
     if args.resume:
         trainer.optim.load_state_dict(opt_dict)
-        trainer.scaler.load_state_dict(scaler_dict)
+        # trainer.scaler.load_state_dict(scaler_dict)
         if parameters['scheduler'] != 'None':
-            trainer.scaler.load_state_dict(scaler_dict)
+            trainer.scheduler.load_state_dict(scheduler_dict)
 
     for e in range(parameters['num_epochs']):
         if pre_e > 0:
@@ -199,7 +199,7 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
                 dic['scheduler'] = trainer.scheduler.state_dict()
             dic['losses'] = losses
             dic['test_losses'] = test_losses
-            dic['scaler'] = trainer.scaler.state_dict()
+            # dic['scaler'] = trainer.scaler.state_dict()
             if (e+1) % SAVE_INTERVAL == 0:
                 torch.save(dic, checkpoint_path + 'checkpoint_{}.pth'.format(model_state))
                 torch.save({'state': model_state}, checkpoint_path + 'state.pth')
@@ -293,7 +293,7 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
         losses = []
         test_losses = []
         opt_dict = None
-        scaler_dict = None
+        # scaler_dict = None
         scheduler_dict = None
         if rank == 0:
             print('Starting Training', flush = True)

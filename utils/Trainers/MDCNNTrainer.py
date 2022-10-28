@@ -79,19 +79,19 @@ class Trainer(nn.Module):
                 param.grad = None
             # with autocast(enabled = self.parameters['Automatic_Mixed_Precision'], dtype=torch.float32):
             with autocast(enabled = self.parameters['Automatic_Mixed_Precision']):
-                ft_preds, preds = self.model(fts_masked) # B, 1, X, Y
-                loss_recon = self.criterion(preds, targets)
+                ft_preds, preds = self.model(fts_masked.to(self.device)) # B, 1, X, Y
+                loss_recon = self.criterion(preds, targets.to(self.device))
                 loss_ft = torch.tensor([0]).to(self.device)
                 loss_reconft = torch.tensor([0]).to(self.device)
                 if self.criterion_FT is not None:
-                    loss_ft = self.criterion_FT(ft_preds, target_fts)
+                    loss_ft = self.criterion_FT(ft_preds, target_fts.to(self.device))
                 if self.criterion_reconFT is not None:
                     if self.parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
-                        loss_reconft = self.criterion_reconFT(preds, targets)
+                        loss_reconft = self.criterion_reconFT(preds, targets.to(self.device))
                     else:
                         predfft = torch.fft.fft2(preds).log()
                         predfft = torch.stack((predfft.real, predfft.imag),-1)
-                        targetfft = torch.fft.fft2(targets).log()
+                        targetfft = torch.fft.fft2(targets.to(self.device)).log()
                         targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
                         loss_reconft = self.criterion_reconFT(predfft, targetfft)
                 loss = loss_recon + beta1*loss_ft + beta2*loss_reconft
@@ -125,17 +125,17 @@ class Trainer(nn.Module):
         avglossreconft = 0
         with torch.no_grad():
             for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr)):
-                ft_preds, preds = self.model(fts_masked)
-                avglossrecon += self.criterion(preds, targets).item()/(len(dloader))
+                ft_preds, preds = self.model(fts_masked.to(self.device))
+                avglossrecon += self.criterion(preds, targets.to(self.device)).item()/(len(dloader))
                 if self.criterion_FT is not None:
-                    avglossft += self.criterion_FT(ft_preds, target_fts).item()/(len(dloader))
+                    avglossft += self.criterion_FT(ft_preds, target_fts.to(self.device)).item()/(len(dloader))
                 if self.criterion_reconFT is not None:
                     if self.parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
-                        avglossreconft += self.criterion_reconFT(preds, targets).item()/(len(dloader))
+                        avglossreconft += self.criterion_reconFT(preds, targets.to(self.device)).item()/(len(dloader))
                     else:
                         predfft = torch.fft.fft2(preds).log()
                         predfft = torch.stack((predfft.real, predfft.imag),-1)
-                        targetfft = torch.fft.fft2(targets).log()
+                        targetfft = torch.fft.fft2(targets.to(self.device)).log()
                         targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
                         avglossreconft += self.criterion_reconFT(predfft, targetfft).item()/(len(dloader))
 
@@ -164,7 +164,7 @@ class Trainer(nn.Module):
         print('Saving plots for {} data'.format(dstr), flush = True)
         with torch.no_grad():
             for i, (indices, fts, fts_masked, targets, target_fts) in enumerate(dloader):
-                ft_preds, preds = self.model(fts_masked)
+                ft_preds, preds = self.model(fts_masked.to(self.device))
                 break
             for i in range(num_plots):
                 targi = targets[i].squeeze().cpu().numpy()
