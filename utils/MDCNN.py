@@ -68,8 +68,8 @@ class CoupledDown(nn.Module):
         prev = inp_channel
         for i in outp_channels:
             ls.append(cmplx_conv.ComplexConv2d(prev, i, (3,3), stride = (1,1), padding = (1,1), bias = False))
-            ls.append(radial_bn.RadialBatchNorm2d(i))
             ls.append(cmplx_activation.CReLU())
+            ls.append(radial_bn.RadialBatchNorm2d(i))
             prev = i
         self.model = nn.Sequential(*ls)
         self.final = cmplx_conv.ComplexConv2d(prev, prev, (2,2), stride = (2,2), padding = (0,0))
@@ -92,8 +92,8 @@ class CoupledUp(nn.Module):
         prev = inp_channel
         for i in outp_channels:
             ls.append(cmplx_conv.ComplexConv2d(prev, i, (3,3), stride = (1,1), padding = (1,1), bias = False))
-            ls.append(radial_bn.RadialBatchNorm2d(i))
             ls.append(cmplx_activation.CReLU())
+            ls.append(radial_bn.RadialBatchNorm2d(i))
             prev = i
         self.model = nn.Sequential(*ls)
         self.final = cmplx_upsample.ComplexUpsample(scale_factor = 2, mode = 'bilinear')
@@ -116,11 +116,11 @@ class ImageSpaceModel(nn.Module):
         self.num_coils = num_coils
         self.block1 = nn.Sequential(
                 cmplx_conv.ComplexConv3d(self.num_coils, 2*self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
+                cmplx_activation.CReLU(),
                 radial_bn.RadialBatchNorm3d(2*self.num_coils),
-                cmplx_activation.CReLU(),
                 cmplx_conv.ComplexConv3d(2*self.num_coils, self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
-                radial_bn.RadialBatchNorm3d(self.num_coils),
                 cmplx_activation.CReLU(),
+                radial_bn.RadialBatchNorm3d(self.num_coils),
             )
         self.down1 = CoupledDown(num_coils*num_window, [32,32])
         self.down2 = CoupledDown(32, [64,64])
@@ -130,11 +130,11 @@ class ImageSpaceModel(nn.Module):
         self.up3 = CoupledUp(128, [64,32])
         self.finalblock = nn.Sequential(
                 cmplx_conv.ComplexConv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
-                radial_bn.RadialBatchNorm2d(32),
                 cmplx_activation.CReLU(),
+                radial_bn.RadialBatchNorm2d(32),
                 cmplx_conv.ComplexConv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
-                radial_bn.RadialBatchNorm2d(32),
                 cmplx_activation.CReLU(),
+                radial_bn.RadialBatchNorm2d(32),
                 cmplx_conv.ComplexConv2d(32, 1,     (3,3), stride = (1,1), padding = (1,1)),
             )
         self.train_mode = True
