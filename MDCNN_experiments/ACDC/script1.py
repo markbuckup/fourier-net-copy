@@ -8,7 +8,7 @@ args = parser.parse_args()
 
 GPUSTR = ' '.join([str(x) for x in args.gpu])
 
-task_list = ['1.0.1.4']
+task_list = ['1.0.0.2', '1.0.0.4']
 
 prev_task = None
 for task in task_list:

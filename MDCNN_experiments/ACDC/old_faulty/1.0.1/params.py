@@ -1,6 +1,6 @@
 parameters = {}
-parameters['train_batch_size'] = 120
-parameters['test_batch_size'] = 120
+parameters['train_batch_size'] = 150
+parameters['test_batch_size'] = 150
 parameters['lr'] = 1e-3
 parameters['num_epochs'] = 50
 parameters['train_test_split'] = 0.8
@@ -13,7 +13,7 @@ parameters['num_coils'] = 8
 parameters['dataloader_num_workers'] = 0
 parameters['optimizer'] = 'Adam'
 parameters['scheduler'] = 'StepLR'
-parameters['optimizer_params'] = (0.5, 0.999)
+parameters['optimizer_params'] = (0.9, 0.999)
 parameters['scheduler_params'] = {
     'base_lr': 3e-4,
     'max_lr': 1e-3,

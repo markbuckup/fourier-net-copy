@@ -1,6 +1,7 @@
 import torch
 from typing import Tuple
 
+EPS = 1e-10
 
 def convert_polar_to_cylindrical(
     magnitude: torch.Tensor,
@@ -45,8 +46,8 @@ def convert_cylindrical_to_polar(
     Tuple[torch.Tensor, torch.Tensor]
         The magnitude and phase of the complex tensor
     """
-    mag = (real ** 2 + imag ** 2) ** (0.5)
-    phase = torch.atan2(imag, real)
+    mag = (real ** 2 + imag ** 2 + EPS) ** (0.5)
+    phase = torch.atan2(imag, real+EPS)
     phase[phase.ne(phase)] = 0.0  # remove NANs if any
     return mag, phase
 

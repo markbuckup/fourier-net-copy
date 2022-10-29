@@ -20,6 +20,8 @@ from torch.utils.data.dataset import Dataset
 from utils.functions import get_coil_mask, get_golden_bars
 from utils.MDCNN import MDCNN
 
+EPS = 1e-10
+
 def seed_torch(seed=0):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -259,12 +261,12 @@ class ACDC(Dataset):
         if ACDC.get_mem_filled(self.train, p_num) == 0:
             # vnum, fnum, 1, r, c
             indata = ((self.data[p_num].type(torch.float64)/255.).expand(-1,-1,self.num_coils, -1,-1)*self.coil_mask.unsqueeze(0).unsqueeze(0))
-            temp = torch.fft.fftshift(torch.fft.fft2(indata) ,dim = (-2,-1)).log()
+            temp = (torch.fft.fftshift(torch.fft.fft2(indata) ,dim = (-2,-1)) + EPS).log()
             ACDC.set_mem_ft(self.train, p_num, torch.stack((temp.real, temp.imag), -1))
-            if self.train:
-                print('Memoising for patient {}'.format(p_num), flush = True)
-            else:
-                print('Memoising for patient {}'.format(p_num+len(ACDC.train_data)), flush = True)
+            # if self.train:
+            #     print('Memoising for patient {}'.format(p_num), flush = True)
+            # else:
+            #     print('Memoising for patient {}'.format(p_num+len(ACDC.train_data)), flush = True)
             ACDC.inc_num_mem(self.train, p_num)
             if ACDC.get_num_mem(self.train) == len(self.data):
                 print('#########################')
@@ -287,7 +289,7 @@ class ACDC(Dataset):
         
         ft_masked = r_ft_data * current_window_mask.unsqueeze(0).unsqueeze(-1)
         target_ft = self.data_fft[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:]
-        
+
         return i, r_ft_data.float().cpu(), ft_masked.float().cpu(), target.float().cpu(), target_ft.cpu()
 
         

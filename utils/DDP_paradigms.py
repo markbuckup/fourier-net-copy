@@ -136,7 +136,7 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
         if rank == 0:
             print('Starting Training', flush = True)
 
-    model = DDP(model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = True)
+    model = DDP(model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
     trainer = Trainer(model, trainset, testset, parameters, proc_device, rank, world_size, args)
     if args.resume:
         trainer.optim.load_state_dict(opt_dict)
@@ -298,7 +298,7 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
         if rank == 0:
             print('Starting Training', flush = True)
 
-    model = DDP(model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = True)
+    model = DDP(model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
     trainer = Trainer(model, trainset, testset, parameters, proc_device, rank, world_size, args)
     
     if not args.visualise_only:

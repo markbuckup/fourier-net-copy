@@ -14,6 +14,8 @@ import utils.complexCNNs.cmplx_upsample as cmplx_upsample
 import utils.complexCNNs.cmplx_activation as cmplx_activation
 import utils.complexCNNs.radial_bn as radial_bn
 
+EPS = 1e-10
+
 def no_bn_forward(model, x):
     ans = None
     for layer in model:
@@ -52,10 +54,10 @@ class KspaceModel(nn.Module):
     def forward(self, x):
         if self.train_mode:
             x1 = self.block1(x) + x
-            x2 = self.block1(x1) + x1
+            x2 = self.block2(x1) + x1
         else:
             x1 = no_bn_forward(self.block1, x) + x
-            x2 = no_bn_forward(self.block1, x1) + x1
+            x2 = no_bn_forward(self.block2, x1) + x1
         return x2
 
     def train_mode_set(self, bool = True):
@@ -109,6 +111,54 @@ class CoupledUp(nn.Module):
     def train_mode_set(self, bool = True):
         self.train_mode = bool
 
+class CoupledDownReal(nn.Module):
+    def __init__(self, inp_channel, outp_channels):
+        super(CoupledDownReal, self).__init__()
+        ls = []
+        prev = inp_channel
+        for i in outp_channels:
+            ls.append(nn.Conv2d(prev, i, (3,3), stride = (1,1), padding = (1,1), bias = False))
+            ls.append(nn.ReLU())
+            ls.append(nn.BatchNorm2d(i))
+            prev = i
+        self.model = nn.Sequential(*ls)
+        self.final = nn.Conv2d(prev, prev, (2,2), stride = (2,2), padding = (0,0))
+        self.train_mode = True
+
+    def forward(self, x):
+        if self.train_mode:
+            x1 = self.model(x)
+        else:
+            x1 = no_bn_forward(self.model, x)
+        return x1, self.final(x1)
+
+    def train_mode_set(self, bool = True):
+        self.train_mode = bool
+
+class CoupledUpReal(nn.Module):
+    def __init__(self, inp_channel, outp_channels):
+        super(CoupledUpReal, self).__init__()
+        ls = []
+        prev = inp_channel
+        for i in outp_channels:
+            ls.append(nn.Conv2d(prev, i, (3,3), stride = (1,1), padding = (1,1), bias = False))
+            ls.append(nn.ReLU())
+            ls.append(nn.BatchNorm2d(i))
+            prev = i
+        self.model = nn.Sequential(*ls)
+        self.final = nn.Upsample(scale_factor = 2, mode = 'bilinear')
+        self.train_mode = True
+
+    def forward(self, x):
+        if self.train_mode:
+            x1 = self.model(x)
+        else:
+            x1 = no_bn_forward(self.model, x)
+        return self.final(x1)
+
+    def train_mode_set(self, bool = True):
+        self.train_mode = bool
+
 
 class ImageSpaceModel(nn.Module):
     def __init__(self, num_coils = 8, num_window = 7):
@@ -121,6 +171,12 @@ class ImageSpaceModel(nn.Module):
                 cmplx_conv.ComplexConv3d(2*self.num_coils, self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
                 cmplx_activation.CReLU(),
                 radial_bn.RadialBatchNorm3d(self.num_coils),
+                # nn.Conv3d(self.num_coils, 2*self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
+                # nn.ReLU(),
+                # nn.BatchNorm3d(2*self.num_coils),
+                # nn.Conv3d(2*self.num_coils, self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
+                # nn.ReLU(),
+                # nn.BatchNorm3d(self.num_coils),
             )
         self.down1 = CoupledDown(num_coils*num_window, [32,32])
         self.down2 = CoupledDown(32, [64,64])
@@ -137,6 +193,15 @@ class ImageSpaceModel(nn.Module):
                 radial_bn.RadialBatchNorm2d(32),
                 cmplx_conv.ComplexConv2d(32, 1,     (3,3), stride = (1,1), padding = (1,1)),
             )
+        # self.finalblock = nn.Sequential(
+        #         nn.Conv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+        #         nn.ReLU(),
+        #         nn.BatchNorm2d(32),
+        #         nn.Conv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+        #         nn.ReLU(),
+        #         nn.BatchNorm2d(32),
+        #         nn.Conv2d(32, 1, (3,3), stride = (1,1), padding = (1,1)),
+        #     )
         self.train_mode = True
 
     def train_mode_set(self, bool = True):
@@ -152,8 +217,10 @@ class ImageSpaceModel(nn.Module):
     def forward(self, x):
         if self.train_mode:
             x1 = self.block1(x).view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4], x.shape[5])
+            # x1 = self.block1(x).view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4])
         else:
             x1 = no_bn_forward(self.block1, x).view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4], x.shape[5])
+            # x1 = no_bn_forward(self.block1, x).view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4])
         x2hat, x2 = self.down1(x1)
         x3hat, x3 = self.down2(x2)
         x4hat, x4 = self.down3(x3)
@@ -181,9 +248,19 @@ class MDCNN(nn.Module):
         x1 = self.kspacem(x)
         real, imag = torch.unbind(x1, -1)
         fftshifted = torch.complex(real, imag)
-        x2 = torch.fft.fftshift(torch.fft.ifft2(torch.fft.ifftshift(fftshifted, dim = (-2, -1))), dim = (-2, -1))
+        x2 = torch.fft.ifft2(torch.fft.ifftshift(fftshifted.exp(), dim = (-2, -1)))
         x3 = torch.stack([x2.real, x2.imag], dim=-1)
-        return x1, self.imspacem(x3).pow(2).sum(-1).pow(0.5)
+        
+
+        # x3 = torch.fft.ifft2(torch.fft.ifftshift(fftshifted.exp(), dim = (-2, -1))).real
+        # print((self.imspacem(x3+EPS).pow(2).sum(-1)+EPS).pow(0.5), flush = True)
+        # print(((self.imspacem(x3+EPS).pow(2).sum(-1)+EPS).pow(0.5)).max(), flush = True)
+        # print(((self.imspacem(x3+EPS).pow(2).sum(-1)+EPS).pow(0.5)).min(), flush = True)
+        # print(self.imspacem(x3).min())
+        # print(self.imspacem(x3).max())
+        # asdf
+        return x1, (self.imspacem(x3).pow(2).sum(-1)+EPS).pow(0.5)
+        # return x1, self.imspacem(x3)
 
     def train_mode_set(self, bool = True):
         self.train_mode = bool

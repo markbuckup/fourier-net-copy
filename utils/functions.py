@@ -178,6 +178,8 @@ def get_window_mask(window_size = 7, number_of_radial_views = 14, resolution = 1
     return window_mask
 
 def get_coil_mask(n_coils = 8, resolution = 128):
+    if n_coils == 1:
+        return torch.ones(n_coils, resolution, resolution)
     temp_mask = get_window_mask(window_size = 1, number_of_radial_views = n_coils, resolution = resolution)[0,:,:]
     centres = []
     ri = 0

@@ -19,6 +19,8 @@ from torch.nn import functional as F
 from torchvision import transforms, models, datasets
 from torch.utils.data.distributed import DistributedSampler
 
+EPS = 1e-10
+
 import sys
 sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
 
@@ -203,10 +205,10 @@ class Trainer(nn.Module):
         self.criterion = fetch_loss_function(self.parameters['loss_recon'], self.device, self.parameters['loss_params']).to(self.device)
         self.criterion_FT = fetch_loss_function(self.parameters['loss_FT'], self.device, self.parameters['loss_params'])
         self.criterion_reconFT = fetch_loss_function(self.parameters['loss_reconstructed_FT'], self.device, self.parameters['loss_params'])
-        if self.criterion_FT is not None:
-            self.criterion_FT = self.criterion_FT.to(self.device)
-        if self.criterion_reconFT is not None:
-            self.criterion_reconFT = self.criterion_reconFT.to(self.device)
+        # if self.criterion_FT is not None:
+        #     self.criterion_FT = self.criterion_FT.to(self.device)
+        # if self.criterion_reconFT is not None:
+        #     self.criterion_reconFT = self.criterion_reconFT.to(self.device)
 
     def train(self, epoch, print_loss = False):
         avglossrecon = 0
@@ -219,7 +221,7 @@ class Trainer(nn.Module):
             self.optim.zero_grad(set_to_none=True)
             # with autocast(enabled = self.parameters['Automatic_Mixed_Precision'], dtype=torch.float32):
             # with autocast(enabled = self.parameters['Automatic_Mixed_Precision']):
-                # self.model.module.train_mode_set(True)
+            # self.model.module.train_mode_set(True)
             ft_preds, preds = self.model(fts_masked.to(self.device)) # B, 1, X, Y
             loss_recon = self.criterion(preds, targets.to(self.device))
             loss_ft = torch.tensor([0]).to(self.device)
@@ -230,14 +232,21 @@ class Trainer(nn.Module):
                 if self.parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
                     loss_reconft = self.criterion_reconFT(preds, targets.to(self.device))
                 else:
-                    predfft = torch.fft.fft2(preds).log()
+                    predfft = (torch.fft.fft2(preds)+EPS).log()
                     predfft = torch.stack((predfft.real, predfft.imag),-1)
-                    targetfft = torch.fft.fft2(targets.to(self.device)).log()
+                    targetfft = (torch.fft.fft2(targets.to(self.device)) + EPS).log()
                     targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
                     loss_reconft = self.criterion_reconFT(predfft, targetfft)
             loss = loss_recon + beta1*loss_ft + beta2*loss_reconft
-
+            # print(beta2*loss_reconft, loss_recon, flush = True)
+            
             loss.backward()
+            # for name, param in self.model.named_parameters():
+                # print(name,flush = True)
+                # print(name, torch.isfinite(param.grad).all())
+                # print(name, param.grad.abs().max())
+                # if not torch.isfinite(param.grad).all():
+            # asdf
             self.optim.step()
             # self.scaler.scale(loss).backward()
             # self.scaler.step(self.optim)
@@ -282,9 +291,9 @@ class Trainer(nn.Module):
                     if self.parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
                         avglossreconft += self.criterion_reconFT(preds, targets.to(self.device)).item()/(len(dloader))
                     else:
-                        predfft = torch.fft.fft2(preds).log()
+                        predfft = (torch.fft.fft2(preds) + EPS).log()
                         predfft = torch.stack((predfft.real, predfft.imag),-1)
-                        targetfft = torch.fft.fft2(targets.to(self.device)).log()
+                        targetfft = (torch.fft.fft2(targets.to(self.device)) + EPS).log()
                         targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
                         avglossreconft += self.criterion_reconFT(predfft, targetfft).item()/(len(dloader))
 
