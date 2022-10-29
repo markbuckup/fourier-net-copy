@@ -180,11 +180,26 @@ class Trainer(nn.Module):
                         )
 
         if self.parameters['optimizer'] == 'Adam':
-            self.optim = optim.Adam(self.model.parameters(), lr=self.parameters['lr'], betas=self.parameters['optimizer_params'])
+            self.optim = optim.Adam(
+                                        [
+                                        {'params': self.model.module.imspacem.parameters()},
+                                        {'params': self.model.module.kspacem.parameters(), 'lr': self.parameters['lr_kspace']},
+                                        ], 
+                                        lr=self.parameters['lr_ispace'], 
+                                        betas=self.parameters['optimizer_params']
+                                )
             self.parameters['scheduler_params']['cycle_momentum'] = False
         elif self.parameters['optimizer'] == 'SGD':
             mom, wt_dec = self.parameters['optimizer_params']
-            self.optim = optim.SGD(self.model.parameters(), lr=self.parameters['lr'], momentum = mom, weight_decay = wt_dec)
+            self.optim = optim.SGD(
+                                        [
+                                        {'params': self.model.module.imspacem.parameters()},
+                                        {'params': self.model.module.kspacem.parameters(), 'lr': self.parameters['lr_kspace']},
+                                        ], 
+                                        lr=self.parameters['lr_ispace'], 
+                                        momentum = mom, 
+                                        weight_decay = wt_dec
+                                )
             self.parameters['scheduler_params']['cycle_momentum'] = True
             
         if self.parameters['scheduler'] == 'None':
@@ -238,15 +253,22 @@ class Trainer(nn.Module):
                     targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
                     loss_reconft = self.criterion_reconFT(predfft, targetfft)
             loss = loss_recon + beta1*loss_ft + beta2*loss_reconft
+            # # print(i, loss_recon)
+            # if not torch.isfinite(loss_recon).all():
+            #     print(i)
+            #     # print(fts_masked.abs().sum())
+            #     print('model_pred', preds.abs().sum())
+            #     # print(targets.abs().sum())
+            #     asdf
             # print(beta2*loss_reconft, loss_recon, flush = True)
             
             loss.backward()
             # for name, param in self.model.named_parameters():
-                # print(name,flush = True)
-                # print(name, torch.isfinite(param.grad).all())
-                # print(name, param.grad.abs().max())
-                # if not torch.isfinite(param.grad).all():
-            # asdf
+            #     if not torch.isfinite(param.grad).all():
+            #         print(name, torch.isfinite(param.grad).all())
+            #     # print(name,flush = True)
+            #     # print(name, param.grad.abs().max())
+            # # asdf
             self.optim.step()
             # self.scaler.scale(loss).backward()
             # self.scaler.step(self.optim)

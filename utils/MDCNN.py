@@ -246,10 +246,13 @@ class MDCNN(nn.Module):
         # FT data - b_num, num_coils, num_windows, 256, 256
         # Returns - kspace_data, image_space_data
         x1 = self.kspacem(x)
+        # print(x1.abs().min(), x1.abs().max())
         real, imag = torch.unbind(x1, -1)
         fftshifted = torch.complex(real, imag)
         x2 = torch.fft.ifft2(torch.fft.ifftshift(fftshifted.exp(), dim = (-2, -1)))
         x3 = torch.stack([x2.real, x2.imag], dim=-1)
+        # print('real',x2.real.min(), x2.real.max())
+        # print('imag',x2.imag.min(), x2.imag.max())
         
 
         # x3 = torch.fft.ifft2(torch.fft.ifftshift(fftshifted.exp(), dim = (-2, -1))).real

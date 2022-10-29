@@ -1,7 +1,8 @@
 parameters = {}
 parameters['train_batch_size'] = 100
 parameters['test_batch_size'] = 100
-parameters['lr'] = 1e-3
+parameters['lr_kspace'] = 1e-5
+parameters['lr_ispace'] = 3e-4
 parameters['num_epochs'] = 50
 parameters['train_test_split'] = 0.8
 parameters['normalisation'] = False
