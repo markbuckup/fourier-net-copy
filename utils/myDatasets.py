@@ -290,7 +290,7 @@ class ACDC(Dataset):
         ft_masked = r_ft_data * current_window_mask.unsqueeze(0).unsqueeze(-1)
         target_ft = self.data_fft[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:]
 
-        return i, r_ft_data.float().cpu(), ft_masked.float().cpu(), target.float().cpu(), target_ft.cpu()
+        return torch.tensor([p_num, v_num, f_num]), r_ft_data.float().cpu(), ft_masked.float().cpu(), target.float().cpu(), target_ft.cpu()
 
         
     def __len__(self):

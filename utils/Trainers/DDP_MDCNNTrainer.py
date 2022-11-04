@@ -34,6 +34,16 @@ def myimshow(x, cmap = None):
     else:
         plt.imshow(x)
 
+def show_difference_image(im1, im2):
+    im1 = (im1 - im1.min())
+    im1 = (im1 / im1.max())
+    im2 = (im2 - im2.min())
+    im2 = (im2 / im2.max())
+    diff = (im1-im2)
+    plt.imshow(np.abs(diff), cmap = 'plasma', vmin=0, vmax=0.25)
+    plt.colorbar()
+    return np.abs(diff).reshape(-1)
+
 # takes FT, FT_mask
 # num_coils, num_window, 256, 256, 2
 def input_save(fts, fts_masked, targets, path):
@@ -220,6 +230,10 @@ class Trainer(nn.Module):
         self.criterion = fetch_loss_function(self.parameters['loss_recon'], self.device, self.parameters['loss_params']).to(self.device)
         self.criterion_FT = fetch_loss_function(self.parameters['loss_FT'], self.device, self.parameters['loss_params'])
         self.criterion_reconFT = fetch_loss_function(self.parameters['loss_reconstructed_FT'], self.device, self.parameters['loss_params'])
+
+        self.l1loss = fetch_loss_function('L1',self.device, self.parameters['loss_params'])
+        self.l2loss = fetch_loss_function('L2',self.device, self.parameters['loss_params'])
+        self.ssimloss = fetch_loss_function('SSIM',self.device, self.parameters['loss_params'])
         # if self.criterion_FT is not None:
         #     self.criterion_FT = self.criterion_FT.to(self.device)
         # if self.criterion_reconFT is not None:
@@ -237,6 +251,7 @@ class Trainer(nn.Module):
             # with autocast(enabled = self.parameters['Automatic_Mixed_Precision'], dtype=torch.float32):
             # with autocast(enabled = self.parameters['Automatic_Mixed_Precision']):
             # self.model.module.train_mode_set(True)
+            self.model.train()
             ft_preds, preds = self.model(fts_masked.to(self.device)) # B, 1, X, Y
             loss_recon = self.criterion(preds, targets.to(self.device))
             loss_ft = torch.tensor([0]).to(self.device)
@@ -302,11 +317,18 @@ class Trainer(nn.Module):
         avglossrecon = 0
         avglossft = 0
         avglossreconft = 0
+        avg_ssim_score = 0
+        avg_l1_loss = 0
+        avg_l2_loss = 0
         with torch.no_grad():
             for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr)):
                 # self.model.module.train_mode_set(False)
+                self.model.eval()
                 ft_preds, preds = self.model(fts_masked.to(self.device))
                 avglossrecon += self.criterion(preds, targets.to(self.device)).item()/(len(dloader))
+                avg_ssim_score += (1-self.ssimloss(preds, targets.to(self.device))).item()/(len(dloader))
+                avg_l1_loss += self.l1loss(preds, targets.to(self.device)).item()/(len(dloader))
+                avg_l2_loss += self.l2loss(preds, targets.to(self.device)).item()/(len(dloader))
                 if self.criterion_FT is not None:
                     avglossft += self.criterion_FT(ft_preds, target_fts.to(self.device)).item()/(len(dloader))
                 if self.criterion_reconFT is not None:
@@ -327,10 +349,9 @@ class Trainer(nn.Module):
                 print('FT Loss = {}'.format(avglossft), flush = True)
             if self.criterion_reconFT is not None:
                 print('Recon FT Loss = {}'.format(avglossreconft), flush = True)
-        return avglossrecon, avglossft, avglossreconft
+        return avglossrecon, avglossft, avglossreconft, avg_ssim_score,avg_l1_loss,avg_l2_loss
 
     def visualise(self, epoch, train = False):
-        num_plots = min(self.parameters['test_batch_size'], 10)
         if train:
             dloader = self.traintestloader
             dset = self.trainset
@@ -341,49 +362,73 @@ class Trainer(nn.Module):
             dset = self.testset
             dstr = 'Test'
             path = os.path.join(self.args.run_id, './results/test')
+        tot_vids_per_patient = (dset.num_vids_per_patient*dset.frames_per_vid_per_patient)
+        num_plots = tot_vids_per_patient[0]
         print('Saving plots for {} data'.format(dstr), flush = True)
         with torch.no_grad():
-            for i, (indices, fts, fts_masked, targets, target_fts) in enumerate(dloader):
+            for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(dloader), total = 1+num_plots//self.parameters['test_batch_size']):
                 if not os.path.exists(os.path.join(self.args.run_id, './results/input/')):
                     os.mkdir(os.path.join(self.args.run_id, './results/input/'))
                 input_save(fts[0], fts_masked[0], targets[0], os.path.join(self.args.run_id, './results/input/'))
                 # self.model.module.train_mode_set(False)
+                self.model.eval()
                 ft_preds, preds = self.model(fts_masked.to(self.device))
-                break
-            for i in range(num_plots):
-                targi = targets[i].squeeze().cpu().numpy()
-                predi = preds[i].squeeze().cpu().numpy()
-                # fig = plt.figure(figsize = (8,8))
-                # plt.subplot(2,2,1)
-                # ft = torch.complex(fts_masked[i,0,3,:,:,0],fts_masked[i,0,3,:,:,1])
-                # myimshow(ft.abs(), cmap = 'gray')
-                # plt.title('Undersampled FFT Frame')
-                # plt.subplot(2,2,2)
-                # myimshow(torch.fft.ifft2(torch.fft.ifftshift(ft.exp())).real, cmap = 'gray')
-                # plt.title('IFFT of the Input')
-                # plt.subplot(2,2,3)
-                # myimshow(predi, cmap = 'gray')
-                # plt.title('Our Predicted Frame')
-                # plt.subplot(2,2,4)
-                # myimshow(targi, cmap = 'gray')
-                # plt.title('Actual Frame')
-                # plt.suptitle("{} data window index {}".format(dstr, indices[i]))
-                # plt.savefig(os.path.join(path, '{}_result_epoch{}_{}'.format(dstr, epoch, i)))
-                # plt.close('all')
-                fig = plt.figure(figsize = (8,4))
-                # plt.subplot(2,2,1)
-                # ft = torch.complex(fts_masked[i,0,3,:,:,0],fts_masked[i,0,3,:,:,1])
-                # myimshow(ft.abs(), cmap = 'gray')
-                # plt.title('Undersampled FFT Frame')
-                # plt.subplot(2,2,2)
-                # myimshow(torch.fft.ifft2(torch.fft.ifftshift(ft.exp())).real, cmap = 'gray')
-                # plt.title('IFFT of the Input')
-                plt.subplot(1,2,1)
-                myimshow(predi, cmap = 'gray')
-                plt.title('Our Predicted Frame')
-                plt.subplot(1,2,2)
-                myimshow(targi, cmap = 'gray')
-                plt.title('Actual Frame')
-                plt.suptitle("{} data window index {}".format(dstr, indices[i]))
-                plt.savefig(os.path.join(path, '{}_result_epoch{}_{}'.format(dstr, epoch, i)))
-                plt.close('all')
+                for i in range(fts.shape[0]):
+                    if num_plots == 0:
+                        return
+                    num_plots += 1
+                    targi = targets[i].squeeze().cpu().numpy()
+                    predi = preds[i].squeeze().cpu().numpy()
+                    p_num, v_num, f_num = indices[i]
+                    # fig = plt.figure(figsize = (8,8))
+                    # plt.subplot(2,2,1)
+                    # ft = torch.complex(fts_masked[i,0,3,:,:,0],fts_masked[i,0,3,:,:,1])
+                    # myimshow(ft.abs(), cmap = 'gray')
+                    # plt.title('Undersampled FFT Frame')
+                    # plt.subplot(2,2,2)
+                    # myimshow(torch.fft.ifft2(torch.fft.ifftshift(ft.exp())).real, cmap = 'gray')
+                    # plt.title('IFFT of the Input')
+                    # plt.subplot(2,2,3)
+                    # myimshow(predi, cmap = 'gray')
+                    # plt.title('Our Predicted Frame')
+                    # plt.subplot(2,2,4)
+                    # myimshow(targi, cmap = 'gray')
+                    # plt.title('Actual Frame')
+                    # plt.suptitle("{} data window index {}".format(dstr, indices[i]))
+                    # plt.savefig(os.path.join(path, '{}_result_epoch{}_{}'.format(dstr, epoch, i)))
+                    # plt.close('all')
+                    fig = plt.figure(figsize = (8,8))
+                    # plt.subplot(2,2,1)
+                    # ft = torch.complex(fts_masked[i,0,3,:,:,0],fts_masked[i,0,3,:,:,1])
+                    # myimshow(ft.abs(), cmap = 'gray')
+                    # plt.title('Undersampled FFT Frame')
+                    # plt.subplot(2,2,2)
+                    # myimshow(torch.fft.ifft2(torch.fft.ifftshift(ft.exp())).real, cmap = 'gray')
+                    # plt.title('IFFT of the Input')
+                    plt.subplot(2,2,1)
+                    myimshow(predi, cmap = 'gray')
+                    plt.title('Our Predicted Frame')
+                    plt.subplot(2,2,2)
+                    myimshow(targi, cmap = 'gray')
+                    plt.title('Actual Frame')
+                    plt.subplot(2,2,3)
+                    diffvals = show_difference_image(predi, targi)
+                    plt.title('Difference Frame')
+                    plt.subplot(2,2,4)
+                    plt.hist(diffvals, range = [0,0.25], density = False, bins = 30)
+                    plt.ylabel('Pixel Count')
+                    plt.xlabel('Difference Value')
+                    if not os.path.exists(os.path.join(path, './patient_{}/'.format(p_num))):
+                        os.mkdir(os.path.join(path, './patient_{}/'.format(p_num)))
+                    if not os.path.exists(os.path.join(path, './patient_{}/by_location_number/'.format(p_num))):
+                        os.mkdir(os.path.join(path, './patient_{}/by_location_number/'.format(p_num)))
+                    if not os.path.exists(os.path.join(path, './patient_{}/by_location_number/location_{}'.format(p_num, v_num))):
+                        os.mkdir(os.path.join(path, './patient_{}/by_location_number/location_{}'.format(p_num, v_num)))
+                    if not os.path.exists(os.path.join(path, './patient_{}/by_frame_number/'.format(p_num))):
+                        os.mkdir(os.path.join(path, './patient_{}/by_frame_number/'.format(p_num)))
+                    if not os.path.exists(os.path.join(path, './patient_{}/by_frame_number/frame_{}'.format(p_num, f_num))):
+                        os.mkdir(os.path.join(path, './patient_{}/by_frame_number/frame_{}'.format(p_num, f_num)))
+                    plt.suptitle("Patient {} Video {} Location {}".format(p_num, v_num, f_num))
+                    plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}.jpg'.format(p_num, v_num, f_num)))
+                    plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/location_{}.jpg'.format(p_num, f_num, v_num)))
+                    plt.close('all')

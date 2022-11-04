@@ -167,7 +167,7 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
             if trainer.criterion_reconFT is not None:
                 print('Average Train Recon FT Loss for Epoch {} = {}' .format(e, avg_train_recon_ft_loss), flush = True)
 
-        test_lossrecon, test_lossft, test_lossreconft = trainer.evaluate(e, train = False)
+        test_lossrecon, test_lossft, test_lossreconft,_,_,_ = trainer.evaluate(e, train = False)
         dist.all_gather(collected_test_losses, torch.tensor([test_lossrecon, test_lossft, test_lossreconft]).to(proc_device))
         if rank == 0:
             avg_test_recon_loss = sum([x[0] for x in collected_test_losses]).item()/len(args.gpu)
@@ -302,51 +302,67 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
     trainer = Trainer(model, trainset, testset, parameters, proc_device, rank, world_size, args)
     
     if not args.visualise_only:
-        test_lossrecon, test_lossft, test_lossreconft = trainer.evaluate(pre_e, train = False)
-        collected_test_losses = [torch.zeros(3,).to(proc_device) for _ in range(world_size)]
-        dist.all_gather(collected_test_losses, torch.tensor([test_lossrecon, test_lossft, test_lossreconft]).to(proc_device))
+        test_lossrecon, test_lossft, test_lossreconft, test_ssim, test_l1, test_l2 = trainer.evaluate(pre_e, train = False)
+        collected_test_losses = [torch.zeros(6,).to(proc_device) for _ in range(world_size)]
+        dist.all_gather(collected_test_losses, torch.tensor([test_lossrecon, test_lossft, test_lossreconft, test_ssim, test_l1, test_l2]).to(proc_device))
         if rank == 0:
-            avg_test_recon_loss = sum([x[0] for x in collected_test_losses])/len(args.gpu)
-            avg_test_ft_loss = sum([x[1] for x in collected_test_losses])/len(args.gpu)
-            avg_test_recon_ft_loss = sum([x[2] for x in collected_test_losses])/len(args.gpu)
+            avg_test_recon_loss = sum([x[0] for x in collected_test_losses]).item()/len(args.gpu)
+            avg_test_ft_loss = sum([x[1] for x in collected_test_losses]).item()/len(args.gpu)
+            avg_test_recon_ft_loss = sum([x[2] for x in collected_test_losses]).item()/len(args.gpu)
+            avg_test_ssim = sum([x[3] for x in collected_test_losses]).item()/len(args.gpu)
+            avg_test_l1 = sum([x[4] for x in collected_test_losses]).item()/len(args.gpu)
+            avg_test_l2 = sum([x[5] for x in collected_test_losses]).item()/len(args.gpu)
             if args.neptune_log and rank == 0:
                 run["test/test_recon_loss"] = avg_test_recon_loss
                 run["test/test_ft_loss"] = avg_test_ft_loss
                 run["test/test_recon_ft_loss"] = avg_test_recon_ft_loss
+                run["test/test_ssim_score"] = avg_test_ssim
+                run["test/test_l1_loss"] = avg_test_l1
+                run["test/test_l2_loss"] = avg_test_l2
             print('Test Loss After {} Epochs:'.format(pre_e), flush = True)
-            print('Recon Loss = {}'.format(avg_test_recon_loss), flush = True)
+            print('Recon Loss = {}'.format(round(avg_test_recon_loss, 2)), flush = True)
+            print('SSIM Score = {}'.format(round(avg_test_ssim, 2)), flush = True)
+            print('L1 Loss = {}'.format(round(avg_test_l1, 2)), flush = True)
+            print('L2 Loss = {}'.format(round(avg_test_l2, 2)), flush = True)
             if trainer.criterion_FT is not None:
-                print('FT Loss = {}'.format(avg_test_ft_loss), flush = True)
+                print('FT Loss = {}'.format(round(avg_test_ft_loss,2)), flush = True)
             if trainer.criterion_reconFT is not None:
-                print('Recon FT Loss = {}'.format(avg_test_recon_ft_loss), flush = True)
+                print('Recon FT Loss = {}'.format(round(avg_test_recon_ft_loss,2)), flush = True)
         if not args.test_only:
-            train_lossrecon, train_lossft, train_lossreconft = trainer.evaluate(pre_e, train = True)
-            collected_train_losses = [torch.zeros(3,).to(proc_device) for _ in range(world_size)]
-            dist.all_gather(collected_train_losses, torch.tensor([train_lossrecon, train_lossft, train_lossreconft]).to(proc_device))
+            train_lossrecon, train_lossft, train_lossreconft, train_ssim, train_l1, train_l2 = trainer.evaluate(pre_e, train = True)
+            collected_train_losses = [torch.zeros(6,).to(proc_device) for _ in range(world_size)]
+            dist.all_gather(collected_train_losses, torch.tensor([train_lossrecon, train_lossft, train_lossreconft, train_ssim, train_l1, train_l2]).to(proc_device))
             if rank == 0:
-                avg_train_recon_loss = sum([x[0] for x in collected_train_losses])/len(args.gpu)
-                avg_train_ft_loss = sum([x[1] for x in collected_train_losses])/len(args.gpu)
-                avg_train_recon_ft_loss = sum([x[2] for x in collected_train_losses])/len(args.gpu)
+                avg_train_recon_loss = sum([x[0] for x in collected_train_losses]).item()/len(args.gpu)
+                avg_train_ft_loss = sum([x[1] for x in collected_train_losses]).item()/len(args.gpu)
+                avg_train_recon_ft_loss = sum([x[2] for x in collected_train_losses]).item()/len(args.gpu)
+                avg_train_ssim = sum([x[3] for x in collected_train_losses]).item()/len(args.gpu)
+                avg_train_l1 = sum([x[4] for x in collected_train_losses]).item()/len(args.gpu)
+                avg_train_l2 = sum([x[5] for x in collected_train_losses]).item()/len(args.gpu)
                 if args.neptune_log and rank == 0:
                     run["test/train_recon_loss"] = avg_train_recon_loss
                     run["test/train_ft_loss"] = avg_train_ft_loss
                     run["test/train_recon_ft_loss"] = avg_train_recon_ft_loss
+                    run["test/train_ssim_score"] = avg_train_ssim
+                    run["test/train_l1_loss"] = avg_train_l1
+                    run["test/train_l2_loss"] = avg_train_l2
                 print('Train Loss After {} Epochs:'.format(pre_e), flush = True)
-                print('Recon Loss = {}'.format(avg_train_recon_loss), flush = True)
+                print('Recon Loss = {}'.format(round(avg_train_recon_loss,2)), flush = True)
+                print('SSIM Score = {}'.format(round(avg_train_ssim,2)), flush = True)
+                print('L1 Loss = {}'.format(round(avg_train_l1,2)), flush = True)
+                print('L2 Loss = {}'.format(round(avg_train_l2,2)), flush = True)
                 if trainer.criterion_FT is not None:
-                    print('FT Loss = {}'.format(avg_train_ft_loss), flush = True)
+                    print('FT Loss = {}'.format(round(avg_train_ft_loss,2)), flush = True)
                 if trainer.criterion_reconFT is not None:
-                    print('Recon FT Loss = {}'.format(avg_train_recon_ft_loss), flush = True)
+                    print('Recon FT Loss = {}'.format(round(avg_train_recon_ft_loss,2)), flush = True)
     if rank == 0:
-        trainer.visualise(pre_e, train = False)
-        trainer.visualise(pre_e, train = True)
-        if args.neptune_log and rank == 0:
-            for x in sorted(os.listdir(os.path.join(args.run_id, 'results/train'))):
-                run['train/{}'.format(x)].upload(File(os.path.join(args.run_id, 'results/train/{}'.format(x))))
-                break
-            for x in sorted(os.listdir(os.path.join(args.run_id, 'results/test'))):
-                run['test/{}'.format(x)].upload(File(os.path.join(args.run_id, 'results/test/{}'.format(x))))
-                break
+        # if args.neptune_log and rank == 0:
+        #     for x in sorted(os.listdir(os.path.join(args.run_id, 'results/train'))):
+        #         run['train/{}'.format(x)].upload(File(os.path.join(args.run_id, 'results/train/{}'.format(x))))
+        #         break
+        #     for x in sorted(os.listdir(os.path.join(args.run_id, 'results/test'))):
+        #         run['test/{}'.format(x)].upload(File(os.path.join(args.run_id, 'results/test/{}'.format(x))))
+        #         break
         plt.figure()
         plt.title('Train Loss after {} epochs'.format(pre_e))
         plt.plot(range(len(losses)), [x[0] for x in losses], label = 'Recon Loss: {}'.format(parameters['loss_recon']), color = 'b')
@@ -369,7 +385,25 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
         plt.ylabel('loss')
         plt.legend()
         plt.savefig(os.path.join(args.run_id, 'results/test_loss.png'))
+
+        plt.figure()
+        plt.title('Loss after {} epochs'.format(pre_e))
+        plt.plot(range(len(losses)), [x[0] for x in losses], label = 'Train Recon Loss: {}'.format(parameters['loss_recon']), color = 'r')
+        plt.plot(range(len(test_losses)), [x[0] for x in test_losses], label = 'Test Recon Loss: {}'.format(parameters['loss_recon']), color = 'b')
+        if parameters['loss_FT'] != 'None':
+            plt.plot(range(len(losses)), [x[1] for x in losses], label = 'Train FT Loss: {}'.format(parameters['loss_FT']), color = 'y')
+            plt.plot(range(len(test_losses)), [x[1] for x in test_losses], label = 'Test FT Loss: {}'.format(parameters['loss_FT']), color = 'c')
+        if parameters['loss_reconstructed_FT'] != 'None':
+            plt.plot(range(len(losses)), [x[2] for x in losses], label = 'Train Recon FT Loss: {}'.format(parameters['loss_reconstructed_FT']), color = 'm')
+            plt.plot(range(len(test_losses)), [x[2] for x in test_losses], label = 'Test Recon FT Loss: {}'.format(parameters['loss_reconstructed_FT']), color = 'tab:pink')
+        plt.xlabel('epoch')
+        plt.ylabel('loss')
+        plt.legend()
+        plt.savefig(os.path.join(args.run_id, 'results/train_test_loss.png'))
+        
         plt.close('all')
+        trainer.visualise(pre_e, train = False)
+        trainer.visualise(pre_e, train = True)
         with open(os.path.join(args.run_id, 'status.txt'), 'w') as f:
             f.write('1')
     cleanup()
