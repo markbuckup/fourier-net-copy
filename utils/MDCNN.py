@@ -254,15 +254,8 @@ class MDCNN(nn.Module):
         # print('real',x2.real.min(), x2.real.max())
         # print('imag',x2.imag.min(), x2.imag.max())
         
-
-        # x3 = torch.fft.ifft2(torch.fft.ifftshift(fftshifted.exp(), dim = (-2, -1))).real
-        # print((self.imspacem(x3+EPS).pow(2).sum(-1)+EPS).pow(0.5), flush = True)
-        # print(((self.imspacem(x3+EPS).pow(2).sum(-1)+EPS).pow(0.5)).max(), flush = True)
-        # print(((self.imspacem(x3+EPS).pow(2).sum(-1)+EPS).pow(0.5)).min(), flush = True)
-        # print(self.imspacem(x3).min())
-        # print(self.imspacem(x3).max())
-        # asdf
-        return x1, (self.imspacem(x3).pow(2).sum(-1)+EPS).pow(0.5)
+        ans = (self.imspacem(x3).pow(2).sum(-1)+EPS).pow(0.5)
+        return x1, ans
         # return x1, self.imspacem(x3)
 
     def train_mode_set(self, bool = True):

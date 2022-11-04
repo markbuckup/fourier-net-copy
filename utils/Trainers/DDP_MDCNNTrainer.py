@@ -320,12 +320,17 @@ class Trainer(nn.Module):
         avg_ssim_score = 0
         avg_l1_loss = 0
         avg_l2_loss = 0
+        # it = 0
         with torch.no_grad():
             for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr)):
                 # self.model.module.train_mode_set(False)
+                # if it < 71:
+                #     it += 1
+                #     continue
                 self.model.eval()
                 ft_preds, preds = self.model(fts_masked.to(self.device))
                 avglossrecon += self.criterion(preds, targets.to(self.device)).item()/(len(dloader))
+                # it += 1
                 avg_ssim_score += (1-self.ssimloss(preds, targets.to(self.device))).item()/(len(dloader))
                 avg_l1_loss += self.l1loss(preds, targets.to(self.device)).item()/(len(dloader))
                 avg_l2_loss += self.l2loss(preds, targets.to(self.device)).item()/(len(dloader))
