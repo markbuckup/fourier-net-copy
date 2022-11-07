@@ -251,10 +251,8 @@ class MDCNN(nn.Module):
         fftshifted = torch.complex(real, imag)
         x2 = torch.fft.ifft2(torch.fft.ifftshift(fftshifted.exp(), dim = (-2, -1)))
         x3 = torch.stack([x2.real, x2.imag], dim=-1)
-        # print('real',x2.real.min(), x2.real.max())
-        # print('imag',x2.imag.min(), x2.imag.max())
         
-        ans = (self.imspacem(x3).pow(2).sum(-1)+EPS).pow(0.5)
+        ans = (self.imspacem(x3).pow(2).sum(-1)+EPS).pow(0.5).clip(-1,1)
         return x1, ans
         # return x1, self.imspacem(x3)
 

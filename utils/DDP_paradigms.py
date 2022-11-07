@@ -320,14 +320,14 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
                 run["test/test_l1_loss"] = avg_test_l1
                 run["test/test_l2_loss"] = avg_test_l2
             print('Test Loss After {} Epochs:'.format(pre_e), flush = True)
-            print('Recon Loss = {}'.format(round(avg_test_recon_loss, 2)), flush = True)
-            print('SSIM Score = {}'.format(round(avg_test_ssim, 2)), flush = True)
-            print('L1 Loss = {}'.format(round(avg_test_l1, 2)), flush = True)
-            print('L2 Loss = {}'.format(round(avg_test_l2, 2)), flush = True)
+            print('Recon Loss = {}'.format(avg_test_recon_loss), flush = True)
+            print('SSIM Score = {}'.format(avg_test_ssim), flush = True)
+            print('L1 Loss = {}'.format(avg_test_l1), flush = True)
+            print('L2 Loss = {}'.format(avg_test_l2), flush = True)
             if trainer.criterion_FT is not None:
-                print('FT Loss = {}'.format(round(avg_test_ft_loss,2)), flush = True)
+                print('FT Loss = {}'.format(avg_test_ft_loss), flush = True)
             if trainer.criterion_reconFT is not None:
-                print('Recon FT Loss = {}'.format(round(avg_test_recon_ft_loss,2)), flush = True)
+                print('Recon FT Loss = {}'.format(avg_test_recon_ft_loss), flush = True)
         if not args.test_only:
             train_lossrecon, train_lossft, train_lossreconft, train_ssim, train_l1, train_l2 = trainer.evaluate(pre_e, train = True)
             collected_train_losses = [torch.zeros(6,).to(proc_device) for _ in range(world_size)]
@@ -347,14 +347,14 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
                     run["test/train_l1_loss"] = avg_train_l1
                     run["test/train_l2_loss"] = avg_train_l2
                 print('Train Loss After {} Epochs:'.format(pre_e), flush = True)
-                print('Recon Loss = {}'.format(round(avg_train_recon_loss,2)), flush = True)
-                print('SSIM Score = {}'.format(round(avg_train_ssim,2)), flush = True)
-                print('L1 Loss = {}'.format(round(avg_train_l1,2)), flush = True)
-                print('L2 Loss = {}'.format(round(avg_train_l2,2)), flush = True)
+                print('Recon Loss = {}'.format(avg_train_recon_loss), flush = True)
+                print('SSIM Score = {}'.format(avg_train_ssim), flush = True)
+                print('L1 Loss = {}'.format(avg_train_l1), flush = True)
+                print('L2 Loss = {}'.format(avg_train_l2), flush = True)
                 if trainer.criterion_FT is not None:
-                    print('FT Loss = {}'.format(round(avg_train_ft_loss,2)), flush = True)
+                    print('FT Loss = {}'.format(avg_train_ft_loss), flush = True)
                 if trainer.criterion_reconFT is not None:
-                    print('Recon FT Loss = {}'.format(round(avg_train_recon_ft_loss,2)), flush = True)
+                    print('Recon FT Loss = {}'.format(avg_train_recon_ft_loss), flush = True)
     if rank == 0:
         # if args.neptune_log and rank == 0:
         #     for x in sorted(os.listdir(os.path.join(args.run_id, 'results/train'))):

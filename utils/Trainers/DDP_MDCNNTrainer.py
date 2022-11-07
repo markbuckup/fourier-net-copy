@@ -381,7 +381,7 @@ class Trainer(nn.Module):
                 for i in range(fts.shape[0]):
                     if num_plots == 0:
                         return
-                    num_plots += 1
+                    num_plots -= 1
                     targi = targets[i].squeeze().cpu().numpy()
                     predi = preds[i].squeeze().cpu().numpy()
                     p_num, v_num, f_num = indices[i]
@@ -433,7 +433,7 @@ class Trainer(nn.Module):
                         os.mkdir(os.path.join(path, './patient_{}/by_frame_number/'.format(p_num)))
                     if not os.path.exists(os.path.join(path, './patient_{}/by_frame_number/frame_{}'.format(p_num, f_num))):
                         os.mkdir(os.path.join(path, './patient_{}/by_frame_number/frame_{}'.format(p_num, f_num)))
-                    plt.suptitle("Patient {} Video {} Location {}".format(p_num, v_num, f_num))
+                    plt.suptitle("Patient {} Location {} Frame {}".format(p_num, v_num, f_num))
                     plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}.jpg'.format(p_num, v_num, f_num)))
                     plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/location_{}.jpg'.format(p_num, f_num, v_num)))
                     plt.close('all')
