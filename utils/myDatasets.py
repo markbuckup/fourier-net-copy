@@ -128,7 +128,7 @@ class ACDC(Dataset):
             return cls.test_num_mem.sum()
 
     @classmethod
-    def data_init(cls, path, resolution, train_split, num_coils):
+    def data_init(cls, path, resolution, train_split, num_coils, memoise_disable):
         if cls.data_init_done:
             return
         cls.data_init_done = True
@@ -141,8 +141,12 @@ class ACDC(Dataset):
         cls.test_data = data[train_len:]
         num_train_patients = len(cls.train_data)
         num_test_patients = len(cls.test_data)
-        cls.train_mem_ft_data = [torch.zeros(x.shape[0],x.shape[1],num_coils,x.shape[3],x.shape[4],2) for x in cls.train_data]
-        cls.test_mem_ft_data = [torch.zeros(x.shape[0],x.shape[1],num_coils,x.shape[3],x.shape[4],2) for x in cls.test_data]
+        if memoise_disable:
+            cls.train_mem_ft_data = []
+            cls.test_mem_ft_data = []
+        else:
+            cls.train_mem_ft_data = [torch.zeros(x.shape[0],x.shape[1],num_coils,x.shape[3],x.shape[4],2) for x in cls.train_data]
+            cls.test_mem_ft_data = [torch.zeros(x.shape[0],x.shape[1],num_coils,x.shape[3],x.shape[4],2) for x in cls.test_data]
         cls.train_mem_ft_data_filled = [torch.zeros(1,) for x in range(num_train_patients)]
         cls.test_mem_ft_data_filled = [torch.zeros(1,) for x in range(num_test_patients)]
         cls.train_data_fft = [torch.fft.fftshift(torch.fft.fft2(x.float()/255.),dim = (-2,-1)) for x in cls.train_data]
@@ -199,7 +203,7 @@ class ACDC(Dataset):
         cls.train_num_mem = data[11]
         cls.test_num_mem = data[12]
 
-    def __init__(self, path, train = True, train_split = 0.8, norm = True, resolution = 128, window_size = 7, ft_num_radial_views = 14, predict_mode = 'middle', num_coils = 8, blank = False):
+    def __init__(self, path, train = True, train_split = 0.8, norm = True, resolution = 128, window_size = 7, ft_num_radial_views = 14, predict_mode = 'middle', num_coils = 8, blank = False, memoise_disable = False):
         super(ACDC, self).__init__()
         self.path = path
         self.train = train
@@ -210,6 +214,7 @@ class ACDC(Dataset):
         self.window_size = window_size
         self.ft_num_radial_views = ft_num_radial_views
         self.norm = norm
+        self.memoise_disable = memoise_disable
         assert(self.window_size % 2 != 0)
         self.predict_mode = predict_mode
         assert(self.predict_mode in ['middle', 'last'])
@@ -218,7 +223,7 @@ class ACDC(Dataset):
         else:
             self.target_frame = self.window_size-1
         if not self.blank:
-            ACDC.data_init(self.path, self.resolution, self.train_split, self.num_coils)
+            ACDC.data_init(self.path, self.resolution, self.train_split, self.num_coils, self.memoise_disable)
         
     def rest_init(self):
         if self.train:
@@ -262,12 +267,14 @@ class ACDC(Dataset):
             # vnum, fnum, 1, r, c
             indata = ((self.data[p_num].type(torch.float64)/255.).expand(-1,-1,self.num_coils, -1,-1)*self.coil_mask.unsqueeze(0).unsqueeze(0))
             temp = (torch.fft.fftshift(torch.fft.fft2(indata) ,dim = (-2,-1)) + EPS).log()
-            ACDC.set_mem_ft(self.train, p_num, torch.stack((temp.real, temp.imag), -1))
+            if not self.memoise_disable:
+                ACDC.set_mem_ft(self.train, p_num, torch.stack((temp.real, temp.imag), -1))
             # if self.train:
             #     print('Memoising for patient {}'.format(p_num), flush = True)
             # else:
             #     print('Memoising for patient {}'.format(p_num+len(ACDC.train_data)), flush = True)
-            ACDC.inc_num_mem(self.train, p_num)
+            if not self.memoise_disable:
+                ACDC.inc_num_mem(self.train, p_num)
             if ACDC.get_num_mem(self.train) == len(self.data):
                 print('#########################')
                 print('Memoised all patients!')

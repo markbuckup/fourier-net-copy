@@ -55,7 +55,8 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
                         ft_num_radial_views = parameters['FT_radial_sampling'], 
                         predict_mode = parameters['predicted_frame'], 
                         num_coils = parameters['num_coils'],
-                        blank = True
+                        blank = True,
+                        memoise_disable = parameters['memoise_disable']
                     )
     testset = ACDC(
                         args.dataset_path, 
@@ -67,7 +68,8 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
                         ft_num_radial_views = parameters['FT_radial_sampling'], 
                         predict_mode = parameters['predicted_frame'], 
                         num_coils = parameters['num_coils'],
-                        blank = True
+                        blank = True,
+                        memoise_disable = parameters['memoise_disable']
                     )
 
     trainset.set_shared_lists(shared_data)
@@ -223,7 +225,8 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
                         ft_num_radial_views = parameters['FT_radial_sampling'], 
                         predict_mode = parameters['predicted_frame'], 
                         num_coils = parameters['num_coils'],
-                        blank = True
+                        blank = True,
+                        memoise_disable = parameters['memoise_disable']
                     )
     testset = ACDC(
                         args.dataset_path, 
@@ -235,7 +238,8 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
                         ft_num_radial_views = parameters['FT_radial_sampling'], 
                         predict_mode = parameters['predicted_frame'], 
                         num_coils = parameters['num_coils'],
-                        blank = True
+                        blank = True,
+                        memoise_disable = parameters['memoise_disable']
                     )
 
     trainset.set_shared_lists(shared_data)
