@@ -97,7 +97,8 @@ if __name__ == '__main__':
                         window_size = parameters['window_size'], 
                         ft_num_radial_views = parameters['FT_radial_sampling'], 
                         predict_mode = parameters['predicted_frame'], 
-                        num_coils = parameters['num_coils']
+                        num_coils = parameters['num_coils'],
+                        memoise_disable = parameters['memoise_disable']
                     )
     shared_data = trainset.get_shared_lists()
     if args.eval:
