@@ -43,7 +43,7 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
     proc_device = torch.device('cuda:{}'.format(args.gpu[rank]))
     
     if parameters['dataset'] == 'acdc':
-        from utils.datasets.ACDC import ACDC as dataset
+        from utils.myDatasets.ACDC import ACDC as dataset
     if parameters['architecture'] == 'mdcnn':
         from utils.models.MDCNN import MDCNN as Model
         from utils.Trainers.DDP_MDCNNTrainer import Trainer
@@ -203,7 +203,7 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
     setup(rank, world_size, args)
     proc_device = torch.device('cuda:{}'.format(args.gpu[rank]))
     if parameters['dataset'] == 'acdc':
-        from utils.datasets.ACDC import ACDC as dataset
+        from utils.myDatasets.ACDC import ACDC as dataset
     if parameters['architecture'] == 'mdcnn':
         from utils.models.MDCNN import MDCNN as Model
         from utils.Trainers.DDP_MDCNNTrainer import Trainer

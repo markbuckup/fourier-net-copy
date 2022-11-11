@@ -44,7 +44,7 @@ sys.path.append('/root/Cardiac-MRI-Reconstrucion/MDCNN_experiments/ACDC/{}/'.for
 
 from params import parameters
 if parameters['dataset'] == 'acdc':
-    from utils.datasets.ACDC import ACDC as dataset
+    from utils.myDatasets.ACDC import ACDC as dataset
     args.dataset_path = '../../datasets/ACDC'
 
 # sys.path.append('/root/Cardiac-MRI-Reconstrucion/MDCNN_experiments/ACDC/{}/'.format(args.run_id))
