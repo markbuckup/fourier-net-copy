@@ -24,9 +24,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
 os.environ['display'] = 'localhost:14.0'
-from utils.myDatasets import ACDC
 from utils.DDP_paradigms import train_paradigm, test_paradigm
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--resume', action = 'store_true')
@@ -39,12 +37,17 @@ parser.add_argument('--run_id', type = str, required = True)
 parser.add_argument('--state', type = int, default = -1)
 parser.add_argument('--gpu', nargs='+', type = int, default = [-1])
 parser.add_argument('--neptune_log', action = 'store_true')
-parser.add_argument('--dataset_path', type= str, default = '../../datasets/ACDC')
 # parser.add_argument('--gpu', type = int, default = '-1')
 args = parser.parse_args()
 
 sys.path.append('/root/Cardiac-MRI-Reconstrucion/MDCNN_experiments/ACDC/{}/'.format(args.run_id))
+
 from params import parameters
+if parameters['dataset'] == 'acdc':
+    from utils.datasets.ACDC import ACDC as dataset
+    args.dataset_path = '../../datasets/ACDC'
+
+# sys.path.append('/root/Cardiac-MRI-Reconstrucion/MDCNN_experiments/ACDC/{}/'.format(args.run_id))
 
 def seed_torch(seed=0):
     random.seed(seed)
@@ -88,17 +91,11 @@ if not os.path.isdir(os.path.join(args.run_id, './results/test')):
 
 if __name__ == '__main__':
     world_size = len(args.gpu) 
-    trainset = ACDC(
+    trainset = dataset(
                         args.dataset_path, 
+                        parameters,
                         train = True, 
-                        train_split = parameters['train_test_split'], 
-                        norm = parameters['normalisation'], 
-                        resolution = parameters['image_resolution'], 
-                        window_size = parameters['window_size'], 
-                        ft_num_radial_views = parameters['FT_radial_sampling'], 
-                        predict_mode = parameters['predicted_frame'], 
-                        num_coils = parameters['num_coils'],
-                        memoise_disable = parameters['memoise_disable']
+                        blank = False,
                     )
     shared_data = trainset.get_shared_lists()
     if args.eval:

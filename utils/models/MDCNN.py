@@ -8,11 +8,11 @@ import os
 import sys
 sys.path.append('../')
 import matplotlib.pyplot as plt
-import utils.complexCNNs.cmplx_conv as cmplx_conv
-import utils.complexCNNs.cmplx_dropout as cmplx_dropout
-import utils.complexCNNs.cmplx_upsample as cmplx_upsample
-import utils.complexCNNs.cmplx_activation as cmplx_activation
-import utils.complexCNNs.radial_bn as radial_bn
+import utils.models.complexCNNs.cmplx_conv as cmplx_conv
+import utils.models.complexCNNs.cmplx_dropout as cmplx_dropout
+import utils.models.complexCNNs.cmplx_upsample as cmplx_upsample
+import utils.models.complexCNNs.cmplx_activation as cmplx_activation
+import utils.models.complexCNNs.radial_bn as radial_bn
 
 EPS = 1e-10
 
@@ -161,47 +161,58 @@ class CoupledUpReal(nn.Module):
 
 
 class ImageSpaceModel(nn.Module):
-    def __init__(self, num_coils = 8, num_window = 7):
+    def __init__(self, num_coils = 8, num_window = 7, image_space_real = False):
         super(ImageSpaceModel, self).__init__()
+        self.image_space_real = image_space_real
         self.num_coils = num_coils
-        self.block1 = nn.Sequential(
-                cmplx_conv.ComplexConv3d(self.num_coils, 2*self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
-                cmplx_activation.CReLU(),
-                radial_bn.RadialBatchNorm3d(2*self.num_coils),
-                cmplx_conv.ComplexConv3d(2*self.num_coils, self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
-                cmplx_activation.CReLU(),
-                radial_bn.RadialBatchNorm3d(self.num_coils),
-                # nn.Conv3d(self.num_coils, 2*self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
-                # nn.ReLU(),
-                # nn.BatchNorm3d(2*self.num_coils),
-                # nn.Conv3d(2*self.num_coils, self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
-                # nn.ReLU(),
-                # nn.BatchNorm3d(self.num_coils),
-            )
-        self.down1 = CoupledDown(num_coils*num_window, [32,32])
-        self.down2 = CoupledDown(32, [64,64])
-        self.down3 = CoupledDown(64, [128,128])
-        self.up1 = CoupledUp(128, [256,128])
-        self.up2 = CoupledUp(256, [128,64])
-        self.up3 = CoupledUp(128, [64,32])
-        self.finalblock = nn.Sequential(
-                cmplx_conv.ComplexConv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
-                cmplx_activation.CReLU(),
-                radial_bn.RadialBatchNorm2d(32),
-                cmplx_conv.ComplexConv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
-                cmplx_activation.CReLU(),
-                radial_bn.RadialBatchNorm2d(32),
-                cmplx_conv.ComplexConv2d(32, 1,     (3,3), stride = (1,1), padding = (1,1)),
-            )
-        # self.finalblock = nn.Sequential(
-        #         nn.Conv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
-        #         nn.ReLU(),
-        #         nn.BatchNorm2d(32),
-        #         nn.Conv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
-        #         nn.ReLU(),
-        #         nn.BatchNorm2d(32),
-        #         nn.Conv2d(32, 1, (3,3), stride = (1,1), padding = (1,1)),
-        #     )
+        if self.image_space_real:
+            self.block1 = nn.Sequential(
+                    nn.Conv3d(self.num_coils, 2*self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
+                    nn.ReLU(),
+                    nn.BatchNorm3d(2*self.num_coils),
+                    nn.Conv3d(2*self.num_coils, self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
+                    nn.ReLU(),
+                    nn.BatchNorm3d(self.num_coils),
+                )
+            self.down1 = CoupledDownReal(num_coils*num_window, [32,32])
+            self.down2 = CoupledDownReal(32, [64,64])
+            self.down3 = CoupledDownReal(64, [128,128])
+            self.up1 = CoupledUpReal(128, [256,128])
+            self.up2 = CoupledUpReal(256, [128,64])
+            self.up3 = CoupledUpReal(128, [64,32])
+            self.finalblock = nn.Sequential(
+                    nn.Conv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    nn.ReLU(),
+                    nn.BatchNorm2d(32),
+                    nn.Conv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    nn.ReLU(),
+                    nn.BatchNorm2d(32),
+                    nn.Conv2d(32, 1, (3,3), stride = (1,1), padding = (1,1)),
+                )
+        else:
+            self.block1 = nn.Sequential(
+                    cmplx_conv.ComplexConv3d(self.num_coils, 2*self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
+                    cmplx_activation.CReLU(),
+                    radial_bn.RadialBatchNorm3d(2*self.num_coils),
+                    cmplx_conv.ComplexConv3d(2*self.num_coils, self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
+                    cmplx_activation.CReLU(),
+                    radial_bn.RadialBatchNorm3d(self.num_coils)
+                )
+            self.down1 = CoupledDown(num_coils*num_window, [32,32])
+            self.down2 = CoupledDown(32, [64,64])
+            self.down3 = CoupledDown(64, [128,128])
+            self.up1 = CoupledUp(128, [256,128])
+            self.up2 = CoupledUp(256, [128,64])
+            self.up3 = CoupledUp(128, [64,32])
+            self.finalblock = nn.Sequential(
+                    cmplx_conv.ComplexConv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    cmplx_activation.CReLU(),
+                    radial_bn.RadialBatchNorm2d(32),
+                    cmplx_conv.ComplexConv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    cmplx_activation.CReLU(),
+                    radial_bn.RadialBatchNorm2d(32),
+                    cmplx_conv.ComplexConv2d(32, 1,     (3,3), stride = (1,1), padding = (1,1)),
+                )
         self.train_mode = True
 
     def train_mode_set(self, bool = True):
@@ -216,11 +227,15 @@ class ImageSpaceModel(nn.Module):
 
     def forward(self, x):
         if self.train_mode:
-            x1 = self.block1(x).view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4], x.shape[5])
+            x1 = self.block1(x)
             # x1 = self.block1(x).view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4])
         else:
-            x1 = no_bn_forward(self.block1, x).view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4], x.shape[5])
+            x1 = no_bn_forward(self.block1, x)
             # x1 = no_bn_forward(self.block1, x).view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4])
+        if self.image_space_real:
+            x1 = x1.view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4])
+        else:
+            x1 = x1.view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4], x.shape[5])
         x2hat, x2 = self.down1(x1)
         x3hat, x3 = self.down2(x2)
         x4hat, x4 = self.down3(x3)
@@ -234,12 +249,14 @@ class ImageSpaceModel(nn.Module):
         return x8
 
 class MDCNN(nn.Module):
-    def __init__(self, num_coils, num_window):
+    def __init__(self, parameters):
         super(MDCNN, self).__init__()
-        self.num_window = num_window
-        self.num_coils = num_coils
-        self.kspacem = KspaceModel(num_coils = num_coils)
-        self.imspacem = ImageSpaceModel(num_coils = num_coils, num_window = num_window)
+        self.t_parameters = parameters
+        self.num_window = parameters['window_size']
+        self.num_coils = parameters['num_coils']
+        self.image_space_real = parameters['image_space_real']
+        self.kspacem = KspaceModel(num_coils = self.num_coils)
+        self.imspacem = ImageSpaceModel(num_coils = self.num_coils, num_window = self.num_window, image_space_real = self.image_space_real)
         self.train_mode = True
 
     def forward(self, x):
@@ -250,9 +267,12 @@ class MDCNN(nn.Module):
         real, imag = torch.unbind(x1, -1)
         fftshifted = torch.complex(real, imag)
         x2 = torch.fft.ifft2(torch.fft.ifftshift(fftshifted.exp(), dim = (-2, -1)))
-        x3 = torch.stack([x2.real, x2.imag], dim=-1)
-        
-        ans = (self.imspacem(x3).pow(2).sum(-1)+EPS).pow(0.5).clip(-1,1)
+        if self.image_space_real:
+            x3 = x2.real
+            ans = self.imspacem(x3)
+        else:
+            x3 = torch.stack([x2.real, x2.imag], dim=-1)
+            ans = (self.imspacem(x3).pow(2).sum(-1)+EPS).pow(0.5)
         return x1, ans
         # return x1, self.imspacem(x3)
 

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter
-from utils.complexCNNs.polar_transforms import (
+from utils.models.complexCNNs.polar_transforms import (
     convert_polar_to_cylindrical,
     convert_cylindrical_to_polar
 )

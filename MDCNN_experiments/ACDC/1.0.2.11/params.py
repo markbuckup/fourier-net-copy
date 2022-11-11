@@ -1,6 +1,14 @@
 parameters = {}
-parameters['train_batch_size'] = 100
-parameters['test_batch_size'] = 100
+parameters['image_resolution'] = 64
+if parameters['image_resolution'] == 256:
+    parameters['train_batch_size'] = 8
+    parameters['test_batch_size'] = 8
+elif parameters['image_resolution'] == 128:
+    parameters['train_batch_size'] = 23
+    parameters['test_batch_size'] = 23
+elif parameters['image_resolution'] == 64:
+    parameters['train_batch_size'] = 70
+    parameters['test_batch_size'] = 70
 parameters['lr_kspace'] = 1e-5
 parameters['lr_ispace'] = 3e-4
 parameters['num_epochs'] = 50
@@ -8,11 +16,10 @@ parameters['architecture'] = 'mdcnn'
 parameters['dataset'] = 'acdc'
 parameters['train_test_split'] = 0.8
 parameters['normalisation'] = False
-parameters['image_resolution'] = 64
 parameters['window_size'] = 7
-parameters['FT_radial_sampling'] = 112
+parameters['FT_radial_sampling'] = 2
 parameters['predicted_frame'] = 'middle'
-parameters['num_coils'] = 1
+parameters['num_coils'] = 8
 parameters['dataloader_num_workers'] = 0
 parameters['optimizer'] = 'Adam'
 parameters['scheduler'] = 'StepLR'

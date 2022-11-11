@@ -17,7 +17,7 @@ import utils
 from utils.watsonLoss.watson_fft import WatsonDistanceFft
 from utils.watsonLoss.shift_wrapper import ShiftWrapper
 from utils.watsonLoss.color_wrapper import ColorWrapper
-from utils.complexCNNs.polar_transforms import (
+from utils.models.complexCNNs.polar_transforms import (
     convert_cylindrical_to_polar,
     convert_polar_to_cylindrical,
 )

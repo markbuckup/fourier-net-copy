@@ -246,7 +246,11 @@ class Trainer(nn.Module):
         beta1 = self.parameters['beta1']
         beta2 = self.parameters['beta2']
         self.trainloader.sampler.set_epoch(epoch)
-        for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | Epoch {}".format(os.getpid(), epoch)):
+        if self.ddp_rank == 0:
+            tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | Epoch {}".format(os.getpid(), epoch))
+        else:
+            tqdm_object = enumerate(self.trainloader)
+        for i, (indices, fts, fts_masked, targets, target_fts) in tqdm_object:
             self.optim.zero_grad(set_to_none=True)
             # with autocast(enabled = self.parameters['Automatic_Mixed_Precision'], dtype=torch.float32):
             # with autocast(enabled = self.parameters['Automatic_Mixed_Precision']):
@@ -320,17 +324,21 @@ class Trainer(nn.Module):
         avg_ssim_score = 0
         avg_l1_loss = 0
         avg_l2_loss = 0
-        # it = 0
+        it = 0
         with torch.no_grad():
-            for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr)):
+            if self.ddp_rank == 0:
+                tqdm_object = tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr))
+            else:
+                tqdm_object = enumerate(dloader)
+            for i, (indices, fts, fts_masked, targets, target_fts) in tqdm_object:
                 # self.model.module.train_mode_set(False)
-                # if it < 71:
-                #     it += 1
-                #     continue
+                if it < 71:
+                    it += 1
+                    continue
                 self.model.eval()
                 ft_preds, preds = self.model(fts_masked.to(self.device))
                 avglossrecon += self.criterion(preds, targets.to(self.device)).item()/(len(dloader))
-                # it += 1
+                it += 1
                 avg_ssim_score += (1-self.ssimloss(preds, targets.to(self.device))).item()/(len(dloader))
                 avg_l1_loss += self.l1loss(preds, targets.to(self.device)).item()/(len(dloader))
                 avg_l2_loss += self.l2loss(preds, targets.to(self.device)).item()/(len(dloader))

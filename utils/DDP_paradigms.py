@@ -34,9 +34,6 @@ def cleanup():
     dist.destroy_process_group()
 
 sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
-from utils.MDCNN import MDCNN
-from utils.myDatasets import ACDC
-from utils.Trainers.DDP_MDCNNTrainer import Trainer
 
 SAVE_INTERVAL = 1
 
@@ -44,32 +41,23 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
     torch.cuda.set_device(args.gpu[rank])
     setup(rank, world_size, args)
     proc_device = torch.device('cuda:{}'.format(args.gpu[rank]))
-
-    trainset = ACDC(
+    
+    if parameters['dataset'] == 'acdc':
+        from utils.datasets.ACDC import ACDC as dataset
+    if parameters['architecture'] == 'mdcnn':
+        from utils.models.MDCNN import MDCNN as Model
+        from utils.Trainers.DDP_MDCNNTrainer import Trainer
+    trainset = dataset(
                         args.dataset_path, 
+                        parameters,
                         train = True, 
-                        train_split = parameters['train_test_split'], 
-                        norm = parameters['normalisation'], 
-                        resolution = parameters['image_resolution'], 
-                        window_size = parameters['window_size'], 
-                        ft_num_radial_views = parameters['FT_radial_sampling'], 
-                        predict_mode = parameters['predicted_frame'], 
-                        num_coils = parameters['num_coils'],
                         blank = True,
-                        memoise_disable = parameters['memoise_disable']
                     )
-    testset = ACDC(
+    testset = dataset(
                         args.dataset_path, 
+                        parameters,
                         train = False, 
-                        train_split = parameters['train_test_split'], 
-                        norm = parameters['normalisation'], 
-                        resolution = parameters['image_resolution'], 
-                        window_size = parameters['window_size'], 
-                        ft_num_radial_views = parameters['FT_radial_sampling'], 
-                        predict_mode = parameters['predicted_frame'], 
-                        num_coils = parameters['num_coils'],
                         blank = True,
-                        memoise_disable = parameters['memoise_disable']
                     )
 
     trainset.set_shared_lists(shared_data)
@@ -78,7 +66,7 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
     trainset.rest_init()
     testset.rest_init()
 
-    model = MDCNN(parameters['num_coils'],parameters['window_size']).to(proc_device)
+    model = Model(parameters).to(proc_device)
     checkpoint_path = os.path.join(args.run_id, './checkpoints/')
 
     parameters['GPUs'] = args.gpu
@@ -87,14 +75,14 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
             if os.path.isfile(checkpoint_path + 'neptune_run.pth'):
                 run_id = torch.load(checkpoint_path + 'neptune_run.pth', map_location = torch.device('cpu'))['run_id']
                 run = neptune.init_run(
-                    project="nirajmahajan/MDCNN-ACDC",
+                    project="fcrl/Cardiac-MRI-Reconstruction",
                     with_id=run_id,
                     name = args.run_id,
                     api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZDU2NDJjMy1lNzczLTRkZDEtODAwYy01MWFlM2VmN2Q4ZTEifQ==",
                 )
             else:
                 run = neptune.init_run(
-                    project="nirajmahajan/MDCNN-ACDC",
+                    project="fcrl/Cardiac-MRI-Reconstruction",
                     name = args.run_id,
                     api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZDU2NDJjMy1lNzczLTRkZDEtODAwYy01MWFlM2VmN2Q4ZTEifQ==",
                 )
@@ -214,32 +202,22 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
     torch.cuda.set_device(args.gpu[rank])
     setup(rank, world_size, args)
     proc_device = torch.device('cuda:{}'.format(args.gpu[rank]))
-
-    trainset = ACDC(
+    if parameters['dataset'] == 'acdc':
+        from utils.datasets.ACDC import ACDC as dataset
+    if parameters['architecture'] == 'mdcnn':
+        from utils.models.MDCNN import MDCNN as Model
+        from utils.Trainers.DDP_MDCNNTrainer import Trainer
+    trainset = dataset(
                         args.dataset_path, 
+                        parameters,
                         train = True, 
-                        train_split = parameters['train_test_split'], 
-                        norm = parameters['normalisation'], 
-                        resolution = parameters['image_resolution'], 
-                        window_size = parameters['window_size'], 
-                        ft_num_radial_views = parameters['FT_radial_sampling'], 
-                        predict_mode = parameters['predicted_frame'], 
-                        num_coils = parameters['num_coils'],
                         blank = True,
-                        memoise_disable = parameters['memoise_disable']
                     )
-    testset = ACDC(
+    testset = dataset(
                         args.dataset_path, 
+                        parameters,
                         train = False, 
-                        train_split = parameters['train_test_split'], 
-                        norm = parameters['normalisation'], 
-                        resolution = parameters['image_resolution'], 
-                        window_size = parameters['window_size'], 
-                        ft_num_radial_views = parameters['FT_radial_sampling'], 
-                        predict_mode = parameters['predicted_frame'], 
-                        num_coils = parameters['num_coils'],
                         blank = True,
-                        memoise_disable = parameters['memoise_disable']
                     )
 
     trainset.set_shared_lists(shared_data)
@@ -248,7 +226,7 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
     trainset.rest_init()
     testset.rest_init()
 
-    model = MDCNN(parameters['num_coils'],parameters['window_size']).to(proc_device)
+    model = Model(parameters).to(proc_device)
     checkpoint_path = os.path.join(args.run_id, './checkpoints/')
 
     if rank == 0:
@@ -256,14 +234,14 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
             if os.path.isfile(checkpoint_path + 'neptune_run.pth'):
                 run_id = torch.load(checkpoint_path + 'neptune_run.pth', map_location = torch.device('cpu'))['run_id']
                 run = neptune.init_run(
-                    project="nirajmahajan/MDCNN-ACDC",
+                    project="fcrl/Cardiac-MRI-Reconstruction",
                     with_id=run_id,
                     name = args.run_id,
                     api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZDU2NDJjMy1lNzczLTRkZDEtODAwYy01MWFlM2VmN2Q4ZTEifQ==",
                 )
             else:
                 run = neptune.init_run(
-                    project="nirajmahajan/MDCNN-ACDC",
+                    project="fcrl/Cardiac-MRI-Reconstruction",
                     name = args.run_id,
                     api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZDU2NDJjMy1lNzczLTRkZDEtODAwYy01MWFlM2VmN2Q4ZTEifQ==",
                 )

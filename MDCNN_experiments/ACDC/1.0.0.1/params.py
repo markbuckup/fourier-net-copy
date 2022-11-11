@@ -4,6 +4,8 @@ parameters['test_batch_size'] = 140
 parameters['lr_kspace'] = 1e-5
 parameters['lr_ispace'] = 3e-4
 parameters['num_epochs'] = 50
+parameters['architecture'] = 'mdcnn'
+parameters['dataset'] = 'acdc'
 parameters['train_test_split'] = 0.8
 parameters['normalisation'] = False
 parameters['image_resolution'] = 64
@@ -14,6 +16,8 @@ parameters['num_coils'] = 8
 parameters['dataloader_num_workers'] = 0
 parameters['optimizer'] = 'Adam'
 parameters['scheduler'] = 'StepLR'
+parameters['memoise_disable'] = False
+parameters['image_space_real'] = False
 parameters['optimizer_params'] = (0.9, 0.999)
 parameters['scheduler_params'] = {
     'base_lr': 3e-4,
