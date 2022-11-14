@@ -23,7 +23,7 @@ else:
     elif parameters['image_resolution'] == 64:
         parameters['train_batch_size'] = 70
         parameters['test_batch_size'] = 70
-parameters['FT_radial_sampling'] = 14
+parameters['FT_radial_sampling'] = 1
 parameters['predicted_frame'] = 'middle'
 parameters['num_coils'] = 8
 parameters['dataloader_num_workers'] = 0
@@ -43,9 +43,9 @@ parameters['scheduler_params'] = {
 }
 parameters['loss_recon'] = 'L2'
 parameters['loss_FT'] = 'None'
-parameters['loss_reconstructed_FT'] = 'Cosine-L1'
+parameters['loss_reconstructed_FT'] = 'None'
 parameters['beta1'] = 1
-parameters['beta2'] = 0.02
+parameters['beta2'] = 0.5
 parameters['Automatic_Mixed_Precision'] = False
 parameters['loss_params'] = {
     'SSIM_window': 11,

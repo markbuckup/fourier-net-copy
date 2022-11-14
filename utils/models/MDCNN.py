@@ -224,7 +224,6 @@ class ImageSpaceModel(nn.Module):
         self.up2.train_mode_set(bool)
         self.up3.train_mode_set(bool)
 
-
     def forward(self, x):
         if self.train_mode:
             x1 = self.block1(x)
@@ -247,6 +246,87 @@ class ImageSpaceModel(nn.Module):
         else:
             x8 = no_bn_forward(self.finalblock, torch.cat((x7,x2hat),1))
         return x8
+
+class ImageSpaceDecoder(nn.Module):
+    def __init__(self, num_coils = 8, num_window = 7, image_space_real = False):
+        super(ImageSpaceDecoder, self).__init__()
+        self.image_space_real = image_space_real
+        self.num_coils = num_coils
+        if self.image_space_real:
+            self.up1 = CoupledUpReal(128, [256,128])
+            self.up2 = CoupledUpReal(256, [128,64])
+            self.up3 = CoupledUpReal(128, [64,32])
+            self.finalblock = nn.Sequential(
+                    nn.Conv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    nn.ReLU(),
+                    nn.BatchNorm2d(32),
+                    nn.Conv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    nn.ReLU(),
+                    nn.BatchNorm2d(32),
+                    nn.Conv2d(32, 1, (3,3), stride = (1,1), padding = (1,1)),
+                )
+        else:
+            self.up1 = CoupledUp(128, [256,128])
+            self.up2 = CoupledUp(256, [128,64])
+            self.up3 = CoupledUp(128, [64,32])
+            self.finalblock = nn.Sequential(
+                    cmplx_conv.ComplexConv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    cmplx_activation.CReLU(),
+                    radial_bn.RadialBatchNorm2d(32),
+                    cmplx_conv.ComplexConv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    cmplx_activation.CReLU(),
+                    radial_bn.RadialBatchNorm2d(32),
+                    cmplx_conv.ComplexConv2d(32, 1,     (3,3), stride = (1,1), padding = (1,1)),
+                )
+    def forward_decode(self, x4, x2hat, x3hat, x4hat):
+        x5 = self.up1(x4)
+        x6 = self.up2(torch.cat((x5,x4hat),1))
+        x7 = self.up3(torch.cat((x6,x3hat),1))
+        x8 = self.finalblock(torch.cat((x7,x2hat),1))
+        return x8
+        
+
+class ImageSpaceEncoder(nn.Module):
+    def __init__(self, num_coils = 8, num_window = 7, image_space_real = False):
+        super(ImageSpaceEncoder, self).__init__()
+        self.image_space_real = image_space_real
+        self.num_coils = num_coils
+        if self.image_space_real:
+            self.block1 = nn.Sequential(
+                    nn.Conv3d(self.num_coils, 2*self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
+                    nn.ReLU(),
+                    nn.BatchNorm3d(2*self.num_coils),
+                    nn.Conv3d(2*self.num_coils, self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
+                    nn.ReLU(),
+                    nn.BatchNorm3d(self.num_coils),
+                )
+            self.down1 = CoupledDownReal(num_coils*num_window, [32,32])
+            self.down2 = CoupledDownReal(32, [64,64])
+            self.down3 = CoupledDownReal(64, [128,128])
+            
+        else:
+            self.block1 = nn.Sequential(
+                    cmplx_conv.ComplexConv3d(self.num_coils, 2*self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
+                    cmplx_activation.CReLU(),
+                    radial_bn.RadialBatchNorm3d(2*self.num_coils),
+                    cmplx_conv.ComplexConv3d(2*self.num_coils, self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
+                    cmplx_activation.CReLU(),
+                    radial_bn.RadialBatchNorm3d(self.num_coils)
+                )
+            self.down1 = CoupledDown(num_coils*num_window, [32,32])
+            self.down2 = CoupledDown(32, [64,64])
+            self.down3 = CoupledDown(64, [128,128])
+
+    def forward(self, x):
+        x1 = self.block1(x)
+        if self.image_space_real:
+            x1 = x1.view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4])
+        else:
+            x1 = x1.view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4], x.shape[5])
+        x2hat, x2 = self.down1(x1)
+        x3hat, x3 = self.down2(x2)
+        x4hat, x4 = self.down3(x3)
+        return [x4, x2hat, x3hat, x4hat]
 
 class MDCNN(nn.Module):
     def __init__(self, parameters):

@@ -382,7 +382,10 @@ class Trainer(nn.Module):
             for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(dloader), total = 1+num_plots//self.parameters['test_batch_size']):
                 if not os.path.exists(os.path.join(self.args.run_id, './results/input/')):
                     os.mkdir(os.path.join(self.args.run_id, './results/input/'))
+                if not os.path.exists(os.path.join(self.args.run_id, './results/input2/')):
+                    os.mkdir(os.path.join(self.args.run_id, './results/input2/'))
                 input_save(fts[0], fts_masked[0], targets[0], os.path.join(self.args.run_id, './results/input/'))
+                input_save(fts[1], fts_masked[1], targets[1], os.path.join(self.args.run_id, './results/input2/'))
                 # self.model.module.train_mode_set(False)
                 self.model.eval()
                 ft_preds, preds = self.model(fts_masked.to(self.device))
