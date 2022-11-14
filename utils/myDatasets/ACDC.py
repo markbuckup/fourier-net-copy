@@ -151,7 +151,7 @@ class ACDC(Dataset):
         cls.train_num_mem = data[11]
         cls.test_num_mem = data[12]
 
-    def __init__(self, path, parameters, train = True, blank = False):
+    def __init__(self, path, parameters, train = True, blank = False, window_mode = True):
         super(ACDC, self).__init__()
         self.path = path
         self.train = train
@@ -164,6 +164,7 @@ class ACDC(Dataset):
         self.ft_num_radial_views = parameters['FT_radial_sampling']
         self.norm = parameters['normalisation']
         self.memoise_disable = parameters['memoise_disable']
+        self.window_mode = window_mode
         assert(self.window_size % 2 != 0)
         self.predict_mode = parameters['predicted_frame']
         assert(self.predict_mode in ['middle', 'last'])
@@ -195,17 +196,29 @@ class ACDC(Dataset):
         self.num_vids_per_patient = np.array([x.shape[0] for x in self.data])
         self.frames_per_vid_per_patient = np.array([x.shape[1] for x in self.data])
         self.vid_frame_cumsum = np.cumsum(self.num_vids_per_patient*self.frames_per_vid_per_patient)
+        self.vid_cumsum = np.cumsum(self.num_vids_per_patient)
 
-        self.num_videos = int((self.num_vids_per_patient*self.frames_per_vid_per_patient).sum())
+        if self.window_mode:
+            self.num_videos = int((self.num_vids_per_patient*self.frames_per_vid_per_patient).sum())
+        else:
+            self.num_videos = int(self.num_vids_per_patient.sum())
 
     def index_to_location(self, i):
-        p_num = (self.vid_frame_cumsum <= i).sum()
-        if p_num == 0:
-            index_num = i
+        if self.window_mode:
+            p_num = (self.vid_frame_cumsum <= i).sum()
+            if p_num == 0:
+                index_num = i
+            else:
+                index_num = i - self.vid_frame_cumsum[p_num-1]
+            v_num = index_num // self.frames_per_vid_per_patient[p_num]
+            f_num = index_num % self.frames_per_vid_per_patient[p_num]
         else:
-            index_num = i - self.vid_frame_cumsum[p_num-1]
-        v_num = index_num // self.frames_per_vid_per_patient[p_num]
-        f_num = index_num % self.frames_per_vid_per_patient[p_num]
+            p_num = (self.vid_cumsum <= i).sum()
+            if p_num == 0:
+                v_num = i
+            else:
+                v_num = i - self.vid_cumsum[p_num-1]
+            f_num = None
             
         return p_num, v_num, f_num
 
@@ -233,22 +246,49 @@ class ACDC(Dataset):
             indexed_ft_data = torch.stack((temp.real, temp.imag), -1)[v_num,:,:,:,:]
         else:
             indexed_ft_data = self.ft_data[p_num][v_num,:,:,:,:]
-        indices = torch.arange(f_num,f_num + self.window_size)%self.frames_per_vid_per_patient[p_num]
+        if self.window_mode:
+            indices = torch.arange(f_num,f_num + self.window_size)%self.frames_per_vid_per_patient[p_num]
+        else:
+            indices = torch.arange(self.frames_per_vid_per_patient[p_num])
         r_ft_data = indexed_ft_data[indices,:,:,:].permute(1,0,2,3,4)
-        target = self.data[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:].type(torch.float64)
-        target = target/255.
+        if self.window_mode:
+            target = self.data[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:].type(torch.float64)
+            target = target/255.
+        else:
+            target = self.data[p_num][v_num, :,:,:,:].type(torch.float64)
+            target = target/255.
         if self.norm:
             target = (target-self.mu)/self.std
             r_ft_data[:,:,:,:,0] = (r_ft_data[:,:,:,:,0]-self.ft_mu_r)/self.ft_std_r
             r_ft_data[:,:,:,:,1] = (r_ft_data[:,:,:,:,1]-self.ft_mu_i)/self.ft_std_i
         
-        golden_bars_indices = torch.arange(i,i+self.ft_num_radial_views*self.window_size)%self.num_golden_cycle
-        selection = self.golden_bars[golden_bars_indices,:,:].reshape(self.window_size, self.ft_num_radial_views, self.resolution, self.resolution)
+        if self.window_mode:
+            golden_bars_indices = torch.arange(i,i+self.ft_num_radial_views*self.window_size)%self.num_golden_cycle
+        else:
+            if p_num > 0:
+                done_till_now = self.vid_frame_cumsum[p_num-1]
+            else:
+                done_till_now = 0
+            if v_num > 0:
+                done_till_now += self.frames_per_vid_per_patient[p_num]*(v_num-1)
+
+            golden_bars_indices = torch.arange(done_till_now,done_till_now+self.ft_num_radial_views*self.frames_per_vid_per_patient[p_num])%self.num_golden_cycle
+        selection = self.golden_bars[golden_bars_indices,:,:].reshape(-1, self.ft_num_radial_views, self.resolution, self.resolution)
         current_window_mask = selection.sum(1).sign().float()
         
         ft_masked = r_ft_data * current_window_mask.unsqueeze(0).unsqueeze(-1)
-        target_ft = self.data_fft[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:]
+        
+        if self.window_mode:
+            target_ft = self.data_fft[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:]
+        else:
+            target_ft = self.data_fft[p_num][v_num, :,:,:,:]
 
+        if f_num is None:
+            f_num = -1
+            r_ft_data = r_ft_data.permute(1,0,2,3,4)
+            ft_masked = ft_masked.permute(1,0,2,3,4)
+            target = target.permute(1,0,2,3).squeeze()
+            target_ft = target_ft.permute(1,0,2,3,4).squeeze()
         return torch.tensor([p_num, v_num, f_num]), r_ft_data.float().cpu(), ft_masked.float().cpu(), target.float().cpu(), target_ft.cpu()
 
         

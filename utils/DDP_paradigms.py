@@ -47,17 +47,24 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
     if parameters['architecture'] == 'mdcnn':
         from utils.models.MDCNN import MDCNN as Model
         from utils.Trainers.DDP_MDCNNTrainer import Trainer
+        window_mode = True
+    elif 'GRU' in parameters['architecture']:
+        from utils.models.convGRU import ConvGRU as Model
+        from utils.Trainers.DDP_GRUTrainer import Trainer
+        window_mode = False
     trainset = dataset(
                         args.dataset_path, 
                         parameters,
                         train = True, 
                         blank = True,
+                        window_mode = window_mode
                     )
     testset = dataset(
                         args.dataset_path, 
                         parameters,
                         train = False, 
                         blank = True,
+                        window_mode = window_mode
                     )
 
     trainset.set_shared_lists(shared_data)
@@ -207,17 +214,24 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
     if parameters['architecture'] == 'mdcnn':
         from utils.models.MDCNN import MDCNN as Model
         from utils.Trainers.DDP_MDCNNTrainer import Trainer
+        window_mode = True
+    elif 'GRU' in parameters['architecture']:
+        from utils.models.convGRU import ConvGRU as Model
+        from utils.Trainers.DDP_GRUTrainer import Trainer
+        window_mode = False
     trainset = dataset(
                         args.dataset_path, 
                         parameters,
                         train = True, 
                         blank = True,
+                        window_mode = window_mode
                     )
     testset = dataset(
                         args.dataset_path, 
                         parameters,
                         train = False, 
                         blank = True,
+                        window_mode = window_mode
                     )
 
     trainset.set_shared_lists(shared_data)

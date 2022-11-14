@@ -50,31 +50,31 @@ class ConvGRU(nn.Module):
         self.num_coils = parameters['num_coils']
         self.image_space_real = parameters['image_space_real']
         if parameters['architecture'] == 'ConvGRU1':
-            self.m1 = IFFT_module(parameters)
-            self.m2 = GRUImageSpaceEncoder(in_channels = self.num_coils, out_channels = 128, image_space_real = self.image_space_real)
-            self.m3 = GRUImageSpaceDecoder(in_channels = 128, image_space_real = self.image_space_real)
-            self.post_model = lambda x:self.m3(*self.m2(self.m1(*x)))
+            self.ifft_m = IFFT_module(parameters)
+            self.encoder_m = GRUImageSpaceEncoder(in_channels = self.num_coils, out_channels = 128, image_space_real = self.image_space_real)
+            self.decoder_m = GRUImageSpaceDecoder(in_channels = 128, image_space_real = self.image_space_real)
+            self.post_model = lambda x:self.decoder_m(*self.encoder_m(self.ifft_m(*x)))
             self.pre_model = lambda x:[x]
             self.gate_model = lambda :GRUGate_KSpace(parameters)
             self.hidden_chan = [parameters['num_coils']]
             self.hidden_real = False
         elif parameters['architecture'] == 'ConvGRU2':
-            self.m1 = IFFT_module(parameters)
-            self.m2 = GRUImageSpaceEncoder(in_channels = self.num_coils, out_channels = 128, image_space_real = self.image_space_real)
-            self.m3 = GRUImageSpaceDecoder(in_channels = 128, image_space_real = self.image_space_real)
-            self.post_model = lambda x:self.m3(*self.m2(self.m1(*x)))
-            self.m0 = GRUKspaceModel(input_coils = parameters['num_coils'], output_coils = parameters['num_coils'])
-            self.pre_model = lambda x: [self.m0(x)]
+            self.ifft_m = IFFT_module(parameters)
+            self.encoder_m = GRUImageSpaceEncoder(in_channels = self.num_coils, out_channels = 128, image_space_real = self.image_space_real)
+            self.decoder_m = GRUImageSpaceDecoder(in_channels = 128, image_space_real = self.image_space_real)
+            self.post_model = lambda x:self.decoder_m(*self.encoder_m(self.ifft_m(*x)))
+            self.kspace_m = GRUKspaceModel(input_coils = parameters['num_coils'], output_coils = parameters['num_coils'])
+            self.pre_model = lambda x: [self.kspace_m(x)]
             self.gate_model = lambda : GRUGate_complex2d([2*parameters['num_coils']], [parameters['num_coils']])
             self.hidden_chan = [parameters['num_coils']]
             self.hidden_real = False
         elif parameters['architecture'] == 'ConvGRU3':
-            self.m1 = GRUKspaceModel(input_coils = parameters['num_coils'], output_coils = parameters['num_coils'])
-            self.m2 = IFFT_module(parameters)
-            self.m3 = GRUImageSpaceEncoder(in_channels = self.num_coils, out_channels = 128, image_space_real = self.image_space_real)
-            self.m4 = GRUImageSpaceDecoder(in_channels = 128, image_space_real = self.image_space_real)
-            self.post_model = lambda x: self.m4(*self.m3(*x))
-            self.pre_model = lambda x : [self.m2(self.m1(x))]
+            self.kspace_m = GRUKspaceModel(input_coils = parameters['num_coils'], output_coils = parameters['num_coils'])
+            self.ifft_m = IFFT_module(parameters)
+            self.encoder_m = GRUImageSpaceEncoder(in_channels = self.num_coils, out_channels = 128, image_space_real = self.image_space_real)
+            self.decoder_m = GRUImageSpaceDecoder(in_channels = 128, image_space_real = self.image_space_real)
+            self.post_model = lambda x: self.decoder_m(*self.encoder_m(*x))
+            self.pre_model = lambda x : [self.ifft_m(self.kspace_m(x))]
             if self.image_space_real:
                 self.gate_model = lambda : GRUGate_real2d([2*parameters['num_coils']], [parameters['num_coils']])
             else:
@@ -82,30 +82,30 @@ class ConvGRU(nn.Module):
             self.hidden_chan = [parameters['num_coils']]
             self.hidden_real = False
         elif parameters['architecture'] == 'ConvGRU4':
-            self.m1 = GRUKspaceModel(input_coils = parameters['num_coils'], output_coils = parameters['num_coils'])
-            self.m2 = IFFT_module(parameters)
-            self.m3 = GRUImageSpaceEncoder(in_channels = self.num_coils, out_channels = 128, image_space_real = self.image_space_real)
-            self.m4 = GRUImageSpaceDecoder(in_channels = 128, image_space_real = self.image_space_real)
-            self.post_model = lambda x: self.m4(*x)
-            self.pre_model = lambda x : self.m3(self.m2(self.m1(x)))
+            self.kspace_m = GRUKspaceModel(input_coils = parameters['num_coils'], output_coils = parameters['num_coils'])
+            self.ifft_m = IFFT_module(parameters)
+            self.encoder_m = GRUImageSpaceEncoder(in_channels = self.num_coils, out_channels = 128, image_space_real = self.image_space_real)
+            self.decoder_m = GRUImageSpaceDecoder(in_channels = 128, image_space_real = self.image_space_real)
+            self.post_model = lambda x: self.decoder_m(*x)
+            self.pre_model = lambda x : self.encoder_m(self.ifft_m(self.kspace_m(x)))
             if self.image_space_real:
-                self.gate_model = lambda : GRUGate_real2d([2*self.m3.latent_channels[0]], [self.m3.latent_channels[0]])
+                self.gate_model = lambda : GRUGate_real2d([2*self.encoder_m.latent_channels[0]], [self.encoder_m.latent_channels[0]])
             else:
-                self.gate_model = lambda : GRUGate_complex2d([2*self.m3.latent_channels[0]], [self.m3.latent_channels[0]])
-            self.hidden_chan = [self.m3.latent_channels[0]]
+                self.gate_model = lambda : GRUGate_complex2d([2*self.encoder_m.latent_channels[0]], [self.encoder_m.latent_channels[0]])
+            self.hidden_chan = [self.encoder_m.latent_channels[0]]
             self.hidden_real = self.image_space_real
         elif parameters['architecture'] == 'ConvGRU5':
-            self.m1 = GRUKspaceModel(input_coils = parameters['num_coils'], output_coils = parameters['num_coils'])
-            self.m2 = IFFT_module(parameters)
-            self.m3 = GRUImageSpaceEncoder(in_channels = self.num_coils, out_channels = 128, image_space_real = self.image_space_real)
-            self.m4 = GRUImageSpaceDecoder(in_channels = 128, image_space_real = self.image_space_real)
-            self.post_model = lambda x: self.m4(*x)
-            self.pre_model = lambda x : self.m3(self.m2(self.m1(x)))
+            self.kspace_m = GRUKspaceModel(input_coils = parameters['num_coils'], output_coils = parameters['num_coils'])
+            self.ifft_m = IFFT_module(parameters)
+            self.encoder_m = GRUImageSpaceEncoder(in_channels = self.num_coils, out_channels = 128, image_space_real = self.image_space_real)
+            self.decoder_m = GRUImageSpaceDecoder(in_channels = 128, image_space_real = self.image_space_real)
+            self.post_model = lambda x: self.decoder_m(*x)
+            self.pre_model = lambda x : self.encoder_m(self.ifft_m(self.kspace_m(x)))
             if self.image_space_real:
-                self.gate_model = lambda : GRUGate_real2d([2*self.m3.latent_channels[0]], [self.m3.latent_channels[0]])
+                self.gate_model = lambda : GRUGate_real2d([2*self.encoder_m.latent_channels[0]], [self.encoder_m.latent_channels[0]])
             else:
-                self.gate_model = lambda : GRUGate_complex2d([2*self.m3.latent_channels[0]], [self.m3.latent_channels[0]])
-            self.hidden_chan = [self.m3.latent_channels]
+                self.gate_model = lambda : GRUGate_complex2d([2*self.encoder_m.latent_channels[0]], [self.encoder_m.latent_channels[0]])
+            self.hidden_chan = [self.encoder_m.latent_channels]
             self.hidden_real = self.image_space_real
         else:
             print("Unrecognised GRU architecture mode '{}'".format(parameters['architecture']), flush = True)
@@ -121,6 +121,25 @@ class ConvGRU(nn.Module):
 
         self.cells = cells
 
+    def get_kspace_params(self):
+        if self.train_parameters['architecture'] == 'ConvGRU1':
+            ans = []
+            for ci in self.cells:
+                ans += list(ci.parameters())
+            return ans
+        else:
+            return self.kspace_m.parameters()
+
+    def get_ispace_params(self):
+        return list(self.decoder_m.parameters()) + list(self.encoder_m.parameters())
+
+    def get_gate_params(self):
+        if self.train_parameters['architecture'] == 'ConvGRU1':
+            return []
+        ans = []
+        for ci in self.cells:
+            ans += list(ci.parameters())
+        return ans
 
     def forward(self, x, hidden=None):
         '''
@@ -167,91 +186,91 @@ class ConvGRU(nn.Module):
 
         return ans
 
-parameters = {}
-parameters['image_resolution'] = 64
-if parameters['image_resolution'] == 256:
-    parameters['train_batch_size'] = 8
-    parameters['test_batch_size'] = 8
-elif parameters['image_resolution'] == 128:
-    parameters['train_batch_size'] = 23
-    parameters['test_batch_size'] = 23
-elif parameters['image_resolution'] == 64:
-    parameters['train_batch_size'] = 70
-    parameters['test_batch_size'] = 70
-parameters['lr_kspace'] = 1e-5
-parameters['lr_ispace'] = 3e-4
-parameters['init_skip_frames'] = 10
-parameters['num_epochs'] = 50
-parameters['architecture'] = 'ConvGRU1'
-parameters['dataset'] = 'acdc'
-parameters['train_test_split'] = 0.8
-parameters['normalisation'] = False
-parameters['window_size'] = 7
-if 'gru' in parameters['architecture']:
-    batch_sizes = [-1,[6,14],[6,13],[6,30],[7,34],[7,32]]
-    parameters['train_batch_size'] = batch_sizes[int(parameters['architecture'][-1])][parameters['image_space_real']]
-    parameters['test_batch_size'] = batch_sizes[int(parameters['architecture'][-1])][parameters['image_space_real']]
-else:
-    if parameters['image_resolution'] == 256:
-        parameters['train_batch_size'] = 8
-        parameters['test_batch_size'] = 8
-    elif parameters['image_resolution'] == 128:
-        parameters['train_batch_size'] = 23
-        parameters['test_batch_size'] = 23
-    elif parameters['image_resolution'] == 64:
-        parameters['train_batch_size'] = 70
-        parameters['test_batch_size'] = 70
-parameters['FT_radial_sampling'] = 2
-parameters['predicted_frame'] = 'middle'
-parameters['num_coils'] = 8
-parameters['dataloader_num_workers'] = 0
-parameters['optimizer'] = 'Adam'
-parameters['scheduler'] = 'StepLR'
-parameters['memoise_disable'] = False
-parameters['image_space_real'] = False
-parameters['optimizer_params'] = (0.9, 0.999)
-parameters['scheduler_params'] = {
-    'base_lr': 3e-4,
-    'max_lr': 1e-3,
-    'step_size_up': 10,
-    'mode': 'triangular',
-    'step_size': parameters['num_epochs']//3,
-    'gamma': 0.5,
-    'verbose': True
-}
-parameters['loss_recon'] = 'L2'
-parameters['loss_FT'] = 'None'
-parameters['loss_reconstructed_FT'] = 'None'
-parameters['beta1'] = 1
-parameters['beta2'] = 0.5
-parameters['Automatic_Mixed_Precision'] = False
-parameters['loss_params'] = {
-    'SSIM_window': 11,
-    'alpha_phase': 1,
-    'alpha_amp': 1,
-    'grayscale': True,
-    'deterministic': False,
-    'watson_pretrained': True,
-}
+# parameters = {}
+# parameters['image_resolution'] = 64
+# if parameters['image_resolution'] == 256:
+#     parameters['train_batch_size'] = 8
+#     parameters['test_batch_size'] = 8
+# elif parameters['image_resolution'] == 128:
+#     parameters['train_batch_size'] = 23
+#     parameters['test_batch_size'] = 23
+# elif parameters['image_resolution'] == 64:
+#     parameters['train_batch_size'] = 70
+#     parameters['test_batch_size'] = 70
+# parameters['lr_kspace'] = 1e-5
+# parameters['lr_ispace'] = 3e-4
+# parameters['init_skip_frames'] = 10
+# parameters['num_epochs'] = 50
+# parameters['architecture'] = 'ConvGRU1'
+# parameters['dataset'] = 'acdc'
+# parameters['train_test_split'] = 0.8
+# parameters['normalisation'] = False
+# parameters['window_size'] = 7
+# if 'gru' in parameters['architecture']:
+#     batch_sizes = [-1,[6,14],[6,13],[6,30],[7,34],[7,32]]
+#     parameters['train_batch_size'] = batch_sizes[int(parameters['architecture'][-1])][parameters['image_space_real']]
+#     parameters['test_batch_size'] = batch_sizes[int(parameters['architecture'][-1])][parameters['image_space_real']]
+# else:
+#     if parameters['image_resolution'] == 256:
+#         parameters['train_batch_size'] = 8
+#         parameters['test_batch_size'] = 8
+#     elif parameters['image_resolution'] == 128:
+#         parameters['train_batch_size'] = 23
+#         parameters['test_batch_size'] = 23
+#     elif parameters['image_resolution'] == 64:
+#         parameters['train_batch_size'] = 70
+#         parameters['test_batch_size'] = 70
+# parameters['FT_radial_sampling'] = 2
+# parameters['predicted_frame'] = 'middle'
+# parameters['num_coils'] = 8
+# parameters['dataloader_num_workers'] = 0
+# parameters['optimizer'] = 'Adam'
+# parameters['scheduler'] = 'StepLR'
+# parameters['memoise_disable'] = False
+# parameters['image_space_real'] = False
+# parameters['optimizer_params'] = (0.9, 0.999)
+# parameters['scheduler_params'] = {
+#     'base_lr': 3e-4,
+#     'max_lr': 1e-3,
+#     'step_size_up': 10,
+#     'mode': 'triangular',
+#     'step_size': parameters['num_epochs']//3,
+#     'gamma': 0.5,
+#     'verbose': True
+# }
+# parameters['loss_recon'] = 'L2'
+# parameters['loss_FT'] = 'None'
+# parameters['loss_reconstructed_FT'] = 'None'
+# parameters['beta1'] = 1
+# parameters['beta2'] = 0.5
+# parameters['Automatic_Mixed_Precision'] = False
+# parameters['loss_params'] = {
+#     'SSIM_window': 11,
+#     'alpha_phase': 1,
+#     'alpha_amp': 1,
+#     'grayscale': True,
+#     'deterministic': False,
+#     'watson_pretrained': True,
+# }
 
-batch_sizes = [-1,[6,14],[6,13],[6,30],[7,34],[7,32]]
-for i in range(1,6):
-    for j in enumerate([True, False]):
-        parameters['architecture'] = 'ConvGRU{}'.format(i)
-        parameters['image_space_real'] = j
-        print("architecture = ", parameters['architecture'])
-        print("image_space_real = ", parameters['image_space_real'])
-        start = time.time()
-        a = ConvGRU(parameters, 1).cuda(1)
-        inp  = torch.zeros(batch_sizes[i][j],34,8,64,64,2).cuda(1)
-        outp = a(inp)
-        os.system('nvidia-smi | grep 350W | head -2 | tail -1')
-        del a
-        del outp
-        del inp
-        torch.cuda.empty_cache()
-        print("Time taken = ", time.time() - start, flush = True)
-        print('',flush = True)
+# batch_sizes = [-1,[6,14],[6,13],[6,30],[7,34],[7,32]]
+# for i in range(1,6):
+#     for j in enumerate([True, False]):
+#         parameters['architecture'] = 'ConvGRU{}'.format(i)
+#         parameters['image_space_real'] = j
+#         print("architecture = ", parameters['architecture'])
+#         print("image_space_real = ", parameters['image_space_real'])
+#         start = time.time()
+#         a = ConvGRU(parameters, 1).cuda(1)
+#         inp  = torch.zeros(batch_sizes[i][j],34,8,64,64,2).cuda(1)
+#         outp = a(inp)
+#         os.system('nvidia-smi | grep 350W | head -2 | tail -1')
+#         del a
+#         del outp
+#         del inp
+#         torch.cuda.empty_cache()
+#         print("Time taken = ", time.time() - start, flush = True)
+#         print('',flush = True)
 
 
-= batch_sizes[int(parameters['architecture'][-1])][parameters['image_space_real']]
+# = batch_sizes[int(parameters['architecture'][-1])][parameters['image_space_real']]
