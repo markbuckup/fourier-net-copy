@@ -51,6 +51,20 @@ class GRUKspaceModel(nn.Module):
         x2 = self.block2(x1) + x1
         return self.block3(x2)
 
+class GRUIspaceModel(nn.Module):
+    def __init__(self, in_channels = 8, latent_channels = 128, image_space_real = False):
+        '''
+        Input size = (B), Coil, X, Y
+        '''
+        super(GRUIspaceModel, self).__init__()
+        self.encoder = GRUImageSpaceEncoder(in_channels = in_channels, out_channels = latent_channels, image_space_real = image_space_real)
+        self.decoder = GRUImageSpaceDecoder(in_channels = latent_channels, image_space_real = image_space_real)
+        
+    def forward(self, x):
+        x1 = self.encoder(x)
+        x2 = self.decoder(*x1)
+        return x2
+
 class IFFT_module(nn.Module):
     def __init__(self, parameters):
         super(IFFT_module, self).__init__()

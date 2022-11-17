@@ -13,7 +13,7 @@ import utils.models.complexCNNs.cmplx_dropout as cmplx_dropout
 import utils.models.complexCNNs.cmplx_upsample as cmplx_upsample
 import utils.models.complexCNNs.cmplx_activation as cmplx_activation
 import utils.models.complexCNNs.radial_bn as radial_bn
-from utils.models.gruComponents import GRUKspaceModel, IFFT_module
+from utils.models.gruComponents import GRUKspaceModel, GRUIspaceModel, IFFT_module
 
 class GRUGate_KSpace(nn.Module):
     """
@@ -32,6 +32,25 @@ class GRUGate_KSpace(nn.Module):
             act = torch.tanh
 
         return [act(self.kspace(x[0]))]
+
+
+class GRUGate_ISpace(nn.Module):
+    """
+    Generate a convolutional GRU cell
+    Input Shape = (B), In_Coil, X, Y
+    Output Shape = (B), Out_Coil, X, Y
+    """
+    def __init__(self, parameters):
+        super().__init__()
+        self.ispace = GRUIspaceModel(in_channels = 1+parameters['num_coils'], latent_channels = 128, image_space_real = parameters['image_space_real'])
+
+    def forward(self, x, activation = 'sigmoid'):
+        if activation == 'sigmoid':
+            act = torch.sigmoid
+        else:
+            act = torch.tanh
+
+        return [act(self.ispace(x[0]))]
 
 class GRUGate_complex2d(nn.Module):
     """
