@@ -92,12 +92,12 @@ class MDCNNGRU(nn.Module):
         
         hiddens = hidden
         if hiddens is None:
-            hiddens = []
-            for i in range(len(self.hidden_chans)):
-                if self.hidden_reals[i]:
-                    hiddens.append(torch.zeros((B, self.hidden_chans[i],X,Y), device = x.device))
-                else:
-                    hiddens.append(torch.zeros((B, self.hidden_chans[i],X,Y,complex_dim), device = x.device))
+            hiddens = [None, None]
+            # for i in range(len(self.hidden_chans)):
+            #     if self.hidden_reals[i]:
+            #         hiddens.append(torch.zeros((B, self.hidden_chans[i],X,Y), device = x.device))
+            #     else:
+            #         hiddens.append(torch.zeros((B, self.hidden_chans[i],X,Y,complex_dim), device = x.device))
         
         for ti in range(T):
             cell_kspace = self.cells[0]
@@ -110,12 +110,16 @@ class MDCNNGRU(nn.Module):
             Mode3 = B, C, 1, X, Y
             Mode4 = B, channel, X, Y
             '''
+            if hiddens[0] is None:
+                hiddens[0] = torch.zeros((B, self.hidden_chans[0],X,Y,complex_dim), device = x.device)
             iter_outp_kspace = cell_kspace(x[:,ti,:,:,:], hiddens[0])
             ispace_in = self.int_model(iter_outp_kspace)
+            if hiddens[1] is None:
+                hiddens[1] = torch.randn(ispace_in.detach()[:,0:1,:,:].shape, device = x.device)
             iter_outp_ispace = cell_ispace(ispace_in, hiddens[1])
             hiddens[0] = iter_outp_kspace
             hiddens[1] = iter_outp_ispace
-
+            
             if ans is None:
                 ans = iter_outp_ispace
             else:
@@ -126,7 +130,7 @@ class MDCNNGRU(nn.Module):
         if not self.image_space_real:
             ans = (ans**2).sum(-1)**0.5
 
-        return ans
+        return ans, [x.detach() for x in hiddens]
 
 # parameters = {}
 # parameters['image_resolution'] = 64
@@ -148,6 +152,7 @@ class MDCNNGRU(nn.Module):
 # parameters['train_test_split'] = 0.8
 # parameters['normalisation'] = False
 # parameters['window_size'] = 7
+# parameters['loop_videos'] = -1
 # if 'gru' in parameters['architecture']:
 #     batch_sizes = [-1,[6,14],[6,13],[6,30],[7,34],[7,32]]
 #     parameters['train_batch_size'] = batch_sizes[int(parameters['architecture'][-1])][parameters['image_space_real']]

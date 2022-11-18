@@ -72,8 +72,18 @@ class IFFT_module(nn.Module):
     
     def forward(self,x1):
         real, imag = torch.unbind(x1, -1)
+        real = real + EPS
+        imag = imag + EPS
         fftshifted = torch.complex(real, imag)
+        # rand = torch.complex(torch.randn(real.shape),torch.randn(real.shape)).to(x1.device)
+        #
+        # a = torch.fft.ifftshift(fftshifted.exp(), dim = (-2, -1))
+        # print(a.real.min(), a.real.max())
+        # print(a.imag.min(), a.imag.max())
+        # print()
+        # asdf
         x2 = torch.fft.ifft2(torch.fft.ifftshift(fftshifted.exp(), dim = (-2, -1)))
+        # x2 = torch.fft.ifft2(rand + 0*torch.fft.ifftshift(fftshifted.exp(), dim = (-2, -1)))
         if self.image_space_real:
             x3 = x2.real
         else:

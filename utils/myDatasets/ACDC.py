@@ -172,6 +172,8 @@ class ACDC(Dataset):
             self.target_frame = (self.window_size-1)//2
         else:
             self.target_frame = self.window_size-1
+        self.loop_videos = parameters['loop_videos']
+        self.shm_loop = parameters['SHM_looping']
         if not self.blank:
             ACDC.data_init(self.path, self.resolution, self.train_split, self.num_coils, self.memoise_disable)
         
@@ -194,9 +196,14 @@ class ACDC(Dataset):
 
         self.num_patients = len(self.data)
         self.num_vids_per_patient = np.array([x.shape[0] for x in self.data])
+        self.actual_frames_per_vid_per_patient = np.array([x.shape[1] for x in self.data])
         self.frames_per_vid_per_patient = np.array([x.shape[1] for x in self.data])
+        if self.loop_videos != -1:
+            self.frames_per_vid_per_patient *=0
+            self.frames_per_vid_per_patient += self.loop_videos
         self.vid_frame_cumsum = np.cumsum(self.num_vids_per_patient*self.frames_per_vid_per_patient)
         self.vid_cumsum = np.cumsum(self.num_vids_per_patient)
+
 
         if self.window_mode:
             self.num_videos = int((self.num_vids_per_patient*self.frames_per_vid_per_patient).sum())
@@ -219,7 +226,24 @@ class ACDC(Dataset):
             else:
                 v_num = i - self.vid_cumsum[p_num-1]
             f_num = None
-            
+
+        if self.loop_videos:
+            if self.shm_loop:
+                if f_num is not None:
+                    k = f_num
+                    n = self.actual_frames_per_vid_per_patient[p_num]
+                    if k >= n:
+                        ni = k-n
+                        inter = ni//(n-1)
+                        if inter%2 == 0:
+                            f_num = (n-2-ni%(n-1))
+                        else:
+                            f_num = 1+ni%(n-1)
+
+            else:
+                if f_num is not None:
+                    f_num = f_num%self.actual_frames_per_vid_per_patient[p_num]
+
         return p_num, v_num, f_num
 
     def __getitem__(self, i):
@@ -249,13 +273,35 @@ class ACDC(Dataset):
         if self.window_mode:
             indices = torch.arange(f_num,f_num + self.window_size)%self.frames_per_vid_per_patient[p_num]
         else:
-            indices = torch.arange(self.frames_per_vid_per_patient[p_num])
+            limit = self.frames_per_vid_per_patient[p_num]
+            max_avail = self.actual_frames_per_vid_per_patient[p_num]
+            indices = []
+            iter = 0
+            while 1:
+                iter += 1
+                if limit == 0:
+                    break
+                if iter == 1:
+                    choose = min(limit, max_avail)
+                    indices += range(choose)
+                else:
+                    choose = min(limit, max_avail-1)
+                    if self.shm_loop:
+                        if iter % 2 == 0:
+                            indices += range(max_avail-2,max_avail-2-choose,-1)
+                        else:
+                            indices += range(1,1+choose)
+                    else:
+                        indices += range(choose)
+                limit -= choose
+            indices = torch.tensor(indices)
+        
         r_ft_data = indexed_ft_data[indices,:,:,:].permute(1,0,2,3,4)
         if self.window_mode:
             target = self.data[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:].type(torch.float64)
             target = target/255.
         else:
-            target = self.data[p_num][v_num, :,:,:,:].type(torch.float64)
+            target = self.data[p_num][v_num, indices,:,:,:].type(torch.float64)
             target = target/255.
         if self.norm:
             target = (target-self.mu)/self.std
@@ -281,8 +327,8 @@ class ACDC(Dataset):
         if self.window_mode:
             target_ft = self.data_fft[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:]
         else:
-            target_ft = self.data_fft[p_num][v_num, :,:,:,:]
-
+            target_ft = self.data_fft[p_num][v_num, indices,:,:,:]
+            
         if f_num is None:
             f_num = -1
             r_ft_data = r_ft_data.permute(1,0,2,3,4)

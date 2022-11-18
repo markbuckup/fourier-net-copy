@@ -10,6 +10,8 @@ parameters['dataset'] = 'acdc'
 parameters['train_test_split'] = 0.8
 parameters['normalisation'] = False
 parameters['window_size'] = 7
+parameters['loop_videos'] = -1
+parameters['SHM_looping'] = False
 if 'gru' in parameters['architecture']:
     batch_sizes = [-1,[6,14],[6,13],[6,30],[7,34],[7,32]]
     parameters['train_batch_size'] = batch_sizes[int(parameters['architecture'][-1])][parameters['image_space_real']]

@@ -74,7 +74,7 @@ def input_save(fts, fts_masked, targets, path):
         for coili in range(num_coils):
             plt.subplot(4,num_coils,iter)
             ft = torch.complex(fts[coili,wi,:,:,0],fts[coili,wi,:,:,1])
-            outp = torch.fft.ifft2(torch.fft.ifftshift(ft.exp(), dim = (-2, -1))).real
+            outp = torch.fft.ifft2(EPS+torch.fft.ifftshift(ft.exp(), dim = (-2, -1))).real
             myimshow(outp, cmap = 'gray')
             if wi == 3:
                 plt.title('Original Image')
@@ -89,7 +89,7 @@ def input_save(fts, fts_masked, targets, path):
         for coili in range(num_coils):
             plt.subplot(4,num_coils,iter)
             ft = torch.complex(fts_masked[coili,wi,:,:,0],fts_masked[coili,wi,:,:,1])
-            outp = torch.fft.ifft2(torch.fft.ifftshift(ft.exp(), dim = (-2, -1))).real
+            outp = torch.fft.ifft2(EPS+torch.fft.ifftshift(ft.exp(), dim = (-2, -1))).real
             myimshow(outp, cmap = 'gray')
             if wi == 3:
                 plt.title('Partial Image')
@@ -103,7 +103,7 @@ def input_save(fts, fts_masked, targets, path):
         # plt.title('Averaged Complete FTs')
         # plt.subplot(2,2,2)
         # ft = avg_FT[coili,:,:]
-        # outp = torch.fft.ifft2(torch.fft.ifftshift(ft.exp(), dim = (-2, -1))).real
+        # outp = torch.fft.ifft2(EPS+torch.fft.ifftshift(ft.exp(), dim = (-2, -1))).real
         # myimshow(outp, cmap = 'gray')
         # plt.title('Complete FT - Image')
         # plt.subplot(2,2,3)
@@ -111,7 +111,7 @@ def input_save(fts, fts_masked, targets, path):
         # plt.title('Averaged Complete FTs')
         # plt.subplot(2,2,4)
         # ft = combined_ft_undersampled[coili,:,:]
-        # outp = torch.fft.ifft2(torch.fft.ifftshift(ft.exp(), dim = (-2, -1))).real
+        # outp = torch.fft.ifft2(EPS+torch.fft.ifftshift(ft.exp(), dim = (-2, -1))).real
         # myimshow(outp, cmap = 'gray')
         # plt.title('Undersampled FT - Image')
         # plt.savefig(os.path.join(path, 'combined_coil_{}.png'.format(coili)))
@@ -253,32 +253,51 @@ class Trainer(nn.Module):
         else:
             tqdm_object = enumerate(self.trainloader)
         for i, (indices, fts, fts_masked, targets, target_fts) in tqdm_object:
-            self.optim.zero_grad(set_to_none=True)
             # with autocast(enabled = self.parameters['Automatic_Mixed_Precision'], dtype=torch.float32):
             # with autocast(enabled = self.parameters['Automatic_Mixed_Precision']):
             # self.model.module.train_mode_set(True)
-            self.model.train()
             # B, T, C, X, Y, 2
-            preds = self.model(fts_masked.to(self.device))
+            mini_batch_length = 20
+            num_mini_batches = int((torch.tensor(fts_masked.shape[1])/mini_batch_length).ceil().item())
+            hiddens = None
             skipped = self.parameters['init_skip_frames']
-            targets = targets[:,skipped:]
-            preds = preds[:,skipped:]
-            loss_recon = self.criterion(preds, targets.to(self.device))
-            loss_ft = torch.tensor([0]).to(self.device)
-            loss_reconft = torch.tensor([0]).to(self.device)
-            # if self.criterion_FT is not None:
-            #     loss_ft = self.criterion_FT(ft_preds, target_fts.to(self.device))
-            if self.criterion_reconFT is not None:
-                if self.parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
-                    loss_reconft = self.criterion_reconFT(preds, targets.to(self.device))
-                else:
-                    predfft = (torch.fft.fft2(preds)+EPS).log()
-                    predfft = torch.stack((predfft.real, predfft.imag),-1)
-                    targetfft = (torch.fft.fft2(targets.to(self.device)) + EPS).log()
-                    targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
-                    loss_reconft = self.criterion_reconFT(predfft, targetfft)
-            loss = loss_recon + beta1*loss_ft + beta2*loss_reconft
-            # # print(i, loss_recon)
+            for mbi in range(num_mini_batches):
+                loss_recon = torch.tensor([0.]).to(self.device)
+                loss_ft = torch.tensor([0.]).to(self.device)
+                loss_reconft = torch.tensor([0.]).to(self.device)
+                
+                self.optim.zero_grad(set_to_none=True)
+                self.model.train()
+                start = mbi*mini_batch_length
+                end = (mbi+1)*mini_batch_length
+                preds, hiddens = self.model(fts_masked[:,start:end].to(self.device), hiddens)
+                skipped_batch = min(skipped, mini_batch_length)
+                target_batch = targets[:,start:end]
+                target_ft_batch = target_fts[:,start:end]
+                target_batch = target_batch[:,skipped_batch:]
+                target_ft_batch = target_ft_batch[:,skipped_batch:]
+                preds = preds[:,skipped_batch:]
+                skipped -= skipped_batch
+                if skipped_batch == mini_batch_length:
+                    continue
+                loss_recon += self.criterion(preds, target_batch.to(self.device))
+                if self.criterion_FT is not None:
+                    loss_ft += self.criterion_FT(ft_preds, target_ft_batch.to(self.device))
+                if self.criterion_reconFT is not None:
+                    if self.parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
+                        loss_reconft += self.criterion_reconFT(preds, target_batch.to(self.device))
+                    else:
+                        predfft = (torch.fft.fft2(EPS+preds)+EPS).log()
+                        predfft = torch.stack((predfft.real, predfft.imag),-1)
+                        targetfft = (torch.fft.fft2(EPS+target_batch.to(self.device)) + EPS).log()
+                        targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
+                        loss_reconft += self.criterion_reconFT(predfft, targetfft)
+                loss = loss_recon + beta2*loss_reconft
+                loss.backward()
+                self.optim.step()
+                avglossrecon += loss_recon.item()/(len(self.trainloader))
+                avglossft += loss_ft.item()/(len(self.trainloader))
+                avglossreconft += loss_reconft.item()/(len(self.trainloader))
             # if not torch.isfinite(loss_recon).all():
             #     print(i)
             #     # print(fts_masked.abs().sum())
@@ -287,30 +306,22 @@ class Trainer(nn.Module):
             #     asdf
             # print(beta2*loss_reconft, loss_recon, flush = True)
             
-            loss.backward()
+
             # for name, param in self.model.named_parameters():
             #     if not torch.isfinite(param.grad).all():
-            #         print(name, torch.isfinite(param.grad).all())
+            #         print(name, param.grad.abs().max())
             #     # print(name,flush = True)
-            #     # print(name, param.grad.abs().max())
-            # # asdf
-            self.optim.step()
-            # self.scaler.scale(loss).backward()
-            # self.scaler.step(self.optim)
-            # self.scaler.update()
+            # asdf
 
-            avglossrecon += loss_recon.item()/(len(self.trainloader))
-            avglossft += loss_ft.item()/(len(self.trainloader))
-            avglossreconft += loss_reconft.item()/(len(self.trainloader))
 
         if self.scheduler is not None:
             self.scheduler.step()
         if print_loss:
-            print('Average Recon Loss for Epoch {} = {}' .format(epoch, avglossrecon), flush = True)
+            print('Train Recon Loss for Epoch {} = {}' .format(epoch, avglossrecon), flush = True)
             if self.criterion_FT is not None:
-                print('Average FT Loss for Epoch {} = {}' .format(epoch, avglossft), flush = True)
+                print('Train FT Loss for Epoch {} = {}' .format(epoch, avglossft), flush = True)
             if self.criterion_reconFT is not None:
-                print('Average Recon FT Loss for Epoch {} = {}' .format(epoch, avglossreconft), flush = True)
+                print('Train Recon FT Loss for Epoch {} = {}' .format(epoch, avglossreconft), flush = True)
         return avglossrecon, avglossft, avglossreconft
 
     def evaluate(self, epoch, train = False, print_loss = False):
@@ -358,20 +369,20 @@ class Trainer(nn.Module):
                     if self.parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
                         avglossreconft += self.criterion_reconFT(preds, targets.to(self.device)).item()/(len(dloader))
                     else:
-                        predfft = (torch.fft.fft2(preds) + EPS).log()
+                        predfft = (torch.fft.fft2(EPS+preds) + EPS).log()
                         predfft = torch.stack((predfft.real, predfft.imag),-1)
-                        targetfft = (torch.fft.fft2(targets.to(self.device)) + EPS).log()
+                        targetfft = (torch.fft.fft2(EPS+targets.to(self.device)) + EPS).log()
                         targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
                         avglossreconft += self.criterion_reconFT(predfft, targetfft).item()/(len(dloader))
 
 
         if print_loss:
             print('{} Loss After {} Epochs:'.format(dstr, epoch), flush = True)
-            print('Recon Loss = {}'.format(avglossrecon), flush = True)
+            print(dstr + ' Recon Loss = {}'.format(avglossrecon), flush = True)
             if self.criterion_FT is not None:
-                print('FT Loss = {}'.format(avglossft), flush = True)
+                print(dstr + ' FT Loss = {}'.format(avglossft), flush = True)
             if self.criterion_reconFT is not None:
-                print('Recon FT Loss = {}'.format(avglossreconft), flush = True)
+                print(dstr + 'Recon FT Loss = {}'.format(avglossreconft), flush = True)
         return avglossrecon, avglossft, avglossreconft, avg_ssim_score,avg_l1_loss,avg_l2_loss
 
     def visualise(self, epoch, train = False):
@@ -410,7 +421,7 @@ class Trainer(nn.Module):
                         # myimshow(ft.abs(), cmap = 'gray')
                         # plt.title('Undersampled FFT Frame')
                         # plt.subplot(2,2,2)
-                        # myimshow(torch.fft.ifft2(torch.fft.ifftshift(ft.exp())).real, cmap = 'gray')
+                        # myimshow(torch.fft.ifft2(EPS+torch.fft.ifftshift(ft.exp())).real, cmap = 'gray')
                         # plt.title('IFFT of the Input')
                         # plt.subplot(2,2,3)
                         # myimshow(predi, cmap = 'gray')
@@ -427,7 +438,7 @@ class Trainer(nn.Module):
                         # myimshow(ft.abs(), cmap = 'gray')
                         # plt.title('Undersampled FFT Frame')
                         # plt.subplot(2,2,2)
-                        # myimshow(torch.fft.ifft2(torch.fft.ifftshift(ft.exp())).real, cmap = 'gray')
+                        # myimshow(torch.fft.ifft2(EPS+torch.fft.ifftshift(ft.exp())).real, cmap = 'gray')
                         # plt.title('IFFT of the Input')
                         plt.subplot(2,2,1)
                         myimshow(predi, cmap = 'gray')
