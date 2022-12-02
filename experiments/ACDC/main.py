@@ -74,8 +74,8 @@ else:
 
     device = torch.device("cuda:{}".format(args.gpu[0]) if torch.cuda.is_available() else "cpu")
 torch.backends.cudnn.benchmark = True
-# torch.autograd.set_detect_anomaly(True)
-torch.autograd.set_detect_anomaly(False)
+torch.autograd.set_detect_anomaly(True)
+# torch.autograd.set_detect_anomaly(False)
 torch.autograd.profiler.profile(False)
 torch.autograd.profiler.emit_nvtx(False)
 

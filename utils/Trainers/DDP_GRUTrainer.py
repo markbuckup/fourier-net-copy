@@ -256,8 +256,12 @@ class Trainer(nn.Module):
             # with autocast(enabled = self.parameters['Automatic_Mixed_Precision'], dtype=torch.float32):
             # with autocast(enabled = self.parameters['Automatic_Mixed_Precision']):
             # self.model.module.train_mode_set(True)
+            targets = targets - targets.min()
+            targets = targets/targets.max()
+            targets = 2*targets
+            targets = targets-1
             # B, T, C, X, Y, 2
-            mini_batch_length = 20
+            mini_batch_length = self.parameters['mini_batch_length']
             num_mini_batches = int((torch.tensor(fts_masked.shape[1])/mini_batch_length).ceil().item())
             hiddens = None
             skipped = self.parameters['init_skip_frames']
@@ -341,7 +345,7 @@ class Trainer(nn.Module):
         avg_ssim_score = 0
         avg_l1_loss = 0
         avg_l2_loss = 0
-        it = 0
+        # it = 0
         with torch.no_grad():
             if self.ddp_rank == 0:
                 tqdm_object = tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr))
@@ -349,17 +353,21 @@ class Trainer(nn.Module):
                 tqdm_object = enumerate(dloader)
             for i, (indices, fts, fts_masked, targets, target_fts) in tqdm_object:
                 # self.model.module.train_mode_set(False)
-                if it < 71:
-                    it += 1
-                    continue
+                # if it < 71:
+                #     it += 1
+                #     continue
+                targets = targets - targets.min()
+                targets = targets/targets.max()
+                targets = 2*targets
+                targets = targets-1
                 self.model.eval()
-                preds = self.model(fts_masked.to(self.device))
+                preds, _ = self.model(fts_masked.to(self.device))
                 skipped = self.parameters['init_skip_frames']
                 targets = targets[:,skipped:]
                 preds = preds[:,skipped:]
                 
                 avglossrecon += self.criterion(preds, targets.to(self.device)).item()/(len(dloader))
-                it += 1
+                # it += 1
                 avg_ssim_score += (1-self.ssimloss(preds, targets.to(self.device))).item()/(len(dloader))
                 avg_l1_loss += self.l1loss(preds, targets.to(self.device)).item()/(len(dloader))
                 avg_l2_loss += self.l2loss(preds, targets.to(self.device)).item()/(len(dloader))
@@ -398,15 +406,15 @@ class Trainer(nn.Module):
             path = os.path.join(self.args.run_id, './results/test')
         tot_vids_per_patient = (dset.num_vids_per_patient*dset.frames_per_vid_per_patient)
         num_plots = tot_vids_per_patient[0]
-        print('Saving plots for {} data'.format(dstr), flush = True)
+        print('Saving {} plots for {} data'.format(num_plots, dstr), flush = True)
         with torch.no_grad():
             for i, (indices, fts, fts_masked, targets, target_fts) in tqdm(enumerate(dloader), total = 1+num_plots//self.parameters['test_batch_size']):
                 if not os.path.exists(os.path.join(self.args.run_id, './results/input/')):
                     os.mkdir(os.path.join(self.args.run_id, './results/input/'))
-                input_save(fts[0], fts_masked[0], targets[0], os.path.join(self.args.run_id, './results/input/'))
+                # input_save(fts[0], fts_masked[0], targets[0], os.path.join(self.args.run_id, './results/input/'))
                 # self.model.module.train_mode_set(False)
                 self.model.eval()
-                preds = self.model(fts_masked.to(self.device))
+                preds, _ = self.model(fts_masked.to(self.device))
                 for i in range(fts.shape[0]):
                     for f_num in range(fts.shape[1]):
                         if num_plots == 0:
@@ -453,6 +461,7 @@ class Trainer(nn.Module):
                         plt.hist(diffvals, range = [0,0.25], density = False, bins = 30)
                         plt.ylabel('Pixel Count')
                         plt.xlabel('Difference Value')
+                        f_num_actual = f_num%dset.actual_frames_per_vid_per_patient[p_num]
                         if not os.path.exists(os.path.join(path, './patient_{}/'.format(p_num))):
                             os.mkdir(os.path.join(path, './patient_{}/'.format(p_num)))
                         if not os.path.exists(os.path.join(path, './patient_{}/by_location_number/'.format(p_num))):
@@ -464,9 +473,9 @@ class Trainer(nn.Module):
                         if not os.path.exists(os.path.join(path, './patient_{}/by_frame_number/frame_{}'.format(p_num, f_num))):
                             os.mkdir(os.path.join(path, './patient_{}/by_frame_number/frame_{}'.format(p_num, f_num)))
                         if f_num < self.parameters['init_skip_frames']:
-                            plt.suptitle("[Loss Skipped] Patient {} Location {} Frame {}".format(p_num, v_num, f_num))
+                            plt.suptitle("[Loss Skipped] Patient {} Location {} Frame {}".format(p_num, v_num, f_num_actual))
                         else:
-                            plt.suptitle("Patient {} Location {} Frame {}".format(p_num, v_num, f_num))
+                            plt.suptitle("Patient {} Location {} Frame {}".format(p_num, v_num, f_num_actual))
                         plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}.jpg'.format(p_num, v_num, f_num)))
                         plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/location_{}.jpg'.format(p_num, f_num, v_num)))
                         plt.close('all')

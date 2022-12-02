@@ -162,11 +162,11 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
                 run["train/train_recon_loss"].log(avg_train_recon_loss)
                 run["train/train_ft_loss"].log(avg_train_ft_loss)
                 run["train/train_recon_ft_loss"].log(avg_train_recon_ft_loss)
-            print('Average Train Recon Loss for Epoch {} = {}' .format(e, avg_train_recon_loss), flush = True)
+            print('Train Recon Loss for Epoch {} = {}' .format(e, avg_train_recon_loss), flush = True)
             if trainer.criterion_FT is not None:
-                print('Average Train FT Loss for Epoch {} = {}' .format(e, avg_train_ft_loss), flush = True)
+                print('Train FT Loss for Epoch {} = {}' .format(e, avg_train_ft_loss), flush = True)
             if trainer.criterion_reconFT is not None:
-                print('Average Train Recon FT Loss for Epoch {} = {}' .format(e, avg_train_recon_ft_loss), flush = True)
+                print('Train Recon FT Loss for Epoch {} = {}' .format(e, avg_train_recon_ft_loss), flush = True)
 
         test_lossrecon, test_lossft, test_lossreconft,_,_,_ = trainer.evaluate(e, train = False)
         dist.all_gather(collected_test_losses, torch.tensor([test_lossrecon, test_lossft, test_lossreconft]).to(proc_device))
@@ -324,10 +324,10 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
                 run["test/test_l1_loss"] = avg_test_l1
                 run["test/test_l2_loss"] = avg_test_l2
             print('Test Loss After {} Epochs:'.format(pre_e), flush = True)
-            print('Recon Loss = {}'.format(avg_test_recon_loss), flush = True)
-            print('SSIM Score = {}'.format(avg_test_ssim), flush = True)
-            print('L1 Loss = {}'.format(avg_test_l1), flush = True)
-            print('L2 Loss = {}'.format(avg_test_l2), flush = True)
+            print('Test Recon Loss = {}'.format(avg_test_recon_loss), flush = True)
+            print('Test SSIM Score = {}'.format(avg_test_ssim), flush = True)
+            print('Test L1 Loss = {}'.format(avg_test_l1), flush = True)
+            print('Test L2 Loss = {}'.format(avg_test_l2), flush = True)
             if trainer.criterion_FT is not None:
                 print('FT Loss = {}'.format(avg_test_ft_loss), flush = True)
             if trainer.criterion_reconFT is not None:
@@ -351,10 +351,10 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
                     run["test/train_l1_loss"] = avg_train_l1
                     run["test/train_l2_loss"] = avg_train_l2
                 print('Train Loss After {} Epochs:'.format(pre_e), flush = True)
-                print('Recon Loss = {}'.format(avg_train_recon_loss), flush = True)
-                print('SSIM Score = {}'.format(avg_train_ssim), flush = True)
-                print('L1 Loss = {}'.format(avg_train_l1), flush = True)
-                print('L2 Loss = {}'.format(avg_train_l2), flush = True)
+                print('Train Recon Loss = {}'.format(avg_train_recon_loss), flush = True)
+                print('Train SSIM Score = {}'.format(avg_train_ssim), flush = True)
+                print('Train L1 Loss = {}'.format(avg_train_l1), flush = True)
+                print('Train L2 Loss = {}'.format(avg_train_l2), flush = True)
                 if trainer.criterion_FT is not None:
                     print('FT Loss = {}'.format(avg_train_ft_loss), flush = True)
                 if trainer.criterion_reconFT is not None:

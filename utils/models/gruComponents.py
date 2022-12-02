@@ -170,3 +170,57 @@ class GRUImageSpaceEncoder(nn.Module):
         x4hat, x4 = self.down3(x3)
         # return [x4, x2hat, x3hat, x4hat], [x4.shape[1],x2hat.shape[1], x3hat.shape[1], x4hat.shape[1]]
         return [x4, x2hat, x3hat, x4hat]
+
+class GRUImageSpaceCombinerBlock(nn.Module):
+    def __init__(self, in_channels = 8, image_space_real = False):
+        super(GRUImageSpaceCombinerBlock, self).__init__()
+        self.image_space_real = image_space_real
+        self.in_channels = in_channels
+        if self.image_space_real:
+            self.block1 = nn.Sequential(
+                    nn.Conv2d(self.in_channels, self.in_channels, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    nn.ReLU(),
+                    nn.BatchNorm2d(self.in_channels),
+                    nn.Conv2d(self.in_channels, self.in_channels//2, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    nn.ReLU(),
+                    nn.BatchNorm2d(self.in_channels//2),
+                )
+        else:
+            self.block1 = nn.Sequential(
+                    cmplx_conv.ComplexConv2d(self.in_channels, self.in_channels, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    cmplx_activation.CReLU(),
+                    radial_bn.RadialBatchNorm2d(self.in_channels),
+                    cmplx_conv.ComplexConv2d(self.in_channels, self.in_channels//2, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    cmplx_activation.CReLU(),
+                    radial_bn.RadialBatchNorm2d(self.in_channels//2)
+                )
+
+    def forward(self, x):
+        x1 = self.block1(x)
+        return x1
+
+class GRUImageSpaceUNet(nn.Module):
+    def __init__(self, in_channels = 8, out_channels = 128, image_space_real = False):
+        super(GRUImageSpaceUNet, self).__init__()
+        self.image_space_real = image_space_real
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        if self.image_space_real:
+            self.down1 = CoupledDownReal(self.in_channels, [32,32])
+            self.down2 = CoupledDownReal(32, [64,64])
+            self.down3 = CoupledDownReal(64, [self.out_channels, self.out_channels])
+            
+        else:
+            self.down1 = CoupledDown(self.in_channels, [32,32])
+            self.down2 = CoupledDown(32, [64,64])
+            self.down3 = CoupledDown(64, [self.out_channels, self.out_channels])
+
+        self.latent_channels = self.out_channels, 32, 64, self.out_channels
+        self.decoder = GRUImageSpaceDecoder(in_channels = out_channels, image_space_real = image_space_real)
+
+    def forward(self, x1):
+        x2hat, x2 = self.down1(x1)
+        x3hat, x3 = self.down2(x2)
+        x4hat, x4 = self.down3(x3)
+        # return [x4, x2hat, x3hat, x4hat], [x4.shape[1],x2hat.shape[1], x3hat.shape[1], x4hat.shape[1]]
+        return self.decoder(x4, x2hat, x3hat, x4hat)

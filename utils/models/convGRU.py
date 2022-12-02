@@ -169,6 +169,7 @@ class ConvGRU(nn.Module):
                 Mode3 = B, C, 1, X, Y
                 Mode4 = B, channel, X, Y
                 '''
+                hidden = iter_outp
                 iter_outp = cell([val[:,ti] for val in preprocessed[:len(iter_outp)]], iter_outp)
                 if len(iter_outp) != len(preprocessed):
                     temp1 = iter_outp + [val[:,ti] for val in preprocessed[len(iter_outp):]]
@@ -184,7 +185,7 @@ class ConvGRU(nn.Module):
         if not self.image_space_real:
             ans = (ans**2).sum(-1)**0.5
 
-        return ans
+        return ans, [x.detach() for x in hidden]
 
 # parameters = {}
 # parameters['image_resolution'] = 64

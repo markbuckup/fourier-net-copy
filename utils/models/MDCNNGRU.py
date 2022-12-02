@@ -14,8 +14,8 @@ import utils.models.complexCNNs.cmplx_dropout as cmplx_dropout
 import utils.models.complexCNNs.cmplx_upsample as cmplx_upsample
 import utils.models.complexCNNs.cmplx_activation as cmplx_activation
 import utils.models.complexCNNs.radial_bn as radial_bn
-from utils.models.gruComponents import IFFT_module, GRUImageSpaceDecoder, GRUImageSpaceEncoder, GRUKspaceModel
-from utils.models.gruGates import GRUGate_KSpace, GRUGate_ISpace
+from utils.models.gruComponents import IFFT_module, GRUImageSpaceDecoder, GRUImageSpaceEncoder, GRUKspaceModel, GRUImageSpaceUNet
+from utils.models.gruGates import GRUGate_KSpace, GRUGate_ISpace, GRUGate_ISpace_combiner
 
 class ConvGRUCell(nn.Module):
     """
@@ -55,6 +55,15 @@ class MDCNNGRU(nn.Module):
             self.gate_model.append(lambda :GRUGate_ISpace(parameters))
             self.hidden_chans = [parameters['num_coils'], 1]
             self.hidden_reals = [False, self.image_space_real]
+        elif parameters['architecture'] == 'MDCNNGRU2':
+            self.ifft_m = IFFT_module(parameters)
+            self.int_model = lambda x:self.ifft_m(x)
+            self.IUnet = GRUImageSpaceUNet(in_channels = 8, out_channels = 128, image_space_real = self.image_space_real)
+            self.gate_model = []
+            self.gate_model.append(lambda :GRUGate_KSpace(parameters))
+            self.gate_model.append(lambda :GRUGate_ISpace_combiner(parameters))
+            self.hidden_chans = [parameters['num_coils'], 8]
+            self.hidden_reals = [False, self.image_space_real]
         else:
             print("Unrecognised GRU architecture mode '{}'".format(parameters['architecture']), flush = True)
             os._exit(1)
@@ -92,12 +101,12 @@ class MDCNNGRU(nn.Module):
         
         hiddens = hidden
         if hiddens is None:
-            hiddens = [None, None]
-            # for i in range(len(self.hidden_chans)):
-            #     if self.hidden_reals[i]:
-            #         hiddens.append(torch.zeros((B, self.hidden_chans[i],X,Y), device = x.device))
-            #     else:
-            #         hiddens.append(torch.zeros((B, self.hidden_chans[i],X,Y,complex_dim), device = x.device))
+            hiddens = []
+            for i in range(len(self.hidden_chans)):
+                if self.hidden_reals[i]:
+                    hiddens.append(torch.zeros((B, self.hidden_chans[i],X,Y), device = x.device))
+                else:
+                    hiddens.append(torch.zeros((B, self.hidden_chans[i],X,Y,complex_dim), device = x.device))
         
         for ti in range(T):
             cell_kspace = self.cells[0]
@@ -110,12 +119,8 @@ class MDCNNGRU(nn.Module):
             Mode3 = B, C, 1, X, Y
             Mode4 = B, channel, X, Y
             '''
-            if hiddens[0] is None:
-                hiddens[0] = torch.zeros((B, self.hidden_chans[0],X,Y,complex_dim), device = x.device)
             iter_outp_kspace = cell_kspace(x[:,ti,:,:,:], hiddens[0])
             ispace_in = self.int_model(iter_outp_kspace)
-            if hiddens[1] is None:
-                hiddens[1] = torch.randn(ispace_in.detach()[:,0:1,:,:].shape, device = x.device)
             iter_outp_ispace = cell_ispace(ispace_in, hiddens[1])
             hiddens[0] = iter_outp_kspace
             hiddens[1] = iter_outp_ispace
@@ -124,13 +129,14 @@ class MDCNNGRU(nn.Module):
                 ans = iter_outp_ispace
             else:
                 ans = torch.cat([ans, iter_outp_ispace], dim=0)
-                
+
         ans = self.IUnet(ans).squeeze()
         ans = ans.view(B,T,*ans.shape[1:])
         if not self.image_space_real:
             ans = (ans**2).sum(-1)**0.5
 
-        return ans, [x.detach() for x in hiddens]
+        return ans, [x for x in hiddens]
+        # return ans, hiddens
 
 # parameters = {}
 # parameters['image_resolution'] = 64
