@@ -329,9 +329,10 @@ class ImageSpaceEncoder(nn.Module):
         return [x4, x2hat, x3hat, x4hat]
 
 class MDCNN(nn.Module):
-    def __init__(self, parameters):
+    def __init__(self, parameters, device):
         super(MDCNN, self).__init__()
         self.t_parameters = parameters
+        self.device = device
         self.num_window = parameters['window_size']
         self.num_coils = parameters['num_coils']
         self.image_space_real = parameters['image_space_real']

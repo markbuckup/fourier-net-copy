@@ -196,6 +196,7 @@ class Trainer(nn.Module):
         ls_params.append({'params': self.model.module.get_kspace_params(), 'lr': self.parameters['lr_kspace']})
         if not 'MDCNNGRU' in parameters['architecture']:
             ls_params.append({'params': self.model.module.get_gate_params(), 'lr': self.parameters['lr_gate']})
+            
 
         if self.parameters['optimizer'] == 'Adam':
             self.optim = optim.Adam(
@@ -266,42 +267,30 @@ class Trainer(nn.Module):
             hiddens = None
             skipped = self.parameters['init_skip_frames']
             for mbi in range(num_mini_batches):
-                loss_recon = torch.tensor([0.]).to(self.device)
-                loss_ft = torch.tensor([0.]).to(self.device)
-                loss_reconft = torch.tensor([0.]).to(self.device)
-                
                 self.optim.zero_grad(set_to_none=True)
                 self.model.train()
                 start = mbi*mini_batch_length
                 end = (mbi+1)*mini_batch_length
-                preds, hiddens = self.model(fts_masked[:,start:end].to(self.device), hiddens)
                 skipped_batch = min(skipped, mini_batch_length)
                 target_batch = targets[:,start:end]
                 target_ft_batch = target_fts[:,start:end]
-                target_batch = target_batch[:,skipped_batch:]
-                target_ft_batch = target_ft_batch[:,skipped_batch:]
-                preds = preds[:,skipped_batch:]
+                preds, hiddens, loss_recons, loss_fts, loss_reconfts, score_ssims, score_l1s, score_l2s = self.model(fts_masked[:,start:end], target_batch, target_ft_batch, hiddens)
+                score_ssims /= len(self.trainloader)
+                score_l1s /= len(self.trainloader)
+                score_l2s /= len(self.trainloader)
                 skipped -= skipped_batch
                 if skipped_batch == mini_batch_length:
                     continue
-                loss_recon += self.criterion(preds, target_batch.to(self.device))
-                if self.criterion_FT is not None:
-                    loss_ft += self.criterion_FT(ft_preds, target_ft_batch.to(self.device))
-                if self.criterion_reconFT is not None:
-                    if self.parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
-                        loss_reconft += self.criterion_reconFT(preds, target_batch.to(self.device))
-                    else:
-                        predfft = (torch.fft.fft2(EPS+preds)+EPS).log()
-                        predfft = torch.stack((predfft.real, predfft.imag),-1)
-                        targetfft = (torch.fft.fft2(EPS+target_batch.to(self.device)) + EPS).log()
-                        targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
-                        loss_reconft += self.criterion_reconFT(predfft, targetfft)
+                loss_recon = loss_recons[skipped_batch:].sum()
+                loss_ft = loss_fts[skipped_batch:].sum()
+                loss_reconft = loss_reconfts[skipped_batch:].sum()
                 loss = loss_recon + beta2*loss_reconft
                 loss.backward()
                 self.optim.step()
                 avglossrecon += loss_recon.item()/(len(self.trainloader))
                 avglossft += loss_ft.item()/(len(self.trainloader))
                 avglossreconft += loss_reconft.item()/(len(self.trainloader))
+            break
             # if not torch.isfinite(loss_recon).all():
             #     print(i)
             #     # print(fts_masked.abs().sum())
@@ -361,29 +350,20 @@ class Trainer(nn.Module):
                 targets = 2*targets
                 targets = targets-1
                 self.model.eval()
-                preds, _ = self.model(fts_masked.to(self.device))
-                skipped = self.parameters['init_skip_frames']
-                targets = targets[:,skipped:]
-                preds = preds[:,skipped:]
+                preds, hiddens, loss_recons, loss_fts, loss_reconfts, score_ssims, score_l1s, score_l2s = self.model(fts_masked, targets, target_fts, None)
+                score_ssims /= len(dloader)
+                score_l1s /= len(dloader)
+                score_l2s /= len(dloader)
                 
-                avglossrecon += self.criterion(preds, targets.to(self.device)).item()/(len(dloader))
+                avglossrecon += loss_recons.sum().item()
+                avglossft += loss_fts.sum().item()
+                avglossreconft += loss_reconfts.sum().item()
                 # it += 1
-                avg_ssim_score += (1-self.ssimloss(preds, targets.to(self.device))).item()/(len(dloader))
-                avg_l1_loss += self.l1loss(preds, targets.to(self.device)).item()/(len(dloader))
-                avg_l2_loss += self.l2loss(preds, targets.to(self.device)).item()/(len(dloader))
-                # if self.criterion_FT is not None:
-                #     avglossft += self.criterion_FT(ft_preds, target_fts.to(self.device)).item()/(len(dloader))
-                if self.criterion_reconFT is not None:
-                    if self.parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
-                        avglossreconft += self.criterion_reconFT(preds, targets.to(self.device)).item()/(len(dloader))
-                    else:
-                        predfft = (torch.fft.fft2(EPS+preds) + EPS).log()
-                        predfft = torch.stack((predfft.real, predfft.imag),-1)
-                        targetfft = (torch.fft.fft2(EPS+targets.to(self.device)) + EPS).log()
-                        targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
-                        avglossreconft += self.criterion_reconFT(predfft, targetfft).item()/(len(dloader))
-
-
+                avg_ssim_score += score_ssims.sum().item()/(len(dloader))
+                avg_l1_loss += score_l1s.sum().item()/(len(dloader))
+                avg_l2_loss += score_l2s.sum().item()/(len(dloader))
+                break
+                
         if print_loss:
             print('{} Loss After {} Epochs:'.format(dstr, epoch), flush = True)
             print(dstr + ' Recon Loss = {}'.format(avglossrecon), flush = True)
@@ -414,7 +394,7 @@ class Trainer(nn.Module):
                 # input_save(fts[0], fts_masked[0], targets[0], os.path.join(self.args.run_id, './results/input/'))
                 # self.model.module.train_mode_set(False)
                 self.model.eval()
-                preds, _ = self.model(fts_masked.to(self.device))
+                preds, _, _, _, _, _, _, _ = self.model(fts_masked, targets, target_fts, None)
                 for i in range(fts.shape[0]):
                     for f_num in range(fts.shape[1]):
                         if num_plots == 0:

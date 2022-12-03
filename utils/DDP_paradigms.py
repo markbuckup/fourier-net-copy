@@ -77,7 +77,7 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
     trainset.rest_init()
     testset.rest_init()
 
-    model = Model(parameters).to(proc_device)
+    model = Model(parameters, proc_device).to(proc_device)
     checkpoint_path = os.path.join(args.run_id, './checkpoints/')
 
     parameters['GPUs'] = args.gpu
@@ -248,7 +248,7 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
     trainset.rest_init()
     testset.rest_init()
 
-    model = Model(parameters).to(proc_device)
+    model = Model(parameters, proc_device).to(proc_device)
     checkpoint_path = os.path.join(args.run_id, './checkpoints/')
 
     if rank == 0:

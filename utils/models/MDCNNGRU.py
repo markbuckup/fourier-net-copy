@@ -16,6 +16,9 @@ import utils.models.complexCNNs.cmplx_activation as cmplx_activation
 import utils.models.complexCNNs.radial_bn as radial_bn
 from utils.models.gruComponents import IFFT_module, GRUImageSpaceDecoder, GRUImageSpaceEncoder, GRUKspaceModel, GRUImageSpaceUNet
 from utils.models.gruGates import GRUGate_KSpace, GRUGate_ISpace, GRUGate_ISpace_combiner
+from utils.functions import fetch_loss_function
+
+EPS = 1e-10
 
 class ConvGRUCell(nn.Module):
     """
@@ -39,11 +42,12 @@ class ConvGRUCell(nn.Module):
         return new_state
 
 class MDCNNGRU(nn.Module):
-    def __init__(self, parameters):
+    def __init__(self, parameters, device):
         super(MDCNNGRU, self).__init__()
 
         self.train_parameters = parameters
         self.n_layers = 2
+        self.device = device
         self.num_coils = parameters['num_coils']
         self.image_space_real = parameters['image_space_real']
         if parameters['architecture'] == 'MDCNNGRU1':
@@ -78,6 +82,14 @@ class MDCNNGRU(nn.Module):
 
         self.cells = cells
 
+        self.criterion = fetch_loss_function(self.train_parameters['loss_recon'], self.device, self.train_parameters['loss_params']).to(self.device)
+        self.criterion_FT = fetch_loss_function(self.train_parameters['loss_FT'], self.device, self.train_parameters['loss_params'])
+        self.criterion_reconFT = fetch_loss_function(self.train_parameters['loss_reconstructed_FT'], self.device, self.train_parameters['loss_params'])
+
+        self.l1loss = fetch_loss_function('L1',self.device, self.train_parameters['loss_params'])
+        self.l2loss = fetch_loss_function('L2',self.device, self.train_parameters['loss_params'])
+        self.ssimloss = fetch_loss_function('SSIM',self.device, self.train_parameters['loss_params'])
+
     def get_kspace_params(self):
         return list(self.cells[0].parameters())
 
@@ -87,7 +99,7 @@ class MDCNNGRU(nn.Module):
             ans += list(self.IUnet.parameters())
         return ans
 
-    def forward(self, x, hidden=None):
+    def forward(self, x, target_batch, target_ft_batch, hidden=None):
         '''
         Input size - B, T, C, X, Y
         B = batch
@@ -99,6 +111,13 @@ class MDCNNGRU(nn.Module):
 
         ans = None
         
+        loss_recons = torch.zeros(x.shape[1]).to(self.device)
+        loss_fts = torch.zeros(x.shape[1]).to(self.device)
+        loss_reconfts = torch.zeros(x.shape[1]).to(self.device)
+        score_ssims = torch.zeros(x.shape[1]).to(self.device)
+        score_l1s = torch.zeros(x.shape[1]).to(self.device)
+        score_l2s = torch.zeros(x.shape[1]).to(self.device)
+
         hiddens = hidden
         if hiddens is None:
             hiddens = []
@@ -119,23 +138,42 @@ class MDCNNGRU(nn.Module):
             Mode3 = B, C, 1, X, Y
             Mode4 = B, channel, X, Y
             '''
-            iter_outp_kspace = cell_kspace(x[:,ti,:,:,:], hiddens[0])
+            iter_outp_kspace = cell_kspace(x[:,ti,:,:,:].to(self.device), hiddens[0])
             ispace_in = self.int_model(iter_outp_kspace)
             iter_outp_ispace = cell_ispace(ispace_in, hiddens[1])
-            hiddens[0] = iter_outp_kspace
-            hiddens[1] = iter_outp_ispace
+            hiddens[0] = iter_outp_kspace.clone()
+            hiddens[1] = iter_outp_ispace.clone()
+
+            outp = self.IUnet(iter_outp_ispace)
+            if not self.image_space_real:
+                outp = (outp**2).sum(-1)**0.5
+            target = target_batch[:,ti:ti+1,:,:].to(self.device)
+            target_ft = target_ft_batch[:,ti:ti+1,:,:].to(self.device)
             
+            loss_recons[ti] += self.criterion(outp, target)
+            if self.criterion_FT is not None:
+                loss_fts[ti] += self.criterion_FT(outp, target_ft)
+            if self.criterion_reconFT is not None:
+                if self.train_parameters['loss_reconstructed_FT'] == 'Cosine-Watson':
+                    loss_reconfts[ti] += self.criterion_reconFT(outp, target)
+                else:
+                    predfft = (torch.fft.fft2(EPS+outp)+EPS).log()
+                    predfft = torch.stack((predfft.real, predfft.imag),-1)
+                    targetfft = (torch.fft.fft2(EPS+target) + EPS).log()
+                    targetfft = torch.stack((targetfft.real, targetfft.imag),-1)
+                    loss_reconfts[ti] += self.criterion_reconFT(predfft, targetfft)
+
+            score_ssims[ti] += (1-self.ssimloss(outp, target)).item()
+            score_l1s[ti] += self.l1loss(outp, target).item()
+            score_l2s[ti] += self.l2loss(outp, target).item()
+
             if ans is None:
-                ans = iter_outp_ispace
+                ans = outp.cpu()
             else:
-                ans = torch.cat([ans, iter_outp_ispace], dim=0)
+                ans = torch.cat([ans, outp.cpu()], dim=1)
+            
 
-        ans = self.IUnet(ans).squeeze()
-        ans = ans.view(B,T,*ans.shape[1:])
-        if not self.image_space_real:
-            ans = (ans**2).sum(-1)**0.5
-
-        return ans, [x for x in hiddens]
+        return ans, [x.detach() for x in hiddens], loss_recons, loss_fts, loss_reconfts, score_ssims, score_l1s, score_l2s
         # return ans, hiddens
 
 # parameters = {}
