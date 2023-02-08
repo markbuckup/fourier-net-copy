@@ -27,7 +27,7 @@ GA = (np.pi)*(3-(5**0.5))
 
 def get_golden_bars(num_bars = 377, resolution = 128):
     ans = mask_theta(0, (1,resolution, resolution))
-    for i in range(1,377):
+    for i in range(1,num_bars):
         angle = (360*(i*GA))/(2*np.pi)
         ans = torch.cat((ans,mask_theta(angle, (1,resolution, resolution))))
     return ans

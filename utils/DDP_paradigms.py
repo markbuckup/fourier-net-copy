@@ -52,6 +52,10 @@ def train_paradigm(rank, world_size, shared_data, args, parameters):
         from utils.models.MDCNNGRU import MDCNNGRU as Model
         from utils.Trainers.DDP_GRUTrainer import Trainer
         window_mode = False
+    elif 'MDCNNLSTM' in parameters['architecture']:
+        from utils.models.MDCNNLSTM import MDCNNLSTM as Model
+        from utils.Trainers.DDP_GRUTrainer import Trainer
+        window_mode = False
     elif 'GRU' in parameters['architecture']:
         from utils.models.convGRU import ConvGRU as Model
         from utils.Trainers.DDP_GRUTrainer import Trainer
@@ -221,6 +225,10 @@ def test_paradigm(rank, world_size, shared_data, args, parameters):
         window_mode = True
     elif 'MDCNNGRU' in parameters['architecture']:
         from utils.models.MDCNNGRU import MDCNNGRU as Model
+        from utils.Trainers.DDP_GRUTrainer import Trainer
+        window_mode = False
+    elif 'MDCNNLSTM' in parameters['architecture']:
+        from utils.models.MDCNNLSTM import MDCNNLSTM as Model
         from utils.Trainers.DDP_GRUTrainer import Trainer
         window_mode = False
     elif 'GRU' in parameters['architecture']:

@@ -21,9 +21,12 @@ class GRUGate_KSpace(nn.Module):
     Input Shape = (B), In_Coil, X, Y
     Output Shape = (B), Out_Coil, X, Y
     """
-    def __init__(self, parameters):
+    def __init__(self, parameters, reverse = False):
         super().__init__()
-        self.kspace = GRUKspaceModel(input_coils = 2*parameters['num_coils'], output_coils = parameters['num_coils'])
+        if reverse:
+            self.kspace = GRUKspaceModel(input_coils = parameters['num_coils'], output_coils = parameters['num_coils'])
+        else:
+            self.kspace = GRUKspaceModel(input_coils = 2*parameters['num_coils'], output_coils = parameters['num_coils'])
 
     def forward(self, x, activation = 'sigmoid'):
         if activation == 'sigmoid':
@@ -40,9 +43,12 @@ class GRUGate_ISpace(nn.Module):
     Input Shape = (B), In_Coil, X, Y
     Output Shape = (B), Out_Coil, X, Y
     """
-    def __init__(self, parameters):
+    def __init__(self, parameters, reverse = False):
         super().__init__()
-        self.ispace = GRUIspaceModel(in_channels = 1+parameters['num_coils'], latent_channels = 128, image_space_real = parameters['image_space_real'])
+        if reverse:
+            self.ispace = GRUIspaceModel(in_channels = 1, latent_channels = 128, image_space_real = parameters['image_space_real'])
+        else:
+            self.ispace = GRUIspaceModel(in_channels = 1+parameters['num_coils'], latent_channels = 128, image_space_real = parameters['image_space_real'])
 
     def forward(self, x, activation = 'sigmoid'):
         if activation == 'sigmoid':

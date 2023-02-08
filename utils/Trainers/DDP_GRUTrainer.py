@@ -194,7 +194,7 @@ class Trainer(nn.Module):
         ls_params = []
         ls_params.append({'params': self.model.module.get_ispace_params()})
         ls_params.append({'params': self.model.module.get_kspace_params(), 'lr': self.parameters['lr_kspace']})
-        if not 'MDCNNGRU' in parameters['architecture']:
+        if not 'MDCNN' in parameters['architecture']:
             ls_params.append({'params': self.model.module.get_gate_params(), 'lr': self.parameters['lr_gate']})
             
 
@@ -290,7 +290,6 @@ class Trainer(nn.Module):
                 avglossrecon += loss_recon.item()/(len(self.trainloader))
                 avglossft += loss_ft.item()/(len(self.trainloader))
                 avglossreconft += loss_reconft.item()/(len(self.trainloader))
-            break
             # if not torch.isfinite(loss_recon).all():
             #     print(i)
             #     # print(fts_masked.abs().sum())
@@ -362,7 +361,6 @@ class Trainer(nn.Module):
                 avg_ssim_score += score_ssims.sum().item()/(len(dloader))
                 avg_l1_loss += score_l1s.sum().item()/(len(dloader))
                 avg_l2_loss += score_l2s.sum().item()/(len(dloader))
-                break
                 
         if print_loss:
             print('{} Loss After {} Epochs:'.format(dstr, epoch), flush = True)
