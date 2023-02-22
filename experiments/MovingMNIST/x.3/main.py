@@ -165,7 +165,7 @@ def train(epoch):
     for i, (indices, data) in tqdm(enumerate(trainloader), total = len(trainloader), desc = "[{}] | Training Ep {}".format(os.getpid(), epoch), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}"):
         optimiser.zero_grad(set_to_none = True)
         batch, num_frames, chan, numr, numc = data.shape
-        coil_mask = coil_mask_coll[(torch.arange(parameters['num_views']*num_frames)+i)%377,:,:]
+        coil_mask = coil_mask_coll[(torch.arange(parameters['num_views']*num_frames)+i)%376,:,:]
         coil_mask = coil_mask.reshape(num_frames,parameters['num_views'],numr,numc).sum(1).sign().unsqueeze(0).unsqueeze(2).to(device)
         inpt = (torch.fft.fftshift(torch.fft.fft2(data.to(device)), dim = (-2,-1))+1e-8)
         model.train()
@@ -203,7 +203,7 @@ def eval(epoch, train = False):
         coil_mask_coll = get_golden_bars(resolution = 64)
         for i, (indices, data) in tqdm(enumerate(dloader), total = len(dloader), desc = "[{}] | Testing Ep {}".format(os.getpid(), epoch), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}"):
             batch, num_frames, chan, numr, numc = data.shape
-            coil_mask = coil_mask_coll[(torch.arange(parameters['num_views']*num_frames)+i)%377,:,:]
+            coil_mask = coil_mask_coll[(torch.arange(parameters['num_views']*num_frames)+i)%376,:,:]
             coil_mask = coil_mask.reshape(num_frames,parameters['num_views'],numr,numc).sum(1).sign().unsqueeze(0).unsqueeze(2).to(device)
             inpt = (torch.fft.fftshift(torch.fft.fft2(data.to(device)), dim = (-2,-1))+1e-8)
             model.eval()
@@ -236,7 +236,7 @@ def visualise(epoch, train = False):
         coil_mask_coll = get_golden_bars(resolution = 64)
         for i, (indices, data) in tqdm(enumerate(dloader), total = len(dloader), desc = "Testing for Epoch {}".format(epoch), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}"):
             batch, num_frames, chan, numr, numc = data.shape
-            coil_mask = coil_mask_coll[(torch.arange(parameters['num_views']*num_frames)+i)%377,:,:]
+            coil_mask = coil_mask_coll[(torch.arange(parameters['num_views']*num_frames)+i)%376,:,:]
             coil_mask = coil_mask.reshape(num_frames,parameters['num_views'],numr,numc).sum(1).sign().unsqueeze(0).unsqueeze(2).to(device)
             inpt = (torch.fft.fftshift(torch.fft.fft2(data.to(device)), dim = (-2,-1))+1e-8)
             

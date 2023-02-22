@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type = int, default = '0')
 args = parser.parse_args()
 
-task_list = ['x.6','x.7']
+task_list = ['y.2.0']
 
 prev_task = None
 for task in task_list:

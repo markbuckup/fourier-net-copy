@@ -23,12 +23,14 @@ from utils.models.complexCNNs.polar_transforms import (
 )
 
 EPS = 1e-10
-GA = (np.pi)*(3-(5**0.5))
+GR = (1 + (5**0.5))/2
+GA = np.pi/GR
 
-def get_golden_bars(num_bars = 377, resolution = 128):
-    ans = mask_theta(0, (1,resolution, resolution))
+def get_golden_bars(num_bars = 376, resolution = 128):
+    ans = mask_theta(90, (1,resolution, resolution))
+    angle = 90
     for i in range(1,num_bars):
-        angle = (360*(i*GA))/(2*np.pi)
+        angle = (angle + (360*(GA))/(2*np.pi)) 
         ans = torch.cat((ans,mask_theta(angle, (1,resolution, resolution))))
     return ans
 
@@ -119,6 +121,7 @@ def dual_fft_loss(phase_loss, amp_loss, alpha_phase = 1, alpha_amp = 1):
 def mask_theta(theta, size):
     r = size[-2]
     c = size[-1]
+    theta = theta%180
     minval = float('inf')
     for tx in range(-c+1,c):
         costheta = (tx) / ((r-1-0)**2 + (0-tx)**2)**0.5

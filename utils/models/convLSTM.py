@@ -16,43 +16,65 @@ import utils.models.complexCNNs.radial_bn as radial_bn
 
 EPS = 1e-10
 
+class Identity(nn.Module):
+    def __init__(self, a):
+        super(Identity, self).__init__()
+
+    def forward(self, x):
+        return x
+
 class convLSTMcell(nn.Module):
-    def __init__(self, num_channels = 1, tanh_mode = False, sigmoid_mode = True):
+    def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, sigmoid_mode = True, real_mode = False, theta = False):
         super(convLSTMcell, self).__init__()
         self.tanh_mode = tanh_mode
         self.sigmoid_mode = sigmoid_mode
-        self.num_channels = num_channels
+        self.out_channels = out_channels
+        self.in_channels = in_channels
+        self.theta = theta
+        if real_mode:
+            cnn_func = nn.Conv2d
+            relu_func = nn.ReLU
+        else:
+            cnn_func = cmplx_conv.ComplexConv2d
+            relu_func = cmplx_activation.CReLU
+
+        if theta:
+            self.activation = lambda x: np.pi*torch.tanh(x)
+        else:
+            self.activation = lambda x: x
+
+
         self.inputGate = nn.Sequential(
-                cmplx_conv.ComplexConv2d(2*self.num_channels, 2*self.num_channels, (5,5), stride = (1,1), padding = (2,2)),
-                cmplx_activation.CReLU(),
-                cmplx_conv.ComplexConv2d(2*self.num_channels, 2*self.num_channels, (5,5), stride = (1,1), padding = (2,2)),
-                cmplx_activation.CReLU(),
-                cmplx_conv.ComplexConv2d(2*self.num_channels, self.num_channels, (5,5), stride = (1,1), padding = (2,2)),
-                # cmplx_activation.CReLU(),
+                cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (5,5), stride = (1,1), padding = (2,2)),
+                relu_func(),
+                cnn_func(2*self.out_channels, 2*self.out_channels, (5,5), stride = (1,1), padding = (2,2)),
+                relu_func(),
+                cnn_func(2*self.out_channels, self.out_channels, (5,5), stride = (1,1), padding = (2,2)),
+                # relu_func(),
             )
         self.forgetGate = nn.Sequential(
-                cmplx_conv.ComplexConv2d(2*self.num_channels, 2*self.num_channels, (5,5), stride = (1,1), padding = (2,2)),
-                cmplx_activation.CReLU(),
-                cmplx_conv.ComplexConv2d(2*self.num_channels, 2*self.num_channels, (5,5), stride = (1,1), padding = (2,2)),
-                cmplx_activation.CReLU(),
-                cmplx_conv.ComplexConv2d(2*self.num_channels, self.num_channels, (5,5), stride = (1,1), padding = (2,2)),
-                # cmplx_activation.CReLU(),
+                cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (5,5), stride = (1,1), padding = (2,2)),
+                relu_func(),
+                cnn_func(2*self.out_channels, 2*self.out_channels, (5,5), stride = (1,1), padding = (2,2)),
+                relu_func(),
+                cnn_func(2*self.out_channels, self.out_channels, (5,5), stride = (1,1), padding = (2,2)),
+                # relu_func(),
             )
         self.outputGate = nn.Sequential(
-                cmplx_conv.ComplexConv2d(2*self.num_channels, 2*self.num_channels, (5,5), stride = (1,1), padding = (2,2)),
-                cmplx_activation.CReLU(),
-                cmplx_conv.ComplexConv2d(2*self.num_channels, 2*self.num_channels, (5,5), stride = (1,1), padding = (2,2)),
-                cmplx_activation.CReLU(),
-                cmplx_conv.ComplexConv2d(2*self.num_channels, self.num_channels, (5,5), stride = (1,1), padding = (2,2)),
-                # cmplx_activation.CReLU(),
+                cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (5,5), stride = (1,1), padding = (2,2)),
+                relu_func(),
+                cnn_func(2*self.out_channels, 2*self.out_channels, (5,5), stride = (1,1), padding = (2,2)),
+                relu_func(),
+                cnn_func(2*self.out_channels, self.out_channels, (5,5), stride = (1,1), padding = (2,2)),
+                # relu_func(),
             )
         self.inputProc = nn.Sequential(
-                cmplx_conv.ComplexConv2d(2*self.num_channels, 2*self.num_channels, (5,5), stride = (1,1), padding = (2,2)),
-                cmplx_activation.CReLU(),
-                cmplx_conv.ComplexConv2d(2*self.num_channels, 2*self.num_channels, (5,5), stride = (1,1), padding = (2,2)),
-                cmplx_activation.CReLU(),
-                cmplx_conv.ComplexConv2d(2*self.num_channels, self.num_channels, (5,5), stride = (1,1), padding = (2,2)),
-                # cmplx_activation.CReLU(),
+                cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (5,5), stride = (1,1), padding = (2,2)),
+                relu_func(),
+                cnn_func(2*self.out_channels, 2*self.out_channels, (5,5), stride = (1,1), padding = (2,2)),
+                relu_func(),
+                cnn_func(2*self.out_channels, self.out_channels, (5,5), stride = (1,1), padding = (2,2)),
+                # relu_func(),
             )
         # self.decoder = nn.Linear(64*64,64*64)
         # self.decoder2 = nn.Linear(64*64*2, 64*64)
@@ -60,8 +82,7 @@ class convLSTMcell(nn.Module):
     def forward(self, x, prev_state = None, prev_output = None):
         # x is a batch of video frames at a single time stamp
         if prev_state is None:
-            shape1 = (x.shape[0], 1, *x.shape[2:])
-            shape2 = (x.shape[0], 64*64)
+            shape1 = (x.shape[0], self.out_channels, *x.shape[2:])
             prev_state = torch.zeros(shape1, device = x.device)
             prev_output = torch.zeros(shape1, device = x.device)
         inp_cat = torch.cat((x, prev_output), 1)
@@ -81,7 +102,7 @@ class convLSTMcell(nn.Module):
         else:
             Cthat = self.inputProc(inp_cat)
             Ct_new = (ft * prev_state) + (it * Cthat)
-            ht = Ct_new*ot
+            ht = self.activation(Ct_new*ot)
         # ht = self.decoder2(torch.cat((ht_temp, x.reshape(-1,64*64)),1)).view(-1,1,64,64)
 
         return Ct_new, ht
@@ -89,41 +110,129 @@ class convLSTMcell(nn.Module):
 class convLSTM(nn.Module):
     def __init__(self, tanh_mode = False, sigmoid_mode = True, two_cell = False):
         super(convLSTM, self).__init__()
-        self.cell1 = convLSTMcell(tanh_mode = tanh_mode, sigmoid_mode = sigmoid_mode)
-        self.two_cell = two_cell
-        if self.two_cell:
-            self.cell2 = convLSTMcell(tanh_mode = tanh_mode, sigmoid_mode = sigmoid_mode)
+        self.phase_m = convLSTMcell(tanh_mode = tanh_mode, sigmoid_mode = sigmoid_mode, real_mode = False)
+        self.mag_m = convLSTMcell(tanh_mode = tanh_mode, sigmoid_mode = sigmoid_mode, real_mode = True)
 
     def forward(self, fft_exp, coil_mask, device):
-        fft_log = (fft_exp+1e-8).log()*coil_mask
-        fft_log = torch.stack((fft_log.real, fft_log.imag), -1)
-        # x => B, t, C, h,w
+        mag_log = fft_exp.log().real
+        mag_exp = mag_log.exp()
+        phase = fft_exp / (mag_log.exp())
+
+        mag_log = mag_log * coil_mask
+        phase = phase * coil_mask
+        phase = torch.stack((phase.real, phase.imag), -1)
+
         prev_state1 = None
         prev_output1 = None
-        if self.two_cell:
-            prev_state2 = None
-            prev_output2 = None
-        ans_log = fft_log.clone().detach()
-        for ti in range(fft_log.shape[1]):
-            prev_state1, prev_output1 = self.cell1(fft_log[:,ti,:,:,:].to(device), prev_state1, prev_output1)
-            if self.two_cell:
-                prev_state2, prev_output2 = self.cell2(prev_output1, prev_state2, prev_output2)
-                ans_log[:,ti,:,:,:] = prev_output2
-            else:
-                ans_log[:,ti,:,:,:] = prev_output1
-        ans_log = torch.complex(ans_log[:,:,:,:,:,0], ans_log[:,:,:,:,:,1])
-        return ans_log
+        prev_state2 = None
+        prev_output2 = None
+
+        ans_mag_log = mag_exp.clone().detach()
+        ans_phase = phase.clone().detach()
+
+        for ti in range(fft_exp.shape[1]):
+            prev_state1, prev_output1 = self.phase_m(phase[:,ti,:,:,:,:].to(device), prev_state1, prev_output1)
+            prev_state2, prev_output2 = self.mag_m(mag_log[:,ti,:,:,:].to(device), prev_state2, prev_output2)
+
+            ans_mag_log[:,ti,:,:,:] = prev_output2
+            ans_phase[:,ti,:,:,:,:] = prev_output1
+
+        mag_temp = ((ans_phase**2).sum(-1)**0.5).unsqueeze(-1)
+        ans_phase = ans_phase / (mag_temp.detach() + EPS)
+
+        return ans_phase, ans_mag_log
 
 class convLSTM_quad(nn.Module):
     def __init__(self, tanh_mode = False, sigmoid_mode = True, two_cell = False):
         super(convLSTM_quad, self).__init__()
-        self.m1 = convLSTM(tanh_mode = tanh_mode, sigmoid_mode = sigmoid_mode, two_cell = two_cell)
-        self.m2 = convLSTM(tanh_mode = tanh_mode, sigmoid_mode = sigmoid_mode, two_cell = two_cell)
+        self.phase_m = convLSTMcell(tanh_mode = tanh_mode, sigmoid_mode = sigmoid_mode, real_mode = False)
+        self.mag_m1 = convLSTMcell(tanh_mode = tanh_mode, sigmoid_mode = sigmoid_mode, real_mode = True)
+        self.mag_m2 = convLSTMcell(tanh_mode = tanh_mode, sigmoid_mode = sigmoid_mode, real_mode = True)
 
     def forward(self, fft_exp, coil_mask, device):
-        fft_exp2 = torch.complex(fft_exp.real.clip(-2,2), fft_exp.imag.clip(-2,2)).exp()
-        
-        ans_log1 = self.m1(fft_exp, coil_mask, device)
-        ans_2 = (self.m2(fft_exp, coil_mask, device) + 1e-8).log()
+        mag_log = fft_exp.log().real
+        mag_exp = mag_log.exp()
+        phase = fft_exp / (mag_log.exp())
 
-        return ans_log1 + ans_2
+        mag_log = mag_log * coil_mask
+        mag_exp = mag_exp.clip(-2,2) * coil_mask
+        phase = phase * coil_mask
+        phase = torch.stack((phase.real, phase.imag), -1)
+
+        prev_state1 = None
+        prev_output1 = None
+        prev_state2 = None
+        prev_output2 = None
+        prev_state3 = None
+        prev_output3 = None
+
+        ans_mag_log = mag_exp.clone().detach()
+        ans_phase = phase.clone().detach()
+
+        for ti in range(fft_exp.shape[1]):
+            prev_state1, prev_output1 = self.phase_m(phase[:,ti,:,:,:,:].to(device), prev_state1, prev_output1)
+            prev_state2, prev_output2 = self.mag_m1(mag_exp[:,ti,:,:,:].to(device), prev_state2, prev_output2)
+            prev_state3, prev_output3 = self.mag_m2(mag_log[:,ti,:,:,:].to(device), prev_state3, prev_output3)
+
+            ans_mag_log[:,ti,:,:,:] = prev_output2.log() + prev_output3
+            ans_phase[:,ti,:,:,:,:] = prev_output1
+
+        mag_temp = ((ans_phase**2).sum(-1)**0.5).unsqueeze(-1)
+        ans_phase = ans_phase / (mag_temp.detach() + EPS)
+        
+        return ans_phase, ans_mag_log
+
+        
+class convLSTM_theta(nn.Module):
+    def __init__(self, tanh_mode = False, sigmoid_mode = True, two_cell = False):
+        super(convLSTM_theta, self).__init__()
+        self.phase_m = convLSTMcell(tanh_mode = tanh_mode, sigmoid_mode = sigmoid_mode, real_mode = True, theta = True, in_channels = 2, out_channels = 1)
+        self.mag_m = convLSTMcell(tanh_mode = tanh_mode, sigmoid_mode = sigmoid_mode, real_mode = True, in_channels = 1, out_channels = 1)
+
+    def forward(self, fft_exp, coil_mask, device):
+        mag_log = fft_exp.log().real
+        mag_exp = mag_log.exp()
+        phase = fft_exp / (mag_log.exp())
+
+        mag_log = mag_log * coil_mask
+        phase = phase * coil_mask
+        phase = torch.cat((phase.real, phase.imag), 2)
+
+        prev_state1 = None
+        prev_output1 = None
+        prev_state2 = None
+        prev_output2 = None
+
+        ans_mag_log = mag_exp.clone().detach()
+        ans_phase = torch.zeros(phase.shape[0],phase.shape[1],1,phase.shape[3], phase.shape[4], 2, device = fft_exp.device)
+
+        for ti in range(fft_exp.shape[1]):
+            prev_state1, prev_output1 = self.phase_m(phase[:,ti,:,:,:].to(device), prev_state1, prev_output1)
+            prev_state2, prev_output2 = self.mag_m(mag_log[:,ti,:,:,:].to(device), prev_state2, prev_output2)
+
+            ans_mag_log[:,ti,:,:,:] = prev_output2
+            ans_phase[:,ti,:,:,:,0] = torch.cos(prev_output1)
+            ans_phase[:,ti,:,:,:,1] = torch.sin(prev_output1)
+
+        # mag_temp = ((ans_phase**2).sum(-1)**0.5).unsqueeze(-1)
+        # ans_phase = ans_phase / (mag_temp.detach() + EPS)
+
+        return ans_phase, ans_mag_log
+
+class convLSTM_real(nn.Module):
+    def __init__(self, tanh_mode = False, sigmoid_mode = True, two_cell = False):
+        super(convLSTM_real, self).__init__()
+        self.model = convLSTMcell(tanh_mode = tanh_mode, sigmoid_mode = sigmoid_mode, real_mode = True)
+
+    def forward(self, x, device):
+        prev_state1 = None
+        prev_output1 = None
+        
+        ans = x.clone().detach()
+        
+        for ti in range(x.shape[1]):
+            prev_state1, prev_output1 = self.model(x[:,ti,:,:,:].to(device), prev_state1, prev_output1)
+            
+            ans[:,ti,:,:,:] = prev_output1
+
+        return ans

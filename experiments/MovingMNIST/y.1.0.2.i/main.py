@@ -29,6 +29,7 @@ os.environ['display'] = 'localhost:14.0'
 from utils.myDatasets.MovingMNIST import MovingMNIST
 from utils.functions import get_coil_mask, get_golden_bars
 from utils.models.convLSTM import convLSTM as Model
+from utils.models.convLSTM import convLSTM_real as Model_real
 from utils.functions import fetch_loss_function
 
 parser = argparse.ArgumentParser()
@@ -50,11 +51,13 @@ args = parser.parse_args()
 # torch.autograd.profiler.profile(False)
 # torch.autograd.profiler.emit_nvtx(False)
 
+EPS = 1e-8
+CEPS = torch.complex(torch.tensor(EPS),torch.tensor(EPS))
 
-EPOCHS = 100
+EPOCHS = 200
 parameters = {}
 parameters['lr'] = 3e-4
-parameters['descrption'] = 'base lstm experiment - No masking- no tanh - yes sigmoid'
+parameters['descrption'] = 'Real Space Trainer'
 parameters['train_batch_size'] = 23
 parameters['test_batch_size'] = 23
 parameters['num_views'] = 14
@@ -144,9 +147,15 @@ if args.neptune_log:
 else:
     run = None
 
-model = Model().to(device)
+model_ft = Model(tanh_mode = False, sigmoid_mode = True).to(device)
+dic_ft = torch.load(checkpoint_path + 'ft_model.pth', map_location = device)
+model_ft.load_state_dict(dic_ft['model'])
+for param in model_ft.parameters():
+    param.requires_grad = False
+model = Model_real(tanh_mode = False, sigmoid_mode = True).to(device)
 optimiser = optim.Adam(list(model.parameters()), lr = parameters['lr'])
-criterion = nn.L1Loss().to(device)
+criterionL1 = nn.L1Loss().to(device)
+criterionCos = nn.CosineSimilarity(dim = 5)
 SSIM = kornia.metrics.SSIM(11)
 
 def myimshow(x, cmap = 'gray'):
@@ -155,34 +164,65 @@ def myimshow(x, cmap = 'gray'):
     x[x > percentile_95] = percentile_95
     x[x < percentile_5] = percentile_5
     x = x - x.min()
-    x = x/ x.max()
+    x = x/ (x.max() + EPS)
     plt.imshow(x, cmap = cmap)
+
+def border_trim(x):
+    num_v, num_f, chan, r, c =x.shape
+    x = x.reshape(-1, chan*r*c)
+    percentile_95 = torch.quantile(x, .95, dim = 1).unsqueeze(1)
+    percentile_5 = torch.quantile(x, .5, dim = 1).unsqueeze(1)
+    x = x - percentile_5
+    x[x<0] = 0
+    x = x + percentile_5
+
+    x = x - percentile_95
+    x[x>0] = 0
+    x = x + percentile_95
+
+    x = x - x.min(1)[0].unsqueeze(1)
+    x = x / x.max(1)[0].unsqueeze(1)
+
+    x = x.reshape(num_v, num_f, chan, r, c)
+    return x
 
 def train(epoch):
     loss_av = 0
     ssim_score = 0
-    coil_mask_coll = (get_golden_bars(resolution = 64)*0)+1
+    coil_mask_coll = get_golden_bars(resolution = 64)
+    x_size, y_size = 64,64
+    x_arr, y_arr = np.mgrid[0:x_size, 0:y_size]
+    cell = (32,32)
+    dists = ((x_arr - cell[0])**2 + (y_arr - cell[1])**2)**0.33
+    dists = torch.FloatTensor(dists).to(device)
     for i, (indices, data) in tqdm(enumerate(trainloader), total = len(trainloader), desc = "[{}] | Training Ep {}".format(os.getpid(), epoch), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}"):
         optimiser.zero_grad(set_to_none = True)
         batch, num_frames, chan, numr, numc = data.shape
         coil_mask = coil_mask_coll[(torch.arange(parameters['num_views']*num_frames)+i)%376,:,:]
         coil_mask = coil_mask.reshape(num_frames,parameters['num_views'],numr,numc).sum(1).sign().unsqueeze(0).unsqueeze(2).to(device)
-        inpt = (torch.fft.fftshift(torch.fft.fft2(data.to(device)), dim = (-2,-1))+1e-8)
-        model.train()
-        pred_ft = model(inpt,coil_mask, device)
-
-        loss = criterion(pred_ft, inpt.log())
-        predr = torch.fft.ifft2(torch.fft.ifftshift(pred_ft.exp(), dim = (-2,-1))).real
+        inpt = (torch.fft.fftshift(torch.fft.fft2(data.to(device)), dim = (-2,-1))+CEPS)
         
-        # loss = criterion(pred, data.to(device))
+        with torch.no_grad():
+            ans_phase, ans_mag_log = model_ft(inpt,coil_mask, device)
+            pred_ft = ans_phase*ans_mag_log.unsqueeze(-1).exp()
+            pred_ft = torch.complex(pred_ft[:,:,:,:,:,0],pred_ft[:,:,:,:,:,1])
+            predr = torch.fft.ifft2(torch.fft.ifftshift(pred_ft, dim = (-2,-1))).real
+            predr = border_trim(predr)[:,21:]
+            
+        model.train()
+        predr_ispace = model(predr.detach(), device)
+
+        loss = criterionL1(predr_ispace, data.to(device)[:,21:])
+        
+        # loss = criterionL1(pred, data.to(device))
 
         loss.backward()
         optimiser.step()
 
         loss_av += loss.item()/len(trainloader)
-        ss1 = SSIM(predr.reshape(batch*num_frames,chan,numr,numc), data.reshape(batch*num_frames,chan,numr,numc).to(device))
+        ss1 = SSIM(predr_ispace.reshape(-1,chan,numr,numc), data[:,21:].reshape(-1,chan,numr,numc).to(device))
         ss1 = ss1.reshape(ss1.shape[0], -1).mean(1)
-        ssim_score += (ss1/(len(trainset)*num_frames)).sum().item()
+        ssim_score += (ss1/(len(trainset)*predr_ispace.shape[1])).sum().item()
 
     print('Train loss for epoch {} = {}'.format(epoch, loss_av), flush = True)
     print('Train SSIM for epoch {} = {}'.format(epoch, ssim_score), flush = True)
@@ -200,24 +240,36 @@ def eval(epoch, train = False):
     with torch.no_grad():
         loss_av = 0
         ssim_score = 0
-        coil_mask_coll = (get_golden_bars(resolution = 64)*0)+1
+        coil_mask_coll = get_golden_bars(resolution = 64)
+        x_size, y_size = 64,64
+        x_arr, y_arr = np.mgrid[0:x_size, 0:y_size]
+        cell = (32,32)
+        dists = ((x_arr - cell[0])**2 + (y_arr - cell[1])**2)**0.33
+        dists = torch.FloatTensor(dists).to(device)
         for i, (indices, data) in tqdm(enumerate(dloader), total = len(dloader), desc = "[{}] | Testing Ep {}".format(os.getpid(), epoch), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}"):
             batch, num_frames, chan, numr, numc = data.shape
             coil_mask = coil_mask_coll[(torch.arange(parameters['num_views']*num_frames)+i)%376,:,:]
             coil_mask = coil_mask.reshape(num_frames,parameters['num_views'],numr,numc).sum(1).sign().unsqueeze(0).unsqueeze(2).to(device)
-            inpt = (torch.fft.fftshift(torch.fft.fft2(data.to(device)), dim = (-2,-1))+1e-8)
-            model.eval()
-            pred_ft = model(inpt,coil_mask, device)
-
-            loss = criterion(pred_ft, inpt.log())
-            predr = torch.fft.ifft2(torch.fft.ifftshift(pred_ft.exp(), dim = (-2,-1))).real
+            inpt = (torch.fft.fftshift(torch.fft.fft2(data.to(device)), dim = (-2,-1))+CEPS)
             
-            # loss = criterion(pred, data.to(device))
+            with torch.no_grad():
+                ans_phase, ans_mag_log = model_ft(inpt,coil_mask, device)
+                pred_ft = ans_phase*ans_mag_log.unsqueeze(-1).exp()
+                pred_ft = torch.complex(pred_ft[:,:,:,:,:,0],pred_ft[:,:,:,:,:,1])
+                predr = torch.fft.ifft2(torch.fft.ifftshift(pred_ft, dim = (-2,-1))).real
+                predr = border_trim(predr)[:,21:]
+
+            model.eval()
+            predr_ispace = model(predr.detach(), device)
+
+            loss = criterionL1(predr_ispace, data.to(device)[:,21:])
+            
+            # loss = criterionL1(pred, data.to(device))
 
             loss_av += loss.item()/len(dloader)
-            ss1 = SSIM(predr.reshape(batch*num_frames,chan,numr,numc), data.reshape(batch*num_frames,chan,numr,numc).to(device))
+            ss1 = SSIM(predr_ispace.reshape(-1,chan,numr,numc), data[:,21:].reshape(-1,chan,numr,numc).to(device))
             ss1 = ss1.reshape(ss1.shape[0], -1).mean(1)
-            ssim_score += (ss1/(len(dset)*num_frames)).sum().item()
+            ssim_score += (ss1/(len(dset)*predr_ispace.shape[1])).sum().item()
 
     print('Test loss for epoch {} = {}'.format(epoch, loss_av), flush = True)
     print('Test SSIM for epoch {} = {}'.format(epoch, ssim_score), flush = True)
@@ -233,40 +285,42 @@ def visualise(epoch, train = False):
         dset = testset
         dstr = 'Test'
     with torch.no_grad():
-        coil_mask_coll = (get_golden_bars(resolution = 64)*0)+1
+        coil_mask_coll = get_golden_bars(resolution = 64)
         for i, (indices, data) in tqdm(enumerate(dloader), total = len(dloader), desc = "Testing for Epoch {}".format(epoch), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}"):
             batch, num_frames, chan, numr, numc = data.shape
             coil_mask = coil_mask_coll[(torch.arange(parameters['num_views']*num_frames)+i)%376,:,:]
             coil_mask = coil_mask.reshape(num_frames,parameters['num_views'],numr,numc).sum(1).sign().unsqueeze(0).unsqueeze(2).to(device)
-            inpt = (torch.fft.fftshift(torch.fft.fft2(data.to(device)), dim = (-2,-1))+1e-8)
+            inpt = (torch.fft.fftshift(torch.fft.fft2(data.to(device)), dim = (-2,-1))+CEPS)
             
+
+            with torch.no_grad():
+                ans_phase, ans_mag_log = model_ft(inpt,coil_mask, device)
+                pred_ft = ans_phase*ans_mag_log.unsqueeze(-1).exp()
+                pred_ft = torch.complex(pred_ft[:,:,:,:,:,0],pred_ft[:,:,:,:,:,1])
+                predr = torch.fft.ifft2(torch.fft.ifftshift(pred_ft, dim = (-2,-1))).real
+                predr = border_trim(predr)[:,21:]
+
+
             model.eval()
-
-            pred_ft = model(inpt,coil_mask, device)
-
-            predr = torch.fft.ifft2(torch.fft.ifftshift(pred_ft.exp(), dim = (-2,-1))).real
-            target = torch.fft.ifft2(torch.fft.ifftshift(inpt, dim = (-2,-1))).real
-            under_targ = torch.fft.ifft2(torch.fft.ifftshift(inpt*coil_mask, dim = (-2,-1))).real
+            predr_ispace = model(predr.detach(), device)
+            # predr[:,:,:,:5,:5] = 0
+            # predr[:,:,:,-5:,-5:] = 0
+            # predr[:,:,:,-5:,:5] = 0
+            # predr[:,:,:,:5,-5:] = 0
+            target = torch.fft.ifft2(torch.fft.ifftshift(inpt, dim = (-2,-1))).real[:,21:]
+            under_targ = torch.fft.ifft2(torch.fft.ifftshift(inpt*coil_mask, dim = (-2,-1))).real[:,21:]
             
-            for i in range(pred_ft.shape[1]):
-                fig = plt.figure(figsize = (12,8))
-                plt.subplot(2,3,1)
-                myimshow(((inpt+1e-8).log())[0,i,0,:,:].abs().cpu().numpy(), cmap = 'gray')
-                plt.title('Complete FFT')
-                plt.subplot(2,3,2)
-                myimshow(((inpt+1e-8).log()*coil_mask)[0,i,0,:,:].abs().cpu().numpy(), cmap = 'gray')
-                plt.title('Undersampled FFT')
-                plt.subplot(2,3,3)
-                myimshow((pred_ft+1e-8)[0,i,0,:,:].abs().cpu().numpy(), cmap = 'gray')
-                plt.title('Predicted FFT')
-                plt.subplot(2,3,4)
+            for i in range(target.shape[1]):
+                fig = plt.figure(figsize = (12,4))
+                plt.subplot(1,3,1)
                 myimshow(target.cpu()[0,i,0,:,:], cmap = 'gray')
                 plt.title('Image from Complete FFT')
-                plt.subplot(2,3,5)
-                myimshow(under_targ.cpu()[0,i,0,:,:], cmap = 'gray')
-                plt.title('Image from Undersampled FFT')
-                plt.subplot(2,3,6)
+                plt.subplot(1,3,2)
                 myimshow(predr[0,i,0,:,:].cpu().numpy(), cmap = 'gray')
+                plt.title('Image From KSpace LSTM')
+                plt.subplot(1,3,3)
+                myimshow(predr_ispace[0,i,0,:,:].cpu().numpy(), cmap = 'gray')
+                plt.title('Image From ISpace LSTM')                
                 plt.title('Our Reconstructed Image')
                 plt.suptitle("{} data Video 0 Frame {}".format(dstr, i))
                 plt.savefig('images/{}/epoch{}_{}'.format(dstr, epoch, i))
@@ -294,21 +348,37 @@ else:
 
 if args.eval:
     plt.figure()
-    plt.title('Train Loss')
     plt.plot(range(len(losses)), [x[0] for x in losses], color = 'b', label = 'Train Loss')
-    plt.plot(range(len(losses)), [x[1] for x in losses], color = 'r', label = 'Train SSIM')
+    plt.title('Train Loss')
     plt.xlabel('epoch')
     plt.ylabel('loss')
     plt.legend()
     plt.savefig('images/train_loss.png')
+    
+    plt.figure()
+    plt.plot(range(len(losses)), [x[1] for x in losses], color = 'g', label = 'Train SSIM')
+    plt.title('Train SSIM')
+    plt.xlabel('epoch')
+    plt.ylabel('loss')
+    plt.legend()
+    plt.savefig('images/train_ssim.png')
+
     plt.figure()
     plt.title('Test Loss')
-    plt.plot(range(len(test_losses)), [x[0] for x in test_losses], color = 'b', label = 'Train Loss')
-    plt.plot(range(len(test_losses)), [x[1] for x in test_losses], color = 'r', label = 'Train SSIM')
+    plt.plot(range(len(test_losses)), [x[0] for x in test_losses], color = 'b', label = 'Test Loss')
     plt.xlabel('epoch')
     plt.ylabel('loss')
     plt.legend()
     plt.savefig('images/test_loss.png')
+
+    plt.figure()
+    plt.title('Test Loss')
+    plt.plot(range(len(test_losses)), [x[1] for x in test_losses], color = 'g', label = 'Test SSIM')
+    plt.xlabel('epoch')
+    plt.ylabel('loss')
+    plt.legend()
+    plt.savefig('images/test_ssim.png')
+
     visualise(pre_e, train = True)
     visualise(pre_e, train = False)
     if not args.visualise_only:
@@ -347,5 +417,5 @@ for e in range(EPOCHS):
     torch.save({'state': model_state}, checkpoint_path + 'state.pth')
     # model_state += 1
     print('Saving model after {} Epochs\n'.format(e+1), flush = True)
-eval(100, train = True)
-eval(100, train = False)
+# eval(100, train = True)
+# eval(100, train = False)
