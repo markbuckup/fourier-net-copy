@@ -50,7 +50,7 @@ args = parser.parse_args()
 # # torch.autograd.set_detect_anomaly(False)
 # torch.autograd.profiler.profile(False)
 # torch.autograd.profiler.emit_nvtx(False)
-
+print(os.getcwd())
 EPS = 1e-8
 CEPS = torch.complex(torch.tensor(EPS),torch.tensor(EPS))
 

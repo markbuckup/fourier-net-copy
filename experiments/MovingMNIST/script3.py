@@ -3,10 +3,10 @@ import sys
 import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--gpu', type = int, default = '2')
+parser.add_argument('--gpu', type = int, default = '3')
 args = parser.parse_args()
 
-task_list = ['r.i.5','r.11', 'r.i.11','r.17', 'r.i.17', 'r.80', 'r.i.80']
+task_list = ['r.i.7','r.20', 'r.i.20','r.25', 'r.i.25', 'r.120', 'r.i.120']
 
 prev_task = None
 for task in task_list:

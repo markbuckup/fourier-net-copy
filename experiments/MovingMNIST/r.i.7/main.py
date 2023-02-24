@@ -147,7 +147,7 @@ if args.neptune_log:
 else:
     run = None
 
-ft_path = '../r.{}/checkpoint_0.pth'.format(int(os.getcwd().split('/')[-1].split('.')[-1]))
+ft_path = '../r.{}/checkpoints/checkpoint_0.pth'.format(int(os.getcwd().split('/')[-1].split('.')[-1]))
 model_ft = Model(tanh_mode = False, sigmoid_mode = True).to(device)
 dic_ft = torch.load(ft_path, map_location = device)
 model_ft.load_state_dict(dic_ft['model'])
@@ -159,11 +159,12 @@ criterionL1 = nn.L1Loss().to(device)
 criterionCos = nn.CosineSimilarity(dim = 5)
 SSIM = kornia.metrics.SSIM(11)
 
-def myimshow(x, cmap = 'gray'):
-    percentile_95 = np.percentile(x, 95)
-    percentile_5 = np.percentile(x, 5)
-    x[x > percentile_95] = percentile_95
-    x[x < percentile_5] = percentile_5
+def myimshow(x, cmap = 'gray', trim = False):
+    if trim:
+        percentile_95 = np.percentile(x, 95)
+        percentile_5 = np.percentile(x, 5)
+        x[x > percentile_95] = percentile_95
+        x[x < percentile_5] = percentile_5
     x = x - x.min()
     x = x/ (x.max() + EPS)
     plt.imshow(x, cmap = cmap)
@@ -391,6 +392,9 @@ if args.eval:
     # plt.ylabel('loss')
     # plt.legend()
     # plt.savefig('images/test_loss.png')
+    if not args.visualise_only:
+        with open('status.txt', 'w') as f:
+            f.write('1')
     os._exit(0)
 
 for e in range(EPOCHS):

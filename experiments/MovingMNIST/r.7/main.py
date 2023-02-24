@@ -152,11 +152,12 @@ criterionL1 = nn.L1Loss().to(device)
 criterionCos = nn.CosineSimilarity(dim = 5)
 SSIM = kornia.metrics.SSIM(11)
 
-def myimshow(x, cmap = 'gray'):
-    percentile_95 = np.percentile(x, 95)
-    percentile_5 = np.percentile(x, 5)
-    x[x > percentile_95] = percentile_95
-    x[x < percentile_5] = percentile_5
+def myimshow(x, cmap = 'gray', trim = False):
+    if trim:
+        percentile_95 = np.percentile(x, 95)
+        percentile_5 = np.percentile(x, 5)
+        x[x > percentile_95] = percentile_95
+        x[x < percentile_5] = percentile_5
     x = x - x.min()
     x = x/ (x.max() + EPS)
     plt.imshow(x, cmap = cmap)
@@ -302,13 +303,13 @@ def visualise(epoch, train = False):
                 myimshow((pred_ft+CEPS).log()[0,i,0,:,:].abs().cpu().numpy(), cmap = 'gray')
                 plt.title('Predicted FFT')
                 plt.subplot(2,3,4)
-                myimshow(target.cpu()[0,i,0,:,:], cmap = 'gray')
+                myimshow(target.cpu()[0,i,0,:,:], cmap = 'gray', trim = True)
                 plt.title('Image from Complete FFT')
                 plt.subplot(2,3,5)
-                myimshow(under_targ.cpu()[0,i,0,:,:], cmap = 'gray')
+                myimshow(under_targ.cpu()[0,i,0,:,:], cmap = 'gray', trim = True)
                 plt.title('Image from Undersampled FFT')
                 plt.subplot(2,3,6)
-                myimshow(predr[0,i,0,:,:].cpu().numpy(), cmap = 'gray')
+                myimshow(predr[0,i,0,:,:].cpu().numpy(), cmap = 'gray', trim = True)
                 plt.title('Our Reconstructed Image')
                 plt.suptitle("{} data Video 0 Frame {}".format(dstr, i))
                 plt.savefig('images/{}/epoch{}_{}'.format(dstr, epoch, i))
@@ -364,6 +365,9 @@ if args.eval:
     # plt.ylabel('loss')
     # plt.legend()
     # plt.savefig('images/test_loss.png')
+    if not args.visualise_only:
+        with open('status.txt', 'w') as f:
+            f.write('1')
     os._exit(0)
 
 for e in range(EPOCHS):
