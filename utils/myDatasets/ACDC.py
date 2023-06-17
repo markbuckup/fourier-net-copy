@@ -21,6 +21,7 @@ from utils.functions import get_coil_mask, get_golden_bars
 from utils.models.MDCNN import MDCNN
 
 EPS = 1e-10
+CEPS = torch.complex(torch.tensor(EPS),torch.tensor(EPS)).exp()
 
 def seed_torch(seed=0):
     random.seed(seed)
@@ -151,7 +152,7 @@ class ACDC(Dataset):
         cls.train_num_mem = data[11]
         cls.test_num_mem = data[12]
 
-    def __init__(self, path, parameters, train = True, blank = False, window_mode = True):
+    def __init__(self, path, parameters, train = True, blank = False, window_mode = False):
         super(ACDC, self).__init__()
         self.path = path
         self.train = train
@@ -192,7 +193,8 @@ class ACDC(Dataset):
         
         self.golden_bars = get_golden_bars(resolution = self.resolution)
         self.num_golden_cycle = self.golden_bars.shape[0]
-        self.coil_mask = get_coil_mask(n_coils = self.num_coils, resolution = self.resolution)
+        self.coil_rand_limit = 100
+        self.coil_mask = get_coil_mask(n_coils = self.coil_rand_limit*self.num_coils, resolution = self.resolution, theta_init = 0)
 
         self.num_patients = len(self.data)
         self.num_vids_per_patient = np.array([x.shape[0] for x in self.data])
@@ -209,6 +211,8 @@ class ACDC(Dataset):
             self.num_videos = int((self.num_vids_per_patient*self.frames_per_vid_per_patient).sum())
         else:
             self.num_videos = int(self.num_vids_per_patient.sum())
+        #DEBUG
+        self.coil_dic = {}
 
     def index_to_location(self, i):
         if self.window_mode:
@@ -251,8 +255,12 @@ class ACDC(Dataset):
         p_num, v_num, f_num = self.index_to_location(i)
         if ACDC.get_mem_filled(self.train, p_num) == 0:
             # vnum, fnum, 1, r, c
-            indata = ((self.data[p_num].type(torch.float64)/255.).expand(-1,-1,self.num_coils, -1,-1)*self.coil_mask.unsqueeze(0).unsqueeze(0))
-            temp = (torch.fft.fftshift(torch.fft.fft2(indata) ,dim = (-2,-1)) + EPS).log()
+            rand_number = np.random.randint(self.coil_rand_limit)
+            self.coil_dic[p_num] = rand_number
+            temp_coil = ((np.arange(self.num_coils)*self.coil_rand_limit)+rand_number)%len(self.coil_mask)
+            temp_coil = self.coil_mask[temp_coil,:,:]
+            indata = ((self.data[p_num].type(torch.float64)/255.).expand(-1,-1,self.num_coils, -1,-1)*temp_coil.unsqueeze(0).unsqueeze(0))
+            temp = (torch.fft.fftshift(torch.fft.fft2(indata) ,dim = (-2,-1)) + CEPS)
             if not self.memoise_disable:
                 ACDC.set_mem_ft(self.train, p_num, torch.stack((temp.real, temp.imag), -1))
             # if self.train:
@@ -299,11 +307,21 @@ class ACDC(Dataset):
         r_ft_data = indexed_ft_data[indices,:,:,:].permute(1,0,2,3,4)
         if self.window_mode:
             target = self.data[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:].type(torch.float64)
-            target = target/255.
+            target = target/255.            
         else:
+            #DEBUG
+            rand_number = self.coil_dic[p_num]
+            temp_coil = ((np.arange(self.num_coils)*self.coil_rand_limit)+rand_number)%len(self.coil_mask)
+            temp_coil = self.coil_mask[temp_coil,:,:]
+
             target = self.data[p_num][v_num, indices,:,:,:].type(torch.float64)
             target = target/255.
+            
+            #DEBUG
+            target = target*temp_coil.unsqueeze(0)
+
         if self.norm:
+            print('Bad')
             target = (target-self.mu)/self.std
             r_ft_data[:,:,:,:,0] = (r_ft_data[:,:,:,:,0]-self.ft_mu_r)/self.ft_std_r
             r_ft_data[:,:,:,:,1] = (r_ft_data[:,:,:,:,1]-self.ft_mu_i)/self.ft_std_i
@@ -322,20 +340,28 @@ class ACDC(Dataset):
         selection = self.golden_bars[golden_bars_indices,:,:].reshape(-1, self.ft_num_radial_views, self.resolution, self.resolution)
         current_window_mask = selection.sum(1).sign().float()
         
-        ft_masked = r_ft_data * current_window_mask.unsqueeze(0).unsqueeze(-1)
+        # ft_masked = r_ft_data * current_window_mask.unsqueeze(0).unsqueeze(-1)
         
         if self.window_mode:
             target_ft = self.data_fft[p_num][v_num, (f_num+self.target_frame)%self.frames_per_vid_per_patient[p_num],:,:,:]
         else:
             target_ft = self.data_fft[p_num][v_num, indices,:,:,:]
+
+        period = torch.tensor(self.frames_per_vid_per_patient[p_num])
             
         if f_num is None:
             f_num = -1
             r_ft_data = r_ft_data.permute(1,0,2,3,4)
-            ft_masked = ft_masked.permute(1,0,2,3,4)
+            # ft_masked = ft_masked.permute(1,0,2,3,4)
             target = target.permute(1,0,2,3).squeeze()
             target_ft = target_ft.permute(1,0,2,3,4).squeeze()
-        return torch.tensor([p_num, v_num, f_num]), r_ft_data.float().cpu(), ft_masked.float().cpu(), target.float().cpu(), target_ft.cpu()
+        r_ft_data = torch.complex(r_ft_data.float().cpu()[:,:,:,:,0], r_ft_data.float().cpu()[:,:,:,:,1])
+        target_ft = torch.complex(target_ft.float().cpu()[:,:,:,0], target_ft.float().cpu()[:,:,:,1])
+
+        #DEBUG
+        target_ft = r_ft_data.squeeze()
+
+        return torch.tensor([p_num, v_num, f_num]), r_ft_data, current_window_mask.unsqueeze(1), target.float().cpu(), target_ft, period.cpu()
 
         
     def __len__(self):

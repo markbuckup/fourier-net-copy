@@ -136,6 +136,10 @@ class convLSTM(nn.Module):
 
             ans_mag_log[:,ti,:,:,:] = prev_output2
             ans_phase[:,ti,:,:,:,:] = prev_output1
+            # prev_state1 = prev_state1.detach()
+            # prev_state2 = prev_state2.detach()
+            prev_output1 = prev_output1.detach()
+            prev_output2 = prev_output2.detach()
 
         mag_temp = ((ans_phase**2).sum(-1)**0.5).unsqueeze(-1)
         ans_phase = ans_phase / (mag_temp.detach() + EPS)

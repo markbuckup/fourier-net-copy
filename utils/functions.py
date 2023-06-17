@@ -164,7 +164,7 @@ def mask_theta(theta, size):
     endx += moveright
     return draw_line(torch.zeros(size), torch.tensor([startx, starty]), torch.tensor([endx, endy]), torch.tensor([1.]))
 
-def get_window_mask(window_size = 7, number_of_radial_views = 14, resolution = 128):
+def get_window_mask(theta_init = 0, window_size = 7, number_of_radial_views = 14, resolution = 128):
     window_thetas = []
     window_mask = torch.zeros(window_size, resolution, resolution)
     for i in range(number_of_radial_views):
@@ -175,48 +175,49 @@ def get_window_mask(window_size = 7, number_of_radial_views = 14, resolution = 1
 
     for wi in range(window_size):
         for thetai in window_thetas:
-            m = mask_theta(thetai + theta_translations[wi] , (1,resolution,resolution))
+            m = mask_theta(theta_init + thetai + theta_translations[wi] , (1,resolution,resolution))
             window_mask[wi,:,:] += m.squeeze()
     window_mask = torch.sign(window_mask)
     return window_mask
 
-def get_coil_mask(n_coils = 8, resolution = 128):
-    if n_coils == 1:
-        return torch.ones(n_coils, resolution, resolution)
-    temp_mask = get_window_mask(window_size = 1, number_of_radial_views = n_coils, resolution = resolution)[0,:,:]
-    centres = []
-    ri = 0
-    for ci in range(resolution):
-        if temp_mask[ri,ci] == 1 and (ri,ci) not in centres:
-            centres.append((ri,ci))
-    ci = resolution-1
-    for ri in range(resolution):
-        if temp_mask[ri,ci] == 1 and (ri,ci) not in centres:
-            centres.append((ri,ci))
-    ri = resolution-1
-    for ci in reversed(range(resolution)):
-        if temp_mask[ri,ci] == 1 and (ri,ci) not in centres:
-            centres.append((ri,ci))
-    ci = 0
-    for ri in reversed(range(resolution)):
-        if temp_mask[ri,ci] == 1 and (ri,ci) not in centres:
-            centres.append((ri,ci))
+def fspecial_gauss(size, sigma):
 
-    centres = centres[::2]
+    """Function to mimic the 'fspecial' gaussian MATLAB function
+    """
 
-    assert(len(centres) == n_coils)
+    x, y = np.mgrid[-size//2 + 1:size//2 + 1, -size//2 + 1:size//2 + 1]
+    g = np.exp(-((x**2 + y**2)/(2.0*sigma**2)))
+    return torch.FloatTensor(g/g.sum())
 
-    ans = torch.zeros(n_coils, resolution, resolution)
-    ar,ac = resolution//2, resolution//2
-    halfline = resolution//2
-    for i,(rc, cc) in enumerate(centres):
-        scale = (((rc-ar)**2 + (cc - ac)**2)**0.5 / halfline)**0.5
-        sigma = (resolution/3) * scale
-        m1,m2 = torch.meshgrid(torch.arange(resolution),torch.arange(resolution), indexing='ij')
-        dists = ((m1-rc)**2 + (m2-cc)**2)**0.5
-        ans[i,:,:] = np.exp(-((dists**2)/(2*(sigma**2))))
-    return ans
+def get_coil_mask(theta_init = 0, n_coils = 8, resolution = 128):
+    # assert(len(centres) == n_coils)
+    centrex, centrey = 2*resolution, 2*resolution
+    sigma = resolution/(2.5)
+    radius = resolution//2
     
+    filter = fspecial_gauss(2*resolution, sigma)
+    ans = torch.zeros(n_coils, resolution, resolution)
+
+    for i in range(n_coils):
+        theta = theta_init + ((i/n_coils)*((2*np.pi)))
+        x_delta = int(radius*np.cos(theta))
+        y_delta = int(radius*np.sin(theta))
+        centre_g_x = centrex + x_delta
+        centre_g_y = centrey + y_delta
+        big_ans = torch.zeros((4*resolution,4*resolution))
+        big_ans[centre_g_x-resolution:centre_g_x+resolution, centre_g_y-resolution:centre_g_y+resolution] = filter
+        ans[i,:,:] = big_ans[centrex-radius:centrex+radius, centrey-radius:centrey+radius]
+        ans[i,:,:] = ans[i,:,:] - (ans[i,:,:].min())
+        ans[i,:,:] = ans[i,:,:] / (ans[i,:,:].max()+1e-8)
+
+
+    return ans    
+
+def save_coils(theta_init, n_coils = 4):
+    coils = get_coil_mask(theta_init = theta_init, n_coils = n_coils)
+    for ci in range(coils.shape[0]):
+        plt.imsave('Coil_{}.png'.format(ci), coils[ci,:,:], cmap = 'gray')
+
 # x1 = torch.randn(10,3,128,128)
 # fx1 = torch.randn(10,1,128,128,2)
 # mydic = {
