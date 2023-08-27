@@ -367,7 +367,7 @@ class ACDC(Dataset):
     def __len__(self):
         return self.num_videos
 
-# a = ACDC('../datasets/ACDC/', resolution = 256, norm = False)
+a = ACDC('../datasets/ACDC/', resolution = 256, norm = False)
 # x1, ft, ft_masked, targ, target_ft = a[0]
 # for i in range(8):
 #     tft = torch.complex(ft[i,0,:,:,0], ft[i,0,:,:,1])

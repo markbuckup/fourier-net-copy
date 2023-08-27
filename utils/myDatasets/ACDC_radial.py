@@ -107,6 +107,8 @@ class ACDC_radial(Dataset):
 
         self.num_videos = int(self.num_vids_per_patient.sum())
 
+        self.RAM_memoised = [None for k in range(self.num_videos)]
+
         self.total_frames = self.num_coils*(self.frames_per_vid_per_patient*self.num_vids_per_patient).sum()
 
         self.draw_radial_views_indices = torch.zeros(self.frames_per_vid_per_patient.max(), 377)
@@ -125,6 +127,13 @@ class ACDC_radial(Dataset):
         return p_num, v_num
 
     def __getitem__(self, i):
+
+        if self.parameters['memoise_RAM']:
+            if self.RAM_memoised[i] is not None:
+                ind, grid_data, og_coiled_fft, og_video_coils, og_video, Nf = self.RAM_memoised[i]
+                return ind, grid_data, og_coiled_fft, og_video_coils, og_video, Nf
+
+
         p_num, v_num = self.index_to_location(i)
         actual_pnum = self.offset + p_num
 
@@ -219,6 +228,10 @@ class ACDC_radial(Dataset):
         grid_data = torch.permute(grid_data, (1,0,2,3))
         og_video_coils = torch.permute(og_video_coils, (1,0,2,3))
         og_coiled_fft = torch.permute(og_coiled_fft, (1,0,2,3))
+
+        if self.parameters['memoise_RAM']:
+            if self.RAM_memoised[i] is None:
+                self.RAM_memoised[i] = [torch.tensor([actual_pnum, v_num]), grid_data, og_coiled_fft, og_video_coils, og_video, Nf]
 
         return torch.tensor([actual_pnum, v_num]), grid_data, og_coiled_fft, og_video_coils, og_video, Nf
 
@@ -410,70 +423,72 @@ class ACDC_radial(Dataset):
 #         return self.num_videos
 
 
-# parameters = {}
-# parameters['image_resolution'] = 64
-# parameters['train_batch_size'] = 64
-# parameters['test_batch_size'] = 164
-# parameters['lr_kspace'] = 3e-4
-# parameters['lr_ispace'] = 1e-5
-# parameters['num_epochs_ispace'] = 0
-# parameters['num_epochs_kspace'] = 1000
-# parameters['kspace_architecture'] = 'KLSTM1'
-# parameters['ispace_architecture'] = 'ILSTM1'
-# parameters['history_length'] = 0
-# parameters['loop_videos'] = 30
-# parameters['dataset'] = 'acdc'
-# parameters['train_test_split'] = 0.8
-# parameters['normalisation'] = False
-# parameters['window_size'] = -1
-# parameters['init_skip_frames'] = 0
-# parameters['SHM_looping'] = True
-# parameters['FT_radial_sampling'] = 20
-# parameters['num_coils'] = 8
-# parameters['scale_input_fft'] = False
-# parameters['dataloader_num_workers'] = 0
-# parameters['optimizer'] = 'Adam'
-# parameters['scheduler'] = 'StepLR'
-# parameters['optimizer_params'] = (0.9, 0.999)
-# parameters['scheduler_params'] = {
-#     'base_lr': 3e-4,
-#     'max_lr': 1e-3,
-#     'step_size_up': 10,
-#     'mode': 'triangular',
-#     'step_size': parameters['num_epochs_kspace']//3,
-#     'gamma': 0.5,
-#     'verbose': True
-# }
-# parameters['Automatic_Mixed_Precision'] = False
-# parameters['predicted_frame'] = 'last'
-# parameters['loss_params'] = {
-#     'SSIM_window': 11,
-#     'alpha_phase': 1,
-#     'alpha_amp': 1,
-#     'grayscale': True,
-#     'deterministic': False,
-#     'watson_pretrained': True,
-# }
-# parameters['NUFFT_numpoints'] = 8
-# parameters['NUFFT_kbwidth'] = 0.84
-# parameters['shuffle_coils'] = True
-# parameters['memoise'] = False
+if __name__ == '__main__':
+    parameters = {}
+    parameters['image_resolution'] = 64
+    parameters['train_batch_size'] = 64
+    parameters['test_batch_size'] = 164
+    parameters['lr_kspace'] = 3e-4
+    parameters['lr_ispace'] = 1e-5
+    parameters['num_epochs_ispace'] = 0
+    parameters['num_epochs_kspace'] = 1000
+    parameters['kspace_architecture'] = 'KLSTM1'
+    parameters['ispace_architecture'] = 'ILSTM1'
+    parameters['history_length'] = 0
+    parameters['loop_videos'] = 30
+    parameters['dataset'] = 'acdc'
+    parameters['train_test_split'] = 0.8
+    parameters['normalisation'] = False
+    parameters['window_size'] = -1
+    parameters['init_skip_frames'] = 0
+    parameters['SHM_looping'] = False
+    parameters['FT_radial_sampling'] = 20
+    parameters['memoise_RAM'] = False
+    parameters['num_coils'] = 8
+    parameters['scale_input_fft'] = False
+    parameters['dataloader_num_workers'] = 0
+    parameters['optimizer'] = 'Adam'
+    parameters['scheduler'] = 'StepLR'
+    parameters['optimizer_params'] = (0.9, 0.999)
+    parameters['scheduler_params'] = {
+        'base_lr': 3e-4,
+        'max_lr': 1e-3,
+        'step_size_up': 10,
+        'mode': 'triangular',
+        'step_size': parameters['num_epochs_kspace']//3,
+        'gamma': 0.5,
+        'verbose': True
+    }
+    parameters['Automatic_Mixed_Precision'] = False
+    parameters['predicted_frame'] = 'last'
+    parameters['loss_params'] = {
+        'SSIM_window': 11,
+        'alpha_phase': 1,
+        'alpha_amp': 1,
+        'grayscale': True,
+        'deterministic': False,
+        'watson_pretrained': True,
+    }
+    parameters['NUFFT_numpoints'] = 8
+    parameters['NUFFT_kbwidth'] = 0.84
+    parameters['shuffle_coils'] = True
+    parameters['memoise'] = True
 
 
-# dd = ACDC_radial('../../datasets/ACDC/', parameters, torch.device('cuda:1'), train = True)
-# import time
-# t1 = time.time()
-# a = dd[0]
-# print('Time taken = {}'.format(time.time()-t1))
-# grid_data = a[1]
-# for i in range(8):
-#     tt = torch.fft.ifft2(torch.fft.ifftshift(grid_data[0,i,:,:])) 
-#     plt.imsave('aim2_coil{}.png'.format(i),tt.real, cmap = 'gray')
-# plt.imsave('aim.png',(grid_data[0,0,:,:].abs()+1).log(), cmap = 'gray')
-# plt.imsave('aim_orig.png',a[-2][0,:,:], cmap = 'gray')
+    dd = ACDC_radial('../../datasets/ACDC/', parameters, torch.device('cuda:1'), train = True)
+    # import time
+    # t1 = time.time()
+    # a = dd[0]
+    # print('Time taken = {}'.format(time.time()-t1))
+    # grid_data = a[1]
+    # for i in range(8):
+    #     tt = torch.fft.ifft2(torch.fft.ifftshift(grid_data[0,i,:,:])) 
+    #     plt.imsave('aim2_coil{}.png'.format(i),tt.real, cmap = 'gray')
+    # plt.imsave('aim.png',(grid_data[0,0,:,:].abs()+1).log(), cmap = 'gray')
+    # plt.imsave('aim_orig.png',a[-2][0,:,:], cmap = 'gray')
 
-# for i in range(8):
-#     tt = torch.fft.ifft2(torch.fft.ifftshift(grid_data[1,i,:,:])) 
-#     plt.imsave('bim2_coil{}.png'.format(i),tt.real, cmap = 'gray')
-# plt.imsave('bim.png',(grid_data[1,0,:,:].abs()+1).log(), cmap = 'gray')
-# plt.imsave('bim_orig.png',a[-2][1,:,:], cmap = 'gray')
+    # for i in range(8):
+    #     tt = torch.fft.ifft2(torch.fft.ifftshift(grid_data[1,i,:,:])) 
+    #     plt.imsave('bim2_coil{}.png'.format(i),tt.real, cmap = 'gray')
+    # plt.imsave('bim.png',(grid_data[1,0,:,:].abs()+1).log(), cmap = 'gray')
+    # plt.imsave('bim_orig.png',a[-2][1,:,:], cmap = 'gray')

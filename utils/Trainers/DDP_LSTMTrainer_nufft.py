@@ -124,7 +124,8 @@ class Trainer(nn.Module):
                         )
 
         if self.parameters['optimizer'] == 'Adam':
-            self.kspace_optim = optim.Adam(self.kspace_model.parameters(), lr=self.parameters['lr_kspace'], betas=self.parameters['optimizer_params'])
+            self.kspace_optim_mag = optim.Adam(self.kspace_model.module.mag_m.parameters(), lr=self.parameters['lr_kspace_mag'], betas=self.parameters['optimizer_params'])
+            self.kspace_optim_phase = optim.Adam(self.kspace_model.module.phase_m.parameters(), lr=self.parameters['lr_kspace_phase'], betas=self.parameters['optimizer_params'])
             self.ispace_optim = optim.Adam(self.ispace_model.parameters(), lr=self.parameters['lr_ispace'], betas=self.parameters['optimizer_params'])
             self.parameters['scheduler_params']['cycle_momentum'] = False
             
@@ -134,18 +135,22 @@ class Trainer(nn.Module):
         if self.parameters['scheduler'] == 'StepLR':
             mydic = self.parameters['scheduler_params']
             if self.ddp_rank == 0:
-                self.kspace_scheduler = optim.lr_scheduler.StepLR(self.kspace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
+                self.kspace_scheduler_mag = optim.lr_scheduler.StepLR(self.kspace_optim_mag, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
+                self.kspace_scheduler_phase = optim.lr_scheduler.StepLR(self.kspace_optim_phase, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
                 self.ispace_scheduler = optim.lr_scheduler.StepLR(self.ispace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
             else:
-                self.kspace_scheduler = optim.lr_scheduler.StepLR(self.kspace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
+                self.kspace_scheduler_mag = optim.lr_scheduler.StepLR(self.kspace_optim_mag, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
+                self.kspace_scheduler_phase = optim.lr_scheduler.StepLR(self.kspace_optim_phase, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
                 self.ispace_scheduler = optim.lr_scheduler.StepLR(self.ispace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
         if self.parameters['scheduler'] == 'CyclicLR':
             mydic = self.parameters['scheduler_params']
             if self.ddp_rank == 0:
-                self.kspace_scheduler = optim.lr_scheduler.CyclicLR(self.kspace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
+                self.kspace_scheduler_mag = optim.lr_scheduler.CyclicLR(self.kspace_optim_mag, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
+                self.kspace_scheduler_phase = optim.lr_scheduler.CyclicLR(self.kspace_optim_phase, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
                 self.ispace_scheduler = optim.lr_scheduler.CyclicLR(self.ispace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
             else:
-                self.kspace_scheduler = optim.lr_scheduler.CyclicLR(self.kspace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
+                self.kspace_scheduler_mag = optim.lr_scheduler.CyclicLR(self.kspace_optim_mag, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
+                self.kspace_scheduler_phase = optim.lr_scheduler.CyclicLR(self.kspace_optim_phase, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
                 self.ispace_scheduler = optim.lr_scheduler.CyclicLR(self.ispace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
 
         self.l1loss = fetch_loss_function('L1',self.device, self.parameters['loss_params'])
@@ -238,7 +243,8 @@ class Trainer(nn.Module):
         else:
             tqdm_object = enumerate(self.trainloader)
         for i, (indices, undersampled_fts, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
-            self.kspace_optim.zero_grad(set_to_none=True)
+            self.kspace_optim_mag.zero_grad(set_to_none=True)
+            self.kspace_optim_phase.zero_grad(set_to_none=True)
             
             batch, num_frames, chan, numr, numc = undersampled_fts.shape
             inpt_mag_log = (og_coiled_fts.abs()+EPS).log()
@@ -247,12 +253,13 @@ class Trainer(nn.Module):
             self.kspace_model.train()
             mask = None
             predr, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, mask, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids)
-            loss = 0.1*loss_mag + 3*loss_phase + 5*loss_real
+            # print(loss_mag, loss_phase, loss_real)
+            loss = 0.05*loss_mag + 5*loss_phase + 50*loss_real
 
-            # loss = loss_mag + 8*loss_phase
             loss.backward()
             # print(loss)
-            self.kspace_optim.step()
+            self.kspace_optim_mag.step()
+            self.kspace_optim_phase.step()
 
             avglossphase += loss_phase.item()/(len(self.trainloader))
             avglossmag += loss_mag.item()/(len(self.trainloader))
@@ -263,8 +270,9 @@ class Trainer(nn.Module):
             avg_l1_loss += loss_l1/self.trainset.total_frames
             avg_l2_loss += loss_l2/self.trainset.total_frames
 
-        if self.kspace_scheduler is not None:
-            self.kspace_scheduler.step()
+        if self.kspace_scheduler_mag is not None:
+            self.kspace_scheduler_mag.step()
+            self.kspace_scheduler_phase.step()
         if print_loss:
             print('Train Mag Loss for Epoch {} = {}' .format(epoch, avglossmag), flush = True)
             print('Train Phase Loss for Epoch {} = {}' .format(epoch, avglossphase), flush = True)
@@ -316,8 +324,6 @@ class Trainer(nn.Module):
                 avg_l1_loss += loss_l1/dset.total_frames
                 avg_l2_loss += loss_l2/dset.total_frames
 
-            if self.kspace_scheduler is not None:
-                self.kspace_scheduler.step()
             if print_loss:
                 print('Train Mag Loss for Epoch {} = {}' .format(epoch, avglossmag), flush = True)
                 print('Train Phase Loss for Epoch {} = {}' .format(epoch, avglossphase), flush = True)
@@ -656,19 +662,19 @@ class Trainer(nn.Module):
                             plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/io_location_{}.jpg'.format(p_num, f_num, v_num)))
 
 
-                            fig = plt.figure(figsize = (32,4*num_coils-2))
+                            fig = plt.figure(figsize = (36,4*num_coils-2))
                             
-                            plt.subplot(8,8,(((num_coils//2)-1)*8)+1)
+                            plt.subplot(num_coils,9,(((num_coils//2)-1)*9)+1)
                             myimshow(og_vidi, cmap = 'gray')
                             plt.title('Input Video')
                             # print(f_num, 1)
                             
-                            plt.subplot(8,8,(((num_coils//2))*8))
+                            plt.subplot(num_coils,9,(((num_coils//2))*9))
                             myimshow(ispace_outpi, cmap = 'gray', trim = True)
                             plt.title('Ispace Prediction')
                             # print(f_num, 2)
                             
-                            plt.subplot(8,8,(((num_coils//2)+1)*8))
+                            plt.subplot(num_coils,9,(((num_coils//2)+1)*9))
                             diffvals = show_difference_image(ispace_outpi, og_vidi)
                             plt.title('Difference Frame')
                             # print(f_num, 3)
@@ -691,40 +697,46 @@ class Trainer(nn.Module):
                                 pred_fti = (pred_ft[bi,f_num,c_num].abs()+1).log()
                                 predi = predr[bi,f_num,c_num].squeeze().cpu().numpy()
 
-                                plt.subplot(8,8,8*c_num+2)
+                                plt.subplot(num_coils,9,9*c_num+2)
                                 myimshow(targi, cmap = 'gray')
                                 if c_num == 0:
                                     plt.title('Coiled Input')
                                 # print(c_num,1)
                                 
-                                plt.subplot(8,8,8*c_num+3)
+                                plt.subplot(num_coils,9,9*c_num+3)
                                 myimshow((orig_fti).squeeze(), cmap = 'gray')
                                 if c_num == 0:
                                     plt.title('FT of Coiled Input')
                                 # print(c_num,2)
                                 
-                                plt.subplot(8,8,8*c_num+4)
+                                plt.subplot(num_coils,9,9*c_num+4)
                                 myimshow(mask_fti, cmap = 'gray')
                                 if c_num == 0:
                                     plt.title('Undersampled FT')
                                 # print(c_num,3)
                                 
-                                plt.subplot(8,8,8*c_num+5)
+                                plt.subplot(num_coils,9,9*c_num+5)
                                 myimshow(ifft_of_undersamp, cmap = 'gray')
                                 if c_num == 0:
                                     plt.title('IFFT of Undersampled FT')
                                 # print(c_num,4)
                                 
-                                plt.subplot(8,8,8*c_num+6)
+                                plt.subplot(num_coils,9,9*c_num+6)
                                 myimshow(pred_fti, cmap = 'gray')
                                 if c_num == 0:
                                     plt.title('FT predicted by Kspace Model')
                                 # print(c_num,5)
                                 
-                                plt.subplot(8,8,8*c_num+7)
+                                plt.subplot(num_coils,9,9*c_num+7)
                                 myimshow(predi, cmap = 'gray',trim = True)
                                 if c_num == 0:
                                     plt.title('IFFT of Kspace Prediction')
+                                # print(c_num,6)
+                                
+                                plt.subplot(num_coils,9,9*c_num+8)
+                                diffvals = show_difference_image(predi, targi)
+                                if c_num == 0:
+                                    plt.title('Difference Image')
                                 # print(c_num,6)
                                 
                             spec = ''

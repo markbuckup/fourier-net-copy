@@ -48,4 +48,4 @@ parameters['NUFFT_kbwidth'] = 0.84
 parameters['shuffle_coils'] = True
 parameters['memoise'] = True
 parameters['ground_truth_weight'] = 1
-parameters['ground_truth_enforce'] = False
+parameters['ground_truth_enforce'] = True

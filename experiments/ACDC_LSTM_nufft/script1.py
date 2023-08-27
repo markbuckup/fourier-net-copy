@@ -8,7 +8,7 @@ args = parser.parse_args()
 
 GPUSTR = ' '.join([str(x) for x in args.gpu])
 
-task_list = ['4.0.0.3','4.0.0.4']
+task_list = ['64.0.2.1.1']
 
 prev_task = None
 for task in task_list:
@@ -21,6 +21,7 @@ for task in task_list:
 	print("Now Running Task {}".format(task), flush = True)
 	# os.system('python3 -Wignore main.py --port 12356 --run_id {} --neptune_log --gpu {} > {}/train.log 2>&1 && python3 -Wignore main.py --port 12356 --run_id {} --neptune_log --gpu {} --resume --eval > {}/test.log 2>&1'.format(task, GPUSTR, task, task, GPUSTR, task))
 	os.system('python3 -Wignore main.py --port 12356 --run_id {} --gpu {} > {}/train.log 2>&1 && python3 -Wignore main.py --port 12356 --run_id {} --gpu {} --resume --eval > {}/test.log 2>&1'.format(task, GPUSTR, task, task, GPUSTR, task))
+	# os.system('python3 -Wignore main.py --port 12356 --run_id {} --gpu {} --resume --eval > {}/test.log 2>&1'.format(task, GPUSTR, task, task, GPUSTR, task))
 	print("Task {} Terminated".format(task), flush = True)
 	prev_task = task
 	
