@@ -128,6 +128,17 @@ class ACDC_radial(Dataset):
 
     def __getitem__(self, i):
 
+        # actual_pnum = 1
+        # v_num = 1
+        # grid_data = torch.zeros(30,8,256,256)
+        # grid_data = torch.complex(grid_data, grid_data)
+        # og_coiled_fft = grid_data
+        # og_video_coils = torch.zeros(30,8,256,256)
+        # og_video = torch.zeros(30,256,256)
+        # Nf = 30
+
+        # return torch.tensor([actual_pnum, v_num]), grid_data, og_coiled_fft, og_video_coils, og_video, Nf
+
         if self.parameters['memoise_RAM']:
             if self.RAM_memoised[i] is not None:
                 ind, grid_data, og_coiled_fft, og_video_coils, og_video, Nf = self.RAM_memoised[i]
@@ -232,6 +243,7 @@ class ACDC_radial(Dataset):
         if self.parameters['memoise_RAM']:
             if self.RAM_memoised[i] is None:
                 self.RAM_memoised[i] = [torch.tensor([actual_pnum, v_num]), grid_data, og_coiled_fft, og_video_coils, og_video, Nf]
+
 
         return torch.tensor([actual_pnum, v_num]), grid_data, og_coiled_fft, og_video_coils, og_video, Nf
 

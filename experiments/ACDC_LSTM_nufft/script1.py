@@ -8,7 +8,7 @@ args = parser.parse_args()
 
 GPUSTR = ' '.join([str(x) for x in args.gpu])
 
-task_list = ['64.0.2.1.1']
+task_list = ['256.0.1.1.2']
 
 prev_task = None
 for task in task_list:

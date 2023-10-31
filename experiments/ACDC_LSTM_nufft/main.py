@@ -29,6 +29,7 @@ from utils.DDP_paradigms_LSTM_nufft import train_paradigm, test_paradigm
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--resume', action = 'store_true')
+parser.add_argument('--time_analysis', action = 'store_true')
 parser.add_argument('--resume_kspace', action = 'store_true')
 parser.add_argument('--eval', action = 'store_true')
 parser.add_argument('--test_only', action = 'store_true')
@@ -72,8 +73,8 @@ else:
 
     device = torch.device("cuda:{}".format(args.gpu[0]) if torch.cuda.is_available() else "cpu")
 torch.backends.cudnn.benchmark = True
-torch.autograd.set_detect_anomaly(True)
-# torch.autograd.set_detect_anomaly(False)
+# torch.autograd.set_detect_anomaly(True)
+torch.autograd.set_detect_anomaly(False)
 torch.autograd.profiler.profile(False)
 torch.autograd.profiler.emit_nvtx(False)
 

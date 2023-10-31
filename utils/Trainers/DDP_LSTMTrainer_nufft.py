@@ -20,6 +20,8 @@ from torch.nn import functional as F
 from torchvision import transforms, models, datasets
 from torch.utils.data.distributed import DistributedSampler
 
+from skimage.exposure import match_histograms
+
 EPS = 1e-10
 CEPS = torch.complex(torch.tensor(EPS),torch.tensor(EPS)).exp()
 
@@ -41,6 +43,7 @@ def myimshow(x, cmap = 'gray', trim = False):
         x[x < percentile_5] = percentile_5
     x = x - x.min()
     x = x/ (x.max() + EPS)
+    plt.axis('off')
     plt.imshow(x, cmap = cmap)
 
 def special_trim(x):
@@ -53,10 +56,11 @@ def special_trim(x):
 
 def show_difference_image(im1, im2):
     im1 = (im1 - im1.min())
-    im1 = (im1 / im1.max() + EPS)
+    im1 = (im1 / (im1.max() + EPS))
     im2 = (im2 - im2.min())
-    im2 = (im2 / im2.max() + EPS)
+    im2 = (im2 / (im2.max() + EPS))
     diff = (im1-im2)
+    plt.axis('off')
     plt.imshow(np.abs(diff), cmap = 'plasma', vmin=0, vmax=0.25)
     plt.colorbar()
     return np.abs(diff).reshape(-1)
@@ -100,7 +104,7 @@ class Trainer(nn.Module):
                             batch_size=self.parameters['train_batch_size'], 
                             shuffle = False,
                             num_workers = self.parameters['dataloader_num_workers'],
-                            pin_memory = True,
+                            pin_memory = False,
                             drop_last = False,
                             sampler = self.train_sampler
                         )
@@ -109,7 +113,7 @@ class Trainer(nn.Module):
                             batch_size=self.parameters['test_batch_size'], 
                             shuffle = False,
                             num_workers = self.parameters['dataloader_num_workers'],
-                            pin_memory = True,
+                            pin_memory = False,
                             drop_last = False,
                             sampler = self.train_test_sampler
                         )
@@ -118,14 +122,17 @@ class Trainer(nn.Module):
                             batch_size=self.parameters['test_batch_size'], 
                             shuffle = False,
                             num_workers = self.parameters['dataloader_num_workers'],
-                            pin_memory = True,
+                            pin_memory = False,
                             drop_last = False,
                             sampler = self.test_sampler
                         )
 
         if self.parameters['optimizer'] == 'Adam':
-            self.kspace_optim_mag = optim.Adam(self.kspace_model.module.mag_m.parameters(), lr=self.parameters['lr_kspace_mag'], betas=self.parameters['optimizer_params'])
-            self.kspace_optim_phase = optim.Adam(self.kspace_model.module.phase_m.parameters(), lr=self.parameters['lr_kspace_phase'], betas=self.parameters['optimizer_params'])
+            if self.parameters['kspace_architecture'] == 'KLSTM1':
+                self.kspace_optim_mag = optim.Adam(self.kspace_model.module.mag_m.parameters(), lr=self.parameters['lr_kspace_mag'], betas=self.parameters['optimizer_params'])
+                self.kspace_optim_phase = optim.Adam(self.kspace_model.module.phase_m.parameters(), lr=self.parameters['lr_kspace_phase'], betas=self.parameters['optimizer_params'])
+            elif self.parameters['kspace_architecture'] == 'KLSTM2':
+                self.kspace_optim = optim.Adam(self.kspace_model.module.parameters(), lr=self.parameters['lr_kspace_phase'], betas=self.parameters['optimizer_params'])
             self.ispace_optim = optim.Adam(self.ispace_model.parameters(), lr=self.parameters['lr_ispace'], betas=self.parameters['optimizer_params'])
             self.parameters['scheduler_params']['cycle_momentum'] = False
             
@@ -135,22 +142,34 @@ class Trainer(nn.Module):
         if self.parameters['scheduler'] == 'StepLR':
             mydic = self.parameters['scheduler_params']
             if self.ddp_rank == 0:
-                self.kspace_scheduler_mag = optim.lr_scheduler.StepLR(self.kspace_optim_mag, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
-                self.kspace_scheduler_phase = optim.lr_scheduler.StepLR(self.kspace_optim_phase, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
+                if self.parameters['kspace_architecture'] == 'KLSTM1':
+                    self.kspace_scheduler_mag = optim.lr_scheduler.StepLR(self.kspace_optim_mag, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
+                    self.kspace_scheduler_phase = optim.lr_scheduler.StepLR(self.kspace_optim_phase, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
+                elif self.parameters['kspace_architecture'] == 'KLSTM2':
+                    self.kspace_scheduler = optim.lr_scheduler.StepLR(self.kspace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
                 self.ispace_scheduler = optim.lr_scheduler.StepLR(self.ispace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
             else:
-                self.kspace_scheduler_mag = optim.lr_scheduler.StepLR(self.kspace_optim_mag, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
-                self.kspace_scheduler_phase = optim.lr_scheduler.StepLR(self.kspace_optim_phase, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
+                if self.parameters['kspace_architecture'] == 'KLSTM1':
+                    self.kspace_scheduler_mag = optim.lr_scheduler.StepLR(self.kspace_optim_mag, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
+                    self.kspace_scheduler_phase = optim.lr_scheduler.StepLR(self.kspace_optim_phase, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
+                elif self.parameters['kspace_architecture'] == 'KLSTM2':
+                    self.kspace_scheduler = optim.lr_scheduler.StepLR(self.kspace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
                 self.ispace_scheduler = optim.lr_scheduler.StepLR(self.ispace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
         if self.parameters['scheduler'] == 'CyclicLR':
             mydic = self.parameters['scheduler_params']
             if self.ddp_rank == 0:
-                self.kspace_scheduler_mag = optim.lr_scheduler.CyclicLR(self.kspace_optim_mag, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
-                self.kspace_scheduler_phase = optim.lr_scheduler.CyclicLR(self.kspace_optim_phase, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
+                if self.parameters['kspace_architecture'] == 'KLSTM1':
+                    self.kspace_scheduler_mag = optim.lr_scheduler.CyclicLR(self.kspace_optim_mag, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
+                    self.kspace_scheduler_phase = optim.lr_scheduler.CyclicLR(self.kspace_optim_phase, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
+                elif self.parameters['kspace_architecture'] == 'KLSTM2':
+                    self.kspace_scheduler = optim.lr_scheduler.CyclicLR(self.kspace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
                 self.ispace_scheduler = optim.lr_scheduler.CyclicLR(self.ispace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
             else:
-                self.kspace_scheduler_mag = optim.lr_scheduler.CyclicLR(self.kspace_optim_mag, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
-                self.kspace_scheduler_phase = optim.lr_scheduler.CyclicLR(self.kspace_optim_phase, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
+                if self.parameters['kspace_architecture'] == 'KLSTM1':
+                    self.kspace_scheduler_mag = optim.lr_scheduler.CyclicLR(self.kspace_optim_mag, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
+                    self.kspace_scheduler_phase = optim.lr_scheduler.CyclicLR(self.kspace_optim_phase, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
+                elif self.parameters['kspace_architecture'] == 'KLSTM2':
+                    self.kspace_scheduler = optim.lr_scheduler.CyclicLR(self.kspace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
                 self.ispace_scheduler = optim.lr_scheduler.CyclicLR(self.ispace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
 
         self.l1loss = fetch_loss_function('L1',self.device, self.parameters['loss_params'])
@@ -162,52 +181,76 @@ class Trainer(nn.Module):
         #     self.criterion_reconFT = self.criterion_reconFT.to(self.device)
 
     def train(self, epoch, print_loss = False):
-        self.k_space_trainable = True
-        if epoch >= self.parameters['num_epochs_kspace']:
-            if self.k_space_trainable:
-                for param in self.kspace_model.parameters():
-                    param.requires_grad = False
-                self.k_space_trainable = False
-            return self.train_ispace(epoch, print_loss)
-        else:
-            assert(self.k_space_trainable)
-            return self.train_kspace(epoch, print_loss)
-
-    def evaluate(self, epoch, train = False, print_loss = False):
-        if epoch >= self.parameters['num_epochs_kspace']:
-            return self.evaluate_ispace(epoch, train, print_loss)
-        else:
-            return self.evaluate_kspace(epoch, train, print_loss)
-
-    def train_ispace(self, epoch, print_loss = False):
-        avglossreal = 0
-        ssim_score = 0
-        avg_l1_loss = 0
-        avg_l2_loss = 0
+        avgkspacelossphase = 0.
+        avgkspacelossreal = 0.
+        avgkspacelossmag = 0.
+        kspacessim_score = 0.
+        avgkspace_l1_loss = 0.
+        avgkspace_l2_loss = 0.
+        avgispacelossreal = 0.
+        ispacessim_score = 0.
+        avgispace_l1_loss = 0.
+        avgispace_l2_loss = 0.
         self.trainloader.sampler.set_epoch(epoch)
         if self.ddp_rank == 0:
-            tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | IS Epoch {}".format(os.getpid(), epoch), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
+            tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | KS Epoch {}".format(os.getpid(), epoch), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
         else:
             tqdm_object = enumerate(self.trainloader)
-        for i, (indices, undersampled_fts, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
-            with torch.no_grad():
-                batch, num_frames, chan, numr, numc = undersampled_fts.shape
-                inpt_mag_log = (og_coiled_fts.abs()+EPS).log()
-                inpt_phase = og_coiled_fts / inpt_mag_log.exp()
-                inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
-                self.kspace_model.train()
-                mask = None
-                predr, _, _, _, _, _, _ = self.kspace_model(undersampled_fts, mask, self.device, periods.clone(), targ_phase = None, targ_mag_log = None, targ_real = None)
+        for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in tqdm_object:
+        # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
+            undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1))
+            og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
+            og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
+
+            if self.parameters['kspace_architecture'] == 'KLSTM1':
+                self.kspace_optim_mag.zero_grad(set_to_none=True)
+                self.kspace_optim_phase.zero_grad(set_to_none=True)
+            elif self.parameters['kspace_architecture'] == 'KLSTM2':
+                self.kspace_optim.zero_grad(set_to_none=True)
+
             
-            predr = predr[:,self.parameters['init_skip_frames']:]
-            num_frames = num_frames - self.parameters['init_skip_frames']
-            predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
-            targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
+            batch, num_frames, chan, numr, numc = undersampled_fts.shape
+            inpt_mag_log = (og_coiled_fts.abs()+EPS).log()
+            inpt_phase = og_coiled_fts / inpt_mag_log.exp()
+            inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
+            self.kspace_model.train()
+            predr, _, _, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
+            del masks
+            del inpt_phase
+            del inpt_mag_log
+            loss = 0.05*loss_mag + 5*loss_phase + 50*loss_real
+
+
+            loss.backward()
+            if self.parameters['kspace_architecture'] == 'KLSTM1':
+                self.kspace_optim_mag.step()
+                self.kspace_optim_phase.step()
+            elif self.parameters['kspace_architecture'] == 'KLSTM2':
+                self.kspace_optim.step()
+
+            del loss
+            
+
+            avgkspacelossphase += float(loss_phase.cpu().item()/(len(self.trainloader)))
+            avgkspacelossmag += float(loss_mag.cpu().item()/(len(self.trainloader)))
+            avgkspacelossreal += float(loss_real.cpu().item()/(len(self.trainloader)))
+            
+            kspacessim_score += float(ss1.cpu()/self.trainset.total_frames)
+            avgkspace_l1_loss += float(loss_l1.cpu()/self.trainset.total_frames)
+            avgkspace_l2_loss += float(loss_l2.cpu()/self.trainset.total_frames)
+
+
             self.ispace_optim.zero_grad(set_to_none=True)
+            predr = predr.detach()[:,self.parameters['init_skip_frames']:]
+            num_frames = num_frames - self.parameters['init_skip_frames']
+            if self.parameters['kspace_coil_combination']:
+                predr = predr.reshape(batch*num_frames,1,numr, numc).to(self.device)
+            else:
+                predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
+            targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
 
             outp = self.ispace_model(predr)
             loss = self.l1loss(outp, targ_vid)
-
             loss.backward()
             self.ispace_optim.step()
 
@@ -217,77 +260,39 @@ class Trainer(nn.Module):
             ss1 = ss1.reshape(ss1.shape[0],-1)
             loss_ss1 = ss1.mean(1).sum().detach().cpu()
 
-            avglossreal += loss.item()/(len(self.trainloader))
-            ssim_score += loss_ss1/self.trainset.total_frames
-            avg_l1_loss += loss_l1/self.trainset.total_frames
-            avg_l2_loss += loss_l2/self.trainset.total_frames
+            avgispacelossreal += float(loss.cpu().item()/(len(self.trainloader)))
+            ispacessim_score += float(loss_ss1.cpu().item()/self.trainset.total_frames)
+            avgispace_l1_loss += float(loss_l1.cpu().item()/self.trainset.total_frames)
+            avgispace_l2_loss += float(loss_l2.cpu().item()/self.trainset.total_frames)
+
+        if self.parameters['kspace_architecture'] == 'KLSTM1':
+            if self.kspace_scheduler_mag is not None:
+                self.kspace_scheduler_mag.step()
+                self.kspace_scheduler_phase.step()
+        elif self.parameters['kspace_architecture'] == 'KLSTM2':
+            if self.kspace_scheduler is not None:
+                self.kspace_scheduler.step()
 
         if self.ispace_scheduler is not None:
             self.ispace_scheduler.step()
-        if print_loss:
-            print('Train Train Loss for Epoch {} = {}' .format(epoch, avglossreal), flush = True)
-            print('Train SSIM for Epoch {} = {}' .format(epoch, ssim_score), flush = True)
+        # if print_loss:
+        #     print('Train Mag Loss for Epoch {} = {}' .format(epoch, avglossmag), flush = True)
+        #     print('Train Phase Loss for Epoch {} = {}' .format(epoch, avglossphase), flush = True)
+        #     print('Train Real Loss for Epoch {} = {}' .format(epoch, avglossreal), flush = True)
+        #     print('Train SSIM for Epoch {} = {}' .format(epoch, ssim_score), flush = True)
+        return avgkspacelossmag, avgkspacelossphase, avgkspacelossreal, kspacessim_score, avgkspace_l1_loss, avgkspace_l2_loss, avgispacelossreal, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss
 
-        return 0,0,avglossreal, ssim_score, avg_l1_loss, avg_l2_loss
-
-    def train_kspace(self, epoch, print_loss = False):
-        avglossphase = 0
-        avglossreal = 0
-        avglossmag = 0
-        ssim_score = 0
-        avg_l1_loss = 0
-        avg_l2_loss = 0
-        self.trainloader.sampler.set_epoch(epoch)
-        if self.ddp_rank == 0:
-            tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | KS Epoch {}".format(os.getpid(), epoch), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
-        else:
-            tqdm_object = enumerate(self.trainloader)
-        for i, (indices, undersampled_fts, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
-            self.kspace_optim_mag.zero_grad(set_to_none=True)
-            self.kspace_optim_phase.zero_grad(set_to_none=True)
-            
-            batch, num_frames, chan, numr, numc = undersampled_fts.shape
-            inpt_mag_log = (og_coiled_fts.abs()+EPS).log()
-            inpt_phase = og_coiled_fts / inpt_mag_log.exp()
-            inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
-            self.kspace_model.train()
-            mask = None
-            predr, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, mask, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids)
-            # print(loss_mag, loss_phase, loss_real)
-            loss = 0.05*loss_mag + 5*loss_phase + 50*loss_real
-
-            loss.backward()
-            # print(loss)
-            self.kspace_optim_mag.step()
-            self.kspace_optim_phase.step()
-
-            avglossphase += loss_phase.item()/(len(self.trainloader))
-            avglossmag += loss_mag.item()/(len(self.trainloader))
-            avglossreal += loss_real.item()/(len(self.trainloader))
-
-            
-            ssim_score += ss1/self.trainset.total_frames
-            avg_l1_loss += loss_l1/self.trainset.total_frames
-            avg_l2_loss += loss_l2/self.trainset.total_frames
-
-        if self.kspace_scheduler_mag is not None:
-            self.kspace_scheduler_mag.step()
-            self.kspace_scheduler_phase.step()
-        if print_loss:
-            print('Train Mag Loss for Epoch {} = {}' .format(epoch, avglossmag), flush = True)
-            print('Train Phase Loss for Epoch {} = {}' .format(epoch, avglossphase), flush = True)
-            print('Train Real Loss for Epoch {} = {}' .format(epoch, avglossreal), flush = True)
-            print('Train SSIM for Epoch {} = {}' .format(epoch, ssim_score), flush = True)
-
-        return avglossmag, avglossphase, avglossreal, ssim_score, avg_l1_loss, avg_l2_loss
-
-    def evaluate_kspace(self, epoch, train = False, print_loss = False):
-        avglossphase = 0
-        avglossreal = 0
-        avglossmag = 0
-        ssim_score = 0
-        avg_l1_loss = 0
-        avg_l2_loss = 0
+    def evaluate(self, epoch, train = False, print_loss = False):
+        avgkspacelossphase = 0.
+        avgkspacelossreal = 0.
+        avgkspacelossmag = 0.
+        kspacessim_score = 0.
+        avgkspace_l1_loss = 0.
+        avgkspace_l2_loss = 0.
+        avgispacelossreal = 0.
+        ispacessim_score = 0.
+        avgispace_l1_loss = 0.
+        avgispace_l2_loss = 0.
         if train:
             self.traintestloader.sampler.set_epoch(epoch)
             dloader = self.traintestloader
@@ -303,69 +308,37 @@ class Trainer(nn.Module):
         else:
             tqdm_object = enumerate(self.trainloader)
         with torch.no_grad():
-            for i, (indices, undersampled_fts, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
-                # with autocast(enabled = self.parameters['Automatic_Mixed_Precision'], dtype=torch.float32):
-                # with autocast(enabled = self.parameters['Automatic_Mixed_Precision']):
-                # self.kspace_model.module.train_mode_set(True)
-                batch, num_frames, chan, numr, numc = undersampled_fts.shape
-                inpt_mag_log = (og_coiled_fts.abs() + EPS).log()
-                inpt_phase = og_coiled_fts / inpt_mag_log.exp()
-                inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
-                self.kspace_model.eval()
+            for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in tqdm_object:
+            # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
+                undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1))
+                og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
+                og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
 
-                mask = None
-                predr, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, mask, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids)
-
-                avglossphase += loss_phase.item()/(len(self.trainloader))
-                avglossmag += loss_mag.item()/(len(self.trainloader))
-                avglossreal += loss_real.item()/(len(self.trainloader))
-
-                ssim_score += ss1/dset.total_frames
-                avg_l1_loss += loss_l1/dset.total_frames
-                avg_l2_loss += loss_l2/dset.total_frames
-
-            if print_loss:
-                print('Train Mag Loss for Epoch {} = {}' .format(epoch, avglossmag), flush = True)
-                print('Train Phase Loss for Epoch {} = {}' .format(epoch, avglossphase), flush = True)
-                print('Train Real Loss for Epoch {} = {}' .format(epoch, avglossreal), flush = True)
-                print('Train SSIM for Epoch {} = {}' .format(epoch, ssim_score), flush = True)
-
-            return avglossmag, avglossphase, avglossreal, ssim_score, avg_l1_loss, avg_l2_loss
-
-    def evaluate_ispace(self, epoch, train = False, print_loss = False):
-        avglossreal = 0
-        ssim_score = 0
-        avg_l1_loss = 0
-        avg_l2_loss = 0
-        if train:
-            self.traintestloader.sampler.set_epoch(epoch)
-            dloader = self.traintestloader
-            dset = self.trainset
-            dstr = 'Train'
-        else:
-            self.testloader.sampler.set_epoch(epoch)
-            dloader = self.testloader
-            dset = self.testset
-            dstr = 'Test'
-        if self.ddp_rank == 0:
-            tqdm_object = tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
-        else:
-            tqdm_object = enumerate(self.trainloader)
-        with torch.no_grad():
-            for i, (indices, undersampled_fts, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
                 batch, num_frames, chan, numr, numc = undersampled_fts.shape
                 inpt_mag_log = (og_coiled_fts.abs()+EPS).log()
                 inpt_phase = og_coiled_fts / inpt_mag_log.exp()
                 inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
-                self.kspace_model.train()
-                mask = None
-                predr, _, _, _, _, _, _ = self.kspace_model(undersampled_fts, mask, self.device, periods.clone(), targ_phase = None, targ_mag_log = None, targ_real = None)
+                self.kspace_model.eval()
+                predr, _, _, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
+
+                avgkspacelossphase += float(loss_phase.item()/(len(self.trainloader)))
+                avgkspacelossmag += float(loss_mag.item()/(len(self.trainloader)))
+                avgkspacelossreal += float(loss_real.item()/(len(self.trainloader)))
                 
-                predr = predr[:,self.parameters['init_skip_frames']:]
+                kspacessim_score += float(ss1.cpu()/self.trainset.total_frames)
+                avgkspace_l1_loss += float(loss_l1.cpu()/self.trainset.total_frames)
+                avgkspace_l2_loss += float(loss_l2.cpu()/self.trainset.total_frames)
+
+
+                predr = predr.detach()[:,self.parameters['init_skip_frames']:]
                 num_frames = num_frames - self.parameters['init_skip_frames']
-                predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
+                if self.parameters['kspace_coil_combination']:
+                    predr = predr.reshape(batch*num_frames,1,numr, numc).to(self.device)
+                else:
+                    predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
                 targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
 
+                self.ispace_model.eval()
                 outp = self.ispace_model(predr)
                 loss = self.l1loss(outp, targ_vid)
 
@@ -375,200 +348,42 @@ class Trainer(nn.Module):
                 ss1 = ss1.reshape(ss1.shape[0],-1)
                 loss_ss1 = ss1.mean(1).sum().detach().cpu()
 
-                avglossreal += loss.item()/(len(self.trainloader))
-                ssim_score += loss_ss1/self.trainset.total_frames
-                avg_l1_loss += loss_l1/self.trainset.total_frames
-                avg_l2_loss += loss_l2/self.trainset.total_frames
+                avgispacelossreal += float(loss.cpu().item()/(len(self.trainloader)))
+                ispacessim_score += float(loss_ss1.cpu().item()/self.trainset.total_frames)
+                avgispace_l1_loss += float(loss_l1.cpu().item()/self.trainset.total_frames)
+                avgispace_l2_loss += float(loss_l2.cpu().item()/self.trainset.total_frames)
 
-            if self.ispace_scheduler is not None:
-                self.ispace_scheduler.step()
-            if print_loss:
-                print('Train Train Loss for Epoch {} = {}' .format(epoch, avglossreal), flush = True)
-                print('Train SSIM for Epoch {} = {}' .format(epoch, ssim_score), flush = True)
+        # if print_loss:
+        #     print('Train Mag Loss for Epoch {} = {}' .format(epoch, avglossmag), flush = True)
+        #     print('Train Phase Loss for Epoch {} = {}' .format(epoch, avglossphase), flush = True)
+        #     print('Train Real Loss for Epoch {} = {}' .format(epoch, avglossreal), flush = True)
+        #     print('Train SSIM for Epoch {} = {}' .format(epoch, ssim_score), flush = True)
 
-        return 0,0,avglossreal, ssim_score, avg_l1_loss, avg_l2_loss
+        return avgkspacelossmag, avgkspacelossphase, avgkspacelossreal, kspacessim_score, avgkspace_l1_loss, avgkspace_l2_loss, avgispacelossreal, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss
 
-    def visualise_ispace(self, epoch, train = False):
-        if train:
-            dloader = self.traintestloader
-            dset = self.trainset
-            dstr = 'Train'
-            path = os.path.join(self.args.run_id, './images/train')
-        else:
-            dloader = self.testloader
-            dset = self.testset
-            dstr = 'Test'
-            path = os.path.join(self.args.run_id, './images/test')
-        
-        print('Saving plots for {} data'.format(dstr), flush = True)
+    def time_analysis(self):
+        tqdm_object = enumerate(self.trainloader)
         with torch.no_grad():
-            for i, (indices, undersampled_fts, og_coiled_fts, og_coiled_vids, og_video, periods) in enumerate(dloader):
-                if not os.path.exists(os.path.join(self.args.run_id, './images/input/')):
-                    os.mkdir(os.path.join(self.args.run_id, './images/input/'))
-                if not os.path.exists(os.path.join(self.args.run_id, './images/input2/')):
-                    os.mkdir(os.path.join(self.args.run_id, './images/input2/'))
-                # input_save(fts[0], masks[0], targets[0], os.path.join(self.args.run_id, './images/input/'))
-                # input_save(fts[1], masks[1], targets[1], os.path.join(self.args.run_id, './images/input2/'))
-                # self.kspace_model.module.train_mode_set(False)
+            for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in tqdm_object:
+            # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
+                undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1))
                 self.kspace_model.eval()
-                batch, num_frames, num_coils, numr, numc = undersampled_fts.shape
-                inpt_mag_log = (og_coiled_fts.abs()+EPS).log()
-                inpt_phase = og_coiled_fts / inpt_mag_log.exp()
-                inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
-
-                tot_vids_per_patient = (dset.num_vids_per_patient*dset.frames_per_vid_per_patient)
-                num_vids = 1
-                num_plots = sum(tot_vids_per_patient[:num_vids]*num_coils)
-
-                mask = None
-                predr, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], mask, self.device, periods[:num_vids].clone(), targ_phase = inpt_phase[:num_vids], targ_mag_log = inpt_mag_log[:num_vids], targ_real = og_coiled_vids[:num_vids])
-
-                predr = predr[:,self.parameters['init_skip_frames']:]
-                batch, num_frames, num_coils, numr, numc = predr.shape
-                predr = predr.reshape(batch*num_frames,num_coils,numr, numc).to(self.device)
-                targ_vid = og_video[:num_vids,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
-                outp = self.ispace_model(predr).cpu()
-
-                outp = outp.reshape(batch, num_frames,numr, numc).cpu()
-                predr = predr.reshape(batch, num_frames, num_coils, numr, numc).cpu()
-                targ_vid = targ_vid.reshape(batch, num_frames,numr, numc).cpu()
-
-
-                for i in range(10):
-                    for ci in range(8):
-                        predi = outp[0,-i,:,:]
-                        targi = targ_vid[0,-i,:,:]
-                        kspace_outi = predr[0,-i,ci,:,:]
-
-                        fig = plt.figure(figsize = (8,8))
-                        plt.subplot(2,2,1)
-                        myimshow(kspace_outi, cmap = 'gray', trim = True)
-                        plt.title('Predicted By Kspace Model')
-                        plt.subplot(2,2,2)
-                        myimshow(predi, cmap = 'gray')
-                        plt.title('Predicted By Ispace Model')
-                        plt.subplot(2,2,3)
-                        myimshow(targi, cmap = 'gray')
-                        plt.title('Original Frame')
-                        plt.subplot(2,2,4)
-                        diffvals = show_difference_image(predi, targi)
-                        plt.title('Difference Frame')
-
-                        plt.suptitle("Frame {}".format(i))
-                        plt.savefig(os.path.join(path, 'frame_{}_coil_{}.jpg'.format(i,ci)))
-                        plt.close('all')
-
-    def visualise_kspace(self, epoch, train = False):
-        if train:
-            dloader = self.traintestloader
-            dset = self.trainset
-            dstr = 'Train'
-            path = os.path.join(self.args.run_id, './images/train')
-        else:
-            dloader = self.testloader
-            dset = self.testset
-            dstr = 'Test'
-            path = os.path.join(self.args.run_id, './images/test')
-        
-        print('Saving plots for {} data'.format(dstr), flush = True)
-        with torch.no_grad():
-            for i, (indices, undersampled_fts, og_coiled_fts, og_coiled_vids, og_video, periods) in enumerate(dloader):
-                if not os.path.exists(os.path.join(self.args.run_id, './images/input/')):
-                    os.mkdir(os.path.join(self.args.run_id, './images/input/'))
-                if not os.path.exists(os.path.join(self.args.run_id, './images/input2/')):
-                    os.mkdir(os.path.join(self.args.run_id, './images/input2/'))
-                # input_save(fts[0], masks[0], targets[0], os.path.join(self.args.run_id, './images/input/'))
-                # input_save(fts[1], masks[1], targets[1], os.path.join(self.args.run_id, './images/input2/'))
-                # self.kspace_model.module.train_mode_set(False)
-                self.kspace_model.eval()
-                batch, num_frames, num_coils, numr, numc = undersampled_fts.shape
-                inpt_mag_log = (og_coiled_fts.abs()+EPS).log()
-                inpt_phase = og_coiled_fts / inpt_mag_log.exp()
-                inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
-
-                tot_vids_per_patient = (dset.num_vids_per_patient*dset.frames_per_vid_per_patient)
-                num_vids = 1
-                num_plots = sum(tot_vids_per_patient[:num_vids]*num_coils)
-
-                mask = None
-                predr, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], mask, self.device, periods[:num_vids].clone(), targ_phase = inpt_phase[:num_vids], targ_mag_log = inpt_mag_log[:num_vids], targ_real = og_coiled_vids[:num_vids])
-                # predr, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], mask, self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None)
-
-                with torch.no_grad():
-                    pred_ft = ans_phase*ans_mag_log.unsqueeze(-1).exp()
-                    pred_ft = torch.complex(pred_ft[:,:,:,:,:,0],pred_ft[:,:,:,:,:,1])
-                    # predr = torch.fft.ifft2(torch.fft.ifftshift(pred_ft, dim = (-2,-1))).real
-
-                tot = 0
-                with tqdm(total=num_plots) as pbar:
-                    for bi in range(undersampled_fts[:num_vids].shape[0]):
-                        for f_num in range(undersampled_fts.shape[1]):
-                            for c_num in range(num_coils):
-                                if num_plots == 0:
-                                    return
-                                num_plots -= 1
-                                targi = og_coiled_vids[bi,f_num, c_num].squeeze().cpu().numpy()
-                                predi = predr[bi,f_num,c_num].squeeze().cpu().numpy()
-                                p_num, v_num = indices[bi]
-                                orig_fti = (og_coiled_fts[bi,f_num,c_num].abs()+1).log()
-                                pred_fti = (pred_ft[bi,f_num,c_num].abs()+1).log()
-                                # mask_fti = (undersampled_fts[bi,f_num,c_num].abs()+1).log()
-                                mask_fti = (1+undersampled_fts[bi,f_num,c_num].abs()).log()
-                                
-                                ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts[bi,f_num,c_num], dim = (-2,-1))).abs().squeeze()
-
-                                fig = plt.figure(figsize = (16,8))
-                                plt.subplot(2,4,1)
-                                myimshow(orig_fti, cmap = 'gray')
-                                plt.title('Original FFT')
-                                plt.subplot(2,4,2)
-                                myimshow((mask_fti).squeeze(), cmap = 'gray')
-                                plt.title('Masked FFT')
-                                plt.subplot(2,4,3)
-                                myimshow(pred_fti, cmap = 'gray')
-                                plt.title('Predicted FFT')
-                                plt.subplot(2,4,4)
-                                diffvals = show_difference_image(predi, targi)
-                                plt.title('Difference Frame')
-                                plt.subplot(2,4,5)
-                                myimshow(targi, cmap = 'gray')
-                                plt.title('Actual Frame')
-                                plt.subplot(2,4,6)
-                                myimshow(ifft_of_undersamp, cmap = 'gray', trim = True)
-                                plt.title('IFFT of undersampled data')
-                                plt.subplot(2,4,7)
-                                myimshow(predi, cmap = 'gray',trim = True)
-                                plt.title('Our Predicted Frame')
-                                plt.subplot(2,4,8)
-                                plt.hist(diffvals, range = [0,0.25], density = False, bins = 30)
-                                plt.ylabel('Pixel Count')
-                                plt.xlabel('Difference Value')
-                                if not os.path.exists(os.path.join(path, './patient_{}/'.format(p_num))):
-                                    os.mkdir(os.path.join(path, './patient_{}/'.format(p_num)))
-                                if not os.path.exists(os.path.join(path, './patient_{}/by_location_number/'.format(p_num))):
-                                    os.mkdir(os.path.join(path, './patient_{}/by_location_number/'.format(p_num)))
-                                if not os.path.exists(os.path.join(path, './patient_{}/by_location_number/location_{}'.format(p_num, v_num))):
-                                    os.mkdir(os.path.join(path, './patient_{}/by_location_number/location_{}'.format(p_num, v_num)))
-                                if not os.path.exists(os.path.join(path, './patient_{}/by_location_number/location_{}/coil_{}'.format(p_num, v_num, c_num))):
-                                    os.mkdir(os.path.join(path, './patient_{}/by_location_number/location_{}/coil_{}'.format(p_num, v_num, c_num)))
-                                if not os.path.exists(os.path.join(path, './patient_{}/by_frame_number/'.format(p_num))):
-                                    os.mkdir(os.path.join(path, './patient_{}/by_frame_number/'.format(p_num)))
-                                if not os.path.exists(os.path.join(path, './patient_{}/by_frame_number/frame_{}'.format(p_num, f_num))):
-                                    os.mkdir(os.path.join(path, './patient_{}/by_frame_number/frame_{}'.format(p_num, f_num)))
-                                spec = ''
-                                if f_num < self.parameters['init_skip_frames']:
-                                    spec = 'Loss Skipped'
-                                plt.suptitle("Patient {} Location {} Frame {} Coil {}\n{}".format(p_num, v_num, f_num, c_num, spec))
-                                plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/coil_{}/frame_{}.jpg'.format(p_num, v_num, c_num, f_num)))
-                                plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/coil_{}/frame_{}.jpg'.format(p_num, v_num, c_num, f_num)))
-                                plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/location_{}_coil_{}.jpg'.format(p_num, f_num, v_num, c_num)))
-                                plt.close('all')
-
-                            tot += 1
-                            pbar.update(tot)
+                time1 = self.kspace_model.module.time_analysis(undersampled_fts[0:1], self.device, periods[0:1].clone(), self.ispace_model)
+                # Nf, Nc, R, C = predr.squeeze().shape
+                # time2 = self.ispace_model.module.time_analysis(predr.reshape(Nf,Nc,R,C).to(self.device), self.device)
+                print("Time for Complete Video ({} frames) = {}".format(undersampled_fts.shape[1], time1))
+                print("Avg Time per frame = {}".format((time1)/undersampled_fts.shape[1]))
+                # print("Time for Ispace Video = {}".format(time2))
+                # print("Time for complete video ({} frames) = {}".format(undersampled_fts.shape[1], time1+time2))
+                # print("Avg Time per frame = {}".format((time1+time2)/undersampled_fts.shape[1]))
+                return
 
 
     def visualise(self, epoch, train = False):
+
+        if self.parameters['kspace_coil_combination']:
+            self.visualise_kspace(epoch, train = train)
+            return
         if train:
             dloader = self.traintestloader
             dset = self.trainset
@@ -582,10 +397,16 @@ class Trainer(nn.Module):
         
         print('Saving plots for {} data'.format(dstr), flush = True)
         with torch.no_grad():
-            for i, (indices, undersampled_fts, og_coiled_fts, og_coiled_vids, og_video, periods) in enumerate(dloader):
+            for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in enumerate(dloader):
+            # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
+                if i == 2:
+                    break
+                undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1))
+                og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
+                og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
                 self.kspace_model.eval()
                 self.ispace_model.eval()
-                
+
                 batch, num_frames, num_coils, numr, numc = undersampled_fts.shape
                 
                 inpt_mag_log = (og_coiled_fts.abs()+EPS).log()
@@ -593,25 +414,23 @@ class Trainer(nn.Module):
                 inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
 
                 tot_vids_per_patient = (dset.num_vids_per_patient*dset.frames_per_vid_per_patient)
-                num_vids = 2
+                num_vids = 1
                 batch = num_vids
-                num_plots = sum(tot_vids_per_patient[:num_vids])
+                num_plots = num_vids*num_frames
 
-                mask = None
-                predr, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], mask, self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None)
+                predr, _, _, loss_mag, loss_phase, loss_real, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = og_video)
 
-                pred_ft = ans_phase*ans_mag_log.unsqueeze(-1).exp()
-                pred_ft = torch.complex(pred_ft[:,:,:,:,:,0],pred_ft[:,:,:,:,:,1])
-
+                pred_ft = torch.fft.fftshift(torch.fft.fft2(predr), dim = (-2,-1))
+                print('Predr nan',torch.isnan(predr).any())
                 predr[torch.isnan(predr)] = 0
 
                 predr = predr.reshape(batch*num_frames,num_coils,numr, numc).to(self.device)
                 targ_vid = og_video[:num_vids].reshape(batch*num_frames,1, numr, numc).to(self.device)
-                ispace_outp = self.ispace_model(predr).cpu()
+                ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
+                print('ispace_outp nan',torch.isnan(ispace_outp).any())
 
                 predr = predr.reshape(batch,num_frames,num_coils,numr,numc)
-                ispace_outp = ispace_outp.reshape(batch,num_frames,numr,numc)
-
+                
                 tot = 0
                 with tqdm(total=num_plots) as pbar:
                     for bi in range(num_vids):
@@ -630,16 +449,16 @@ class Trainer(nn.Module):
                                 os.mkdir(os.path.join(path, './patient_{}/by_frame_number/frame_{}'.format(p_num, f_num)))
                             
                             fig = plt.figure(figsize = (12,6))
-                            og_vidi = og_video[bi, f_num,:,:]
+                            og_vidi = og_video.cpu()[bi, f_num,0,:,:]
                             ispace_outpi = ispace_outp[bi, f_num, :,:]
                             
                             plt.subplot(1,3,1)
                             myimshow(og_vidi, cmap = 'gray')
                             plt.title('Input Video')
                             # print(f_num, 1)
-                            
+                            # ispace_outpi = torch.from_numpy(match_histograms(ispace_outpi.numpy(), og_vidi.numpy(), channel_axis=None))
                             plt.subplot(1,3,2)
-                            myimshow(ispace_outpi, cmap = 'gray', trim = True)
+                            myimshow(ispace_outpi, cmap = 'gray')
                             plt.title('Ispace Prediction')
                             # print(f_num, 2)
                             
@@ -669,13 +488,14 @@ class Trainer(nn.Module):
                             plt.title('Input Video')
                             # print(f_num, 1)
                             
+
                             plt.subplot(num_coils,9,(((num_coils//2))*9))
-                            myimshow(ispace_outpi, cmap = 'gray', trim = True)
+                            myimshow(ispace_outpi, cmap = 'gray')
                             plt.title('Ispace Prediction')
                             # print(f_num, 2)
                             
                             plt.subplot(num_coils,9,(((num_coils//2)+1)*9))
-                            diffvals = show_difference_image(ispace_outpi, og_vidi)
+                            diffvals = show_difference_image(ispace_outpi, og_vidi.numpy())
                             plt.title('Difference Frame')
                             # print(f_num, 3)
 
@@ -685,17 +505,17 @@ class Trainer(nn.Module):
                             # plt.xlabel('Difference Value')
                             # print(f_num, 4)
 
+                            num_plots -= 1
                             for c_num in range(num_coils):
                                 if num_plots == 0:
                                     return
-                                num_plots -= 1
                                 
-                                targi = og_coiled_vids[bi,f_num, c_num].squeeze().cpu().numpy()
-                                orig_fti = (og_coiled_fts[bi,f_num,c_num].abs()+1).log()
-                                mask_fti = (1+undersampled_fts[bi,f_num,c_num].abs()).log()
-                                ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts[bi,f_num,c_num], dim = (-2,-1))).abs().squeeze()
-                                pred_fti = (pred_ft[bi,f_num,c_num].abs()+1).log()
-                                predi = predr[bi,f_num,c_num].squeeze().cpu().numpy()
+                                targi = og_coiled_vids.cpu()[bi,f_num, c_num].squeeze().cpu().numpy()
+                                orig_fti = (og_coiled_fts.cpu()[bi,f_num,c_num].abs()+1).log()
+                                mask_fti = (1+undersampled_fts.cpu()[bi,f_num,c_num].abs()).log()
+                                ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts.cpu()[bi,f_num,c_num], dim = (-2,-1))).abs().squeeze()
+                                pred_fti = (pred_ft.cpu()[bi,f_num,c_num].abs()+1).log()
+                                predi = predr.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
 
                                 plt.subplot(num_coils,9,9*c_num+2)
                                 myimshow(targi, cmap = 'gray')
@@ -728,7 +548,7 @@ class Trainer(nn.Module):
                                 # print(c_num,5)
                                 
                                 plt.subplot(num_coils,9,9*c_num+7)
-                                myimshow(predi, cmap = 'gray',trim = True)
+                                myimshow(predi, cmap = 'gray')
                                 if c_num == 0:
                                     plt.title('IFFT of Kspace Prediction')
                                 # print(c_num,6)
@@ -748,4 +568,4 @@ class Trainer(nn.Module):
                             plt.close('all')
 
                             tot += 1
-                            pbar.update(tot)
+                            pbar.update(1)

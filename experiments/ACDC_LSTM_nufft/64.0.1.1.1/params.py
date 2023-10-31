@@ -59,3 +59,4 @@ parameters['kspace_tanh'] = True
 parameters['ground_truth_weight'] = 1
 parameters['ground_truth_enforce'] = True
 parameters['kspace_linear'] = False
+parameters['kspace_coil_combination'] = False
