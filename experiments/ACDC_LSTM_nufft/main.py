@@ -34,6 +34,7 @@ parser.add_argument('--resume_kspace', action = 'store_true')
 parser.add_argument('--eval', action = 'store_true')
 parser.add_argument('--test_only', action = 'store_true')
 parser.add_argument('--visualise_only', action = 'store_true')
+parser.add_argument('--numbers_only', action = 'store_true')
 parser.add_argument('--seed', type = int, default = 0)
 parser.add_argument('--port', type = int, default = 12355)
 parser.add_argument('--run_id', type = str, required = True)
@@ -66,6 +67,7 @@ seed_torch(args.seed)
 assert(parameters['optimizer']) in ['Adam', 'SGD']
 assert(parameters['scheduler']) in ['StepLR', 'None', 'CyclicLR']
 assert(parameters['scheduler_params']['mode']) in ['triangular', 'triangular2', 'exp_range']
+assert(not (args.visualise_only and args.numbers_only))
 
 if args.gpu[0] == -1:
     device = torch.device("cpu")

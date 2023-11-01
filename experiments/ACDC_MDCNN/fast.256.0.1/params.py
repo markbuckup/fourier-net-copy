@@ -1,7 +1,7 @@
 parameters = {}
 parameters['image_resolution'] = 256
 parameters['train_batch_size'] = 15
-parameters['test_batch_size'] = 2
+parameters['test_batch_size'] = 25
 parameters['lr'] = 1e-3
 parameters['num_epochs'] = 250
 parameters['image_space_real'] = True
@@ -10,6 +10,7 @@ parameters['dataset'] = 'acdc'
 parameters['train_test_split'] = 0.8
 parameters['normalisation'] = False
 parameters['window_size'] = 7
+parameters['init_skip_frames'] = parameters['window_size']-1
 parameters['SHM_looping'] = False
 parameters['FT_radial_sampling'] = 10
 parameters['num_coils'] = 8

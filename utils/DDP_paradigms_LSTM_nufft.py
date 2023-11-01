@@ -470,13 +470,14 @@ def test_paradigm(rank, world_size, args, parameters):
         plt.savefig(os.path.join(args.run_id, 'images/ispace_test_ssim.png'))
         
         plt.close('all')
-        trainer.visualise(pre_e, train = False)
-        trainer.visualise(pre_e, train = True)
+        if not args.numbers_only:
+            trainer.visualise(pre_e, train = False)
+            trainer.visualise(pre_e, train = True)
 
     if not args.visualise_only:
         test_kspaceloss_mag, test_kspaceloss_phase, test_kspaceloss_real, test_kspacessim, test_kspaceloss_l1, test_kspaceloss_l2, test_ispaceloss_real, test_ispacessim, test_ispaceloss_l1, test_ispaceloss_l2 = trainer.evaluate(pre_e, train = False)
-        collected_test_losses = [torch.zeros(10,) for _ in range(world_size)]
-        dist.all_gather(collected_test_losses, torch.tensor([test_kspaceloss_mag, test_kspaceloss_phase, test_kspaceloss_real, test_kspacessim, test_kspaceloss_l1, test_kspaceloss_l2, test_ispaceloss_real, test_ispacessim, test_ispaceloss_l1, test_ispaceloss_l2]))
+        collected_test_losses = [torch.zeros(10,).to(proc_device) for _ in range(world_size)]
+        dist.all_gather(collected_test_losses, torch.tensor([test_kspaceloss_mag, test_kspaceloss_phase, test_kspaceloss_real, test_kspacessim, test_kspaceloss_l1, test_kspaceloss_l2, test_ispaceloss_real, test_ispacessim, test_ispaceloss_l1, test_ispaceloss_l2]).to(proc_device))
         if rank == 0:
             avgkspace_test_mag_loss = sum([x[0] for x in collected_test_losses]).item()/len(args.gpu)
             avgkspace_test_phase_loss = sum([x[1] for x in collected_test_losses]).item()/len(args.gpu)
@@ -510,9 +511,9 @@ def test_paradigm(rank, world_size, args, parameters):
             print('ISpace SSIM = {}\n\n' .format(avgispace_test_ssim), flush = True)
 
         if not args.test_only:
-            train_kspaceloss_mag, train_kspaceloss_phase, train_kspaceloss_real, train_kspacessim, train_kspaceloss_l1, train_kspaceloss_l2, train_ispaceloss_real, train_ispacessim, train_ispaceloss_l1, train_ispaceloss_l2 = trainer.evaluate(pre_e, train = False)
-            collected_train_losses = [torch.zeros(10,) for _ in range(world_size)]
-            dist.all_gather(collected_train_losses, torch.tensor([train_kspaceloss_mag, train_kspaceloss_phase, train_kspaceloss_real, train_kspacessim, train_kspaceloss_l1, train_kspaceloss_l2, train_ispaceloss_real, train_ispacessim, train_ispaceloss_l1, train_ispaceloss_l2]))
+            train_kspaceloss_mag, train_kspaceloss_phase, train_kspaceloss_real, train_kspacessim, train_kspaceloss_l1, train_kspaceloss_l2, train_ispaceloss_real, train_ispacessim, train_ispaceloss_l1, train_ispaceloss_l2 = trainer.evaluate(pre_e, train = True)
+            collected_train_losses = [torch.zeros(10,).to(proc_device) for _ in range(world_size)]
+            dist.all_gather(collected_train_losses, torch.tensor([train_kspaceloss_mag, train_kspaceloss_phase, train_kspaceloss_real, train_kspacessim, train_kspaceloss_l1, train_kspaceloss_l2, train_ispaceloss_real, train_ispacessim, train_ispaceloss_l1, train_ispaceloss_l2]).to(proc_device))
             if rank == 0:
                 avgkspace_train_mag_loss = sum([x[0] for x in collected_train_losses]).item()/len(args.gpu)
                 avgkspace_train_phase_loss = sum([x[1] for x in collected_train_losses]).item()/len(args.gpu)

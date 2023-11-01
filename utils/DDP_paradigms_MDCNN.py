@@ -331,13 +331,14 @@ def test_paradigm(rank, world_size, args, parameters):
         plt.savefig(os.path.join(args.run_id, 'images/test_ssim.png'))
         
         plt.close('all')
-        trainer.visualise(pre_e, train = False)
-        trainer.visualise(pre_e, train = True)
+        if not args.numbers_only:
+            trainer.visualise(pre_e, train = False)
+            trainer.visualise(pre_e, train = True)
 
     if not args.visualise_only:
         test_ispaceloss, test_ispacessim, test_ispaceloss_l1, test_ispaceloss_l2 = trainer.evaluate(pre_e, train = False)
-        collected_test_losses = [torch.zeros(4,) for _ in range(world_size)]
-        dist.all_gather(collected_test_losses, torch.tensor([test_ispaceloss, test_ispacessim, test_ispaceloss_l1, test_ispaceloss_l2]))
+        collected_test_losses = [torch.zeros(4,).to(proc_device) for _ in range(world_size)]
+        dist.all_gather(collected_test_losses, torch.tensor([test_ispaceloss, test_ispacessim, test_ispaceloss_l1, test_ispaceloss_l2]).to(proc_device))
         if rank == 0:
             avgispace_test_loss = sum([x[0] for x in collected_test_losses]).item()/len(args.gpu)
             avgispace_test_ssim = sum([x[1] for x in collected_test_losses]).item()/len(args.gpu)
@@ -354,9 +355,9 @@ def test_paradigm(rank, world_size, args, parameters):
             print('ISpace SSIM = {}\n\n' .format(avgispace_test_ssim), flush = True)
 
         if not args.test_only:
-            train_ispaceloss, train_ispacessim, train_ispaceloss_l1, train_ispaceloss_l2 = trainer.evaluate(pre_e, train = False)
-            collected_train_losses = [torch.zeros(4,) for _ in range(world_size)]
-            dist.all_gather(collected_train_losses, torch.tensor([train_ispaceloss, train_ispacessim, train_ispaceloss_l1, train_ispaceloss_l2]))
+            train_ispaceloss, train_ispacessim, train_ispaceloss_l1, train_ispaceloss_l2 = trainer.evaluate(pre_e, train = True)
+            collected_train_losses = [torch.zeros(4,).to(proc_device) for _ in range(world_size)]
+            dist.all_gather(collected_train_losses, torch.tensor([train_ispaceloss, train_ispacessim, train_ispaceloss_l1, train_ispaceloss_l2]).to(proc_device))
             if rank == 0:
                 avgispace_train_loss = sum([x[0] for x in collected_train_losses]).item()/len(args.gpu)
                 avgispace_train_ssim = sum([x[1] for x in collected_train_losses]).item()/len(args.gpu)

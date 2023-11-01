@@ -58,9 +58,12 @@ def fetch_lstm_type(parameters):
 
 
 class convLSTMcell(nn.Module):
-    def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, sigmoid_mode = True, real_mode = False, theta = False, linear_post_process = False):
+    def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, sigmoid_mode = True, real_mode = False, theta = False, linear_post_process = False, mini = False, skip_connection = False, double_proc = False):
         super(convLSTMcell, self).__init__()
         self.tanh_mode = tanh_mode
+        self.mini = mini
+        self.double_proc = double_proc
+        self.skip_connection = skip_connection
         self.sigmoid_mode = sigmoid_mode
         self.out_channels = out_channels
         self.in_channels = in_channels
@@ -85,47 +88,95 @@ class convLSTMcell(nn.Module):
             else:
                 self.activation = lambda x: x
 
+        if not mini:
+            self.inputGate = nn.Sequential(
+                    cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
+                    # relu_func(),
+                )
+            self.forgetGate = nn.Sequential(
+                    cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
+                    # relu_func(),
+                )
+            self.outputGate = nn.Sequential(
+                    cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
+                    # relu_func(),
+                )
+            self.inputProc = nn.Sequential(
+                    cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
+                    # relu_func(),
+                )
+            if self.double_proc:
+                self.inputProc2 = nn.Sequential(
+                        cnn_func(self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                        relu_func(),
+                        cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                        relu_func(),
+                        cnn_func(2*self.out_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
+                        # relu_func(),
+                )
+        else:
+            self.inputGate = nn.Sequential(
+                    cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
+                    # relu_func(),
+                )
+            self.forgetGate = nn.Sequential(
+                    cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
+                    # relu_func(),
+                )
+            self.outputGate = nn.Sequential(
+                    cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
+                    # relu_func(),
+                )
+            self.inputProc = nn.Sequential(
+                    cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    relu_func(),
+                    cnn_func(2*self.out_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
+                    # relu_func(),
+                )
 
-        self.inputGate = nn.Sequential(
-                cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
-                relu_func(),
-                cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
-                relu_func(),
-                cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
-                relu_func(),
-                cnn_func(2*self.out_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
-                # relu_func(),
-            )
-        self.forgetGate = nn.Sequential(
-                cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
-                relu_func(),
-                cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
-                relu_func(),
-                cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
-                relu_func(),
-                cnn_func(2*self.out_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
-                # relu_func(),
-            )
-        self.outputGate = nn.Sequential(
-                cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
-                relu_func(),
-                cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
-                relu_func(),
-                cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
-                relu_func(),
-                cnn_func(2*self.out_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
-                # relu_func(),
-            )
-        self.inputProc = nn.Sequential(
-                cnn_func(self.out_channels + self.in_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
-                relu_func(),
-                cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
-                relu_func(),
-                cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
-                relu_func(),
-                cnn_func(2*self.out_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
-                # relu_func(),
-            )
+            if self.double_proc:
+                self.inputProc2 = nn.Sequential(
+                        cnn_func(self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                        relu_func(),
+                        cnn_func(2*self.out_channels, 2*self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                        relu_func(),
+                        cnn_func(2*self.out_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
+                        # relu_func(),
+                    )
         if self.linear_post_process:
             if self.real_mode:
                 self.linear = nn.Linear(8*8,8*8)
@@ -163,6 +214,15 @@ class convLSTMcell(nn.Module):
             Cthat[:,:,mid1-4:mid1+4,mid2-4:mid2+4] = inp
         Ct_new = (ft * prev_state) + (it * Cthat)
         ht = self.activation(Ct_new)*ot
+        if self.skip_connection:
+            # print(ht.min())
+            # print(ht.max())
+            # print(x.min())
+            # print(x.max())
+            # print('------------------------------------------')
+            ht = ht + x
+        if self.double_proc:
+            ht = self.inputProc2(ht) + ht
 
         return Ct_new, ht
 
@@ -201,7 +261,16 @@ class convLSTM_Kspace1(nn.Module):
         else:
             assert 0
 
-        self.mag_m = convLSTMcell(tanh_mode = False, sigmoid_mode = sigmoid_mode, real_mode = True, in_channels = in_channels, out_channels = out_channels)
+        self.mag_m = convLSTMcell(
+                    tanh_mode = False, 
+                    sigmoid_mode = sigmoid_mode, 
+                    real_mode = True, 
+                    in_channels = in_channels, 
+                    out_channels = out_channels, 
+                    mini = self.param_dic['lstm_mini'], 
+                    skip_connection = self.param_dic['skip_connection'],
+                    double_proc = self.param_dic['double_kspace_proc']
+                )
         self.phase_m = convLSTMcell(
                     tanh_mode = self.param_dic['kspace_tanh'], 
                     sigmoid_mode = sigmoid_mode, 
@@ -209,7 +278,10 @@ class convLSTM_Kspace1(nn.Module):
                     in_channels = in_channels,
                     out_channels = out_channels,
                     theta = theta, 
-                    linear_post_process = self.param_dic['kspace_linear'],
+                    linear_post_process = self.param_dic['kspace_linear'], 
+                    mini = self.param_dic['lstm_mini'], 
+                    skip_connection = self.param_dic['skip_connection'],
+                    double_proc = self.param_dic['double_kspace_proc']
                 )
         self.SSIM = kornia.metrics.SSIM(11)
         assert(sigmoid_mode)
@@ -502,7 +574,17 @@ class convLSTM_Kspace2(nn.Module):
 
         theta = False
 
-        self.model = convLSTMcell(tanh_mode = False, sigmoid_mode = sigmoid_mode, real_mode = False, in_channels = in_channels, out_channels = out_channels, theta = False)
+        self.model = convLSTMcell(
+                        tanh_mode = False, 
+                        sigmoid_mode = sigmoid_mode, 
+                        real_mode = False, 
+                        in_channels = in_channels, 
+                        out_channels = out_channels, 
+                        theta = False, 
+                        mini = self.param_dic['lstm_mini'], 
+                        skip_connection = self.param_dic['skip_connection'],
+                        double_proc = self.param_dic['double_kspace_proc']
+                    )
         self.SSIM = kornia.metrics.SSIM(11)
         assert(sigmoid_mode)
 
@@ -703,7 +785,16 @@ class convLSTM_Ispace1(nn.Module):
         else:
             assert 0
 
-        self.mag_m = convLSTMcell(tanh_mode = False, sigmoid_mode = sigmoid_mode, real_mode = True, in_channels = in_channels, out_channels = out_channels)
+        self.mag_m = convLSTMcell(
+                    tanh_mode = False, 
+                    sigmoid_mode = sigmoid_mode, 
+                    real_mode = True, 
+                    in_channels = in_channels, 
+                    out_channels = out_channels, 
+                    mini = self.param_dic['lstm_mini'], 
+                    skip_connection = self.param_dic['skip_connection'],
+                    double_proc = self.param_dic['double_kspace_proc']
+                )
         self.phase_m = convLSTMcell(
                     tanh_mode = self.param_dic['kspace_tanh'], 
                     sigmoid_mode = sigmoid_mode, 
@@ -711,7 +802,10 @@ class convLSTM_Ispace1(nn.Module):
                     in_channels = in_channels,
                     out_channels = out_channels,
                     theta = theta, 
-                    linear_post_process = self.param_dic['kspace_linear'],
+                    linear_post_process = self.param_dic['kspace_linear'], 
+                    mini = self.param_dic['lstm_mini'], 
+                    skip_connection = self.param_dic['skip_connection'],
+                    double_proc = self.param_dic['double_kspace_proc']
                 )
         self.SSIM = kornia.metrics.SSIM(11)
         assert(sigmoid_mode)

@@ -116,7 +116,7 @@ class ACDC_radial(Dataset):
 
         self.RAM_memoised = [None for k in range(self.num_videos)]
 
-        self.total_frames = self.num_coils*(self.frames_per_vid_per_patient*self.num_vids_per_patient).sum()
+        self.total_unskipped_frames = self.num_coils*((self.frames_per_vid_per_patient-self.parameters['init_skip_frames'])*self.num_vids_per_patient).sum()
 
 
     def index_to_location(self, i):

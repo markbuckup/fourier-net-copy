@@ -223,9 +223,9 @@ class Trainer(nn.Module):
             loss_ss1 = ss1.mean(1).sum().detach().cpu()
 
             avgispaceloss += float(totloss/(len(self.trainloader)))
-            ispacessim_score += float(loss_ss1.cpu().item()/self.trainset.total_frames)
-            avgispace_l1_loss += float(loss_l1.cpu().item()/self.trainset.total_frames)
-            avgispace_l2_loss += float(loss_l2.cpu().item()/self.trainset.total_frames)
+            ispacessim_score += float(loss_ss1.cpu().item()/self.trainset.total_unskipped_frames)
+            avgispace_l1_loss += float(loss_l1.cpu().item()/self.trainset.total_unskipped_frames)
+            avgispace_l2_loss += float(loss_l2.cpu().item()/self.trainset.total_unskipped_frames)
 
         if self.scheduler is not None:
             self.scheduler.step()
@@ -249,7 +249,7 @@ class Trainer(nn.Module):
         if self.ddp_rank == 0:
             tqdm_object = tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
         else:
-            tqdm_object = enumerate(self.trainloader)
+            tqdm_object = enumerate(dloader)
         with torch.no_grad():
             for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in tqdm_object:
             # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
@@ -276,10 +276,10 @@ class Trainer(nn.Module):
                 ss1 = ss1.reshape(ss1.shape[0],-1)
                 loss_ss1 = ss1.mean(1).sum().detach().cpu()
 
-                avgispaceloss += float(totloss/(len(self.trainloader)))
-                ispacessim_score += float(loss_ss1.cpu().item()/self.trainset.total_frames)
-                avgispace_l1_loss += float(loss_l1.cpu().item()/self.trainset.total_frames)
-                avgispace_l2_loss += float(loss_l2.cpu().item()/self.trainset.total_frames)
+                avgispaceloss += float(totloss/(len(dloader)))
+                ispacessim_score += float(loss_ss1.cpu().item()/(dset.total_unskipped_frames/8))
+                avgispace_l1_loss += float(loss_l1.cpu().item()/(dset.total_unskipped_frames/8))
+                avgispace_l2_loss += float(loss_l2.cpu().item()/(dset.total_unskipped_frames/8))
 
             if self.scheduler is not None:
                 self.scheduler.step()

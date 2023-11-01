@@ -218,30 +218,40 @@ class Trainer(nn.Module):
             del masks
             del inpt_phase
             del inpt_mag_log
-            loss = 0.05*loss_mag + 5*loss_phase + 50*loss_real
+            if not self.parameters['end-to-end-supervision']:
+                if self.parameters['kspace_real_loss_only']:
+                    loss = 10*loss_real
+                else:
+                    loss = 0.05*loss_mag + 5*loss_phase + 50*loss_real
 
+                loss.backward()
+                if self.parameters['kspace_architecture'] == 'KLSTM1':
+                    self.kspace_optim_mag.step()
+                    self.kspace_optim_phase.step()
+                elif self.parameters['kspace_architecture'] == 'KLSTM2':
+                    self.kspace_optim.step()
 
-            loss.backward()
-            if self.parameters['kspace_architecture'] == 'KLSTM1':
-                self.kspace_optim_mag.step()
-                self.kspace_optim_phase.step()
-            elif self.parameters['kspace_architecture'] == 'KLSTM2':
-                self.kspace_optim.step()
-
-            del loss
+                del loss
             
 
             avgkspacelossphase += float(loss_phase.cpu().item()/(len(self.trainloader)))
             avgkspacelossmag += float(loss_mag.cpu().item()/(len(self.trainloader)))
             avgkspacelossreal += float(loss_real.cpu().item()/(len(self.trainloader)))
+            del loss_phase
+            del loss_mag
+            del loss_real
             
-            kspacessim_score += float(ss1.cpu()/self.trainset.total_frames)
-            avgkspace_l1_loss += float(loss_l1.cpu()/self.trainset.total_frames)
-            avgkspace_l2_loss += float(loss_l2.cpu()/self.trainset.total_frames)
+            kspacessim_score += float(ss1.cpu()/self.trainset.total_unskipped_frames)
+            avgkspace_l1_loss += float(loss_l1.cpu()/self.trainset.total_unskipped_frames)
+            avgkspace_l2_loss += float(loss_l2.cpu()/self.trainset.total_unskipped_frames)
 
 
             self.ispace_optim.zero_grad(set_to_none=True)
-            predr = predr.detach()[:,self.parameters['init_skip_frames']:]
+            if not self.parameters['end-to-end-supervision']:
+                predr = predr.detach()[:,self.parameters['init_skip_frames']:]
+            else:
+                predr = predr[:,self.parameters['init_skip_frames']:]
+
             num_frames = num_frames - self.parameters['init_skip_frames']
             if self.parameters['kspace_coil_combination']:
                 predr = predr.reshape(batch*num_frames,1,numr, numc).to(self.device)
@@ -254,6 +264,14 @@ class Trainer(nn.Module):
             loss.backward()
             self.ispace_optim.step()
 
+            if self.parameters['end-to-end-supervision']:
+                if self.parameters['kspace_architecture'] == 'KLSTM1':
+                    self.kspace_optim_mag.step()
+                    self.kspace_optim_phase.step()
+                elif self.parameters['kspace_architecture'] == 'KLSTM2':
+                    self.kspace_optim.step()
+
+
             loss_l1 = (outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]).abs().mean(1).sum().detach().cpu()
             loss_l2 = (((outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]) ** 2).mean(1).sum()).detach().cpu()
             ss1 = self.SSIM(outp.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
@@ -261,9 +279,9 @@ class Trainer(nn.Module):
             loss_ss1 = ss1.mean(1).sum().detach().cpu()
 
             avgispacelossreal += float(loss.cpu().item()/(len(self.trainloader)))
-            ispacessim_score += float(loss_ss1.cpu().item()/self.trainset.total_frames)
-            avgispace_l1_loss += float(loss_l1.cpu().item()/self.trainset.total_frames)
-            avgispace_l2_loss += float(loss_l2.cpu().item()/self.trainset.total_frames)
+            ispacessim_score += float(loss_ss1.cpu().item()/self.trainset.total_unskipped_frames)
+            avgispace_l1_loss += float(loss_l1.cpu().item()/self.trainset.total_unskipped_frames)
+            avgispace_l2_loss += float(loss_l2.cpu().item()/self.trainset.total_unskipped_frames)
 
         if self.parameters['kspace_architecture'] == 'KLSTM1':
             if self.kspace_scheduler_mag is not None:
@@ -306,7 +324,7 @@ class Trainer(nn.Module):
         if self.ddp_rank == 0:
             tqdm_object = tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
         else:
-            tqdm_object = enumerate(self.trainloader)
+            tqdm_object = enumerate(dloader)
         with torch.no_grad():
             for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in tqdm_object:
             # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
@@ -321,13 +339,15 @@ class Trainer(nn.Module):
                 self.kspace_model.eval()
                 predr, _, _, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
 
-                avgkspacelossphase += float(loss_phase.item()/(len(self.trainloader)))
-                avgkspacelossmag += float(loss_mag.item()/(len(self.trainloader)))
-                avgkspacelossreal += float(loss_real.item()/(len(self.trainloader)))
+                avgkspacelossphase += float(loss_phase.item()/(len(dloader)))
+                avgkspacelossmag += float(loss_mag.item()/(len(dloader)))
+                avgkspacelossreal += float(loss_real.item()/(len(dloader)))
                 
-                kspacessim_score += float(ss1.cpu()/self.trainset.total_frames)
-                avgkspace_l1_loss += float(loss_l1.cpu()/self.trainset.total_frames)
-                avgkspace_l2_loss += float(loss_l2.cpu()/self.trainset.total_frames)
+                kspacessim_score += float(ss1.cpu()/dset.total_unskipped_frames)
+                # print(kspacessim_score)
+                # print(kspacessim_score)
+                avgkspace_l1_loss += float(loss_l1.cpu()/dset.total_unskipped_frames)
+                avgkspace_l2_loss += float(loss_l2.cpu()/dset.total_unskipped_frames)
 
 
                 predr = predr.detach()[:,self.parameters['init_skip_frames']:]
@@ -347,17 +367,23 @@ class Trainer(nn.Module):
                 ss1 = self.SSIM(outp.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
                 ss1 = ss1.reshape(ss1.shape[0],-1)
                 loss_ss1 = ss1.mean(1).sum().detach().cpu()
+                # print(ss1.shape)
+                # print(loss_ss1)
+                # print(dset.total_unskipped_frames)
+                # asdf
 
-                avgispacelossreal += float(loss.cpu().item()/(len(self.trainloader)))
-                ispacessim_score += float(loss_ss1.cpu().item()/self.trainset.total_frames)
-                avgispace_l1_loss += float(loss_l1.cpu().item()/self.trainset.total_frames)
-                avgispace_l2_loss += float(loss_l2.cpu().item()/self.trainset.total_frames)
+                avgispacelossreal += float(loss.cpu().item()/(len(dloader)))
+                ispacessim_score += float(loss_ss1.cpu().item()/(dset.total_unskipped_frames/8))
+                avgispace_l1_loss += float(loss_l1.cpu().item()/(dset.total_unskipped_frames/8))
+                avgispace_l2_loss += float(loss_l2.cpu().item()/(dset.total_unskipped_frames/8))
 
         # if print_loss:
         #     print('Train Mag Loss for Epoch {} = {}' .format(epoch, avglossmag), flush = True)
         #     print('Train Phase Loss for Epoch {} = {}' .format(epoch, avglossphase), flush = True)
         #     print('Train Real Loss for Epoch {} = {}' .format(epoch, avglossreal), flush = True)
         #     print('Train SSIM for Epoch {} = {}' .format(epoch, ssim_score), flush = True)
+
+        print(avgkspacelossmag, avgkspacelossphase, avgkspacelossreal, kspacessim_score, avgkspace_l1_loss, avgkspace_l2_loss, avgispacelossreal, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss)
 
         return avgkspacelossmag, avgkspacelossphase, avgkspacelossreal, kspacessim_score, avgkspace_l1_loss, avgkspace_l2_loss, avgispacelossreal, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss
 
@@ -479,7 +505,6 @@ class Trainer(nn.Module):
                             plt.suptitle("Epoch {}\nPatient {} Video {} Frame {}\n{}".format(epoch,p_num, v_num, f_num, spec))
                             plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/io_frame_{}.jpg'.format(p_num, v_num, f_num)))
                             plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/io_location_{}.jpg'.format(p_num, f_num, v_num)))
-
 
                             fig = plt.figure(figsize = (36,4*num_coils-2))
                             
