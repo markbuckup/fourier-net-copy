@@ -306,14 +306,14 @@ def test_paradigm(rank, world_size, args, parameters):
                         parameters,
                         proc_device,
                         train = True, 
-                        visualise_only = args.visualise_only 
+                        visualise_only = args.visualise_only or args.numbers_only 
                     )
     testset = dataset(
                         args.dataset_path, 
                         parameters,
                         proc_device,
                         train = False,
-                        visualise_only = args.visualise_only 
+                        visualise_only = args.visualise_only or args.numbers_only 
                     )
 
 

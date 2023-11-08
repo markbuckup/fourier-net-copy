@@ -3,6 +3,7 @@ import gc
 import sys
 import PIL
 import time
+import scipy
 import torch
 import random
 import pickle
@@ -62,7 +63,7 @@ def show_difference_image(im1, im2):
     diff = (im1-im2)
     plt.axis('off')
     plt.imshow(np.abs(diff), cmap = 'plasma', vmin=0, vmax=0.25)
-    plt.colorbar()
+    # plt.colorbar()
     return np.abs(diff).reshape(-1)
 
 class Trainer(nn.Module):
@@ -129,7 +130,10 @@ class Trainer(nn.Module):
 
         if self.parameters['optimizer'] == 'Adam':
             if self.parameters['kspace_architecture'] == 'KLSTM1':
-                self.kspace_optim_mag = optim.Adam(self.kspace_model.module.mag_m.parameters(), lr=self.parameters['lr_kspace_mag'], betas=self.parameters['optimizer_params'])
+                if self.parameters['ispace_lstm']:
+                    self.kspace_optim_mag = optim.Adam(list(self.kspace_model.module.mag_m.parameters())+list(self.kspace_model.module.ispacem.parameters()), lr=self.parameters['lr_kspace_mag'], betas=self.parameters['optimizer_params'])
+                else:
+                    self.kspace_optim_mag = optim.Adam(self.kspace_model.module.mag_m.parameters(), lr=self.parameters['lr_kspace_mag'], betas=self.parameters['optimizer_params'])
                 self.kspace_optim_phase = optim.Adam(self.kspace_model.module.phase_m.parameters(), lr=self.parameters['lr_kspace_phase'], betas=self.parameters['optimizer_params'])
             elif self.parameters['kspace_architecture'] == 'KLSTM2':
                 self.kspace_optim = optim.Adam(self.kspace_model.module.parameters(), lr=self.parameters['lr_kspace_phase'], betas=self.parameters['optimizer_params'])
@@ -222,7 +226,8 @@ class Trainer(nn.Module):
                 if self.parameters['kspace_real_loss_only']:
                     loss = 10*loss_real
                 else:
-                    loss = 0.05*loss_mag + 5*loss_phase + 50*loss_real
+                    loss = 0.06*loss_mag + loss_phase + 5*loss_real
+                    # print(0.05*loss_mag,loss_phase,5*loss_real)
 
                 loss.backward()
                 if self.parameters['kspace_architecture'] == 'KLSTM1':
@@ -253,7 +258,7 @@ class Trainer(nn.Module):
                 predr = predr[:,self.parameters['init_skip_frames']:]
 
             num_frames = num_frames - self.parameters['init_skip_frames']
-            if self.parameters['kspace_coil_combination']:
+            if self.parameters['kspace_coil_combination'] or self.parameters['ispace_lstm']:
                 predr = predr.reshape(batch*num_frames,1,numr, numc).to(self.device)
             else:
                 predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
@@ -321,6 +326,16 @@ class Trainer(nn.Module):
             dloader = self.testloader
             dset = self.testset
             dstr = 'Test'
+        if self.args.write_csv:
+            f = open(os.path.join(self.args.run_id, '{}_results.csv'.format(dstr)), 'w')
+            f.write('patient_number,')
+            f.write('location_number,')
+            f.write('frame_number,')
+            f.write('SSIM,')
+            f.write('L1,')
+            f.write('L2')
+            f.write('\n')
+            f.flush()
         if self.ddp_rank == 0:
             tqdm_object = tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
         else:
@@ -352,7 +367,7 @@ class Trainer(nn.Module):
 
                 predr = predr.detach()[:,self.parameters['init_skip_frames']:]
                 num_frames = num_frames - self.parameters['init_skip_frames']
-                if self.parameters['kspace_coil_combination']:
+                if self.parameters['kspace_coil_combination'] or self.parameters['ispace_lstm']:
                     predr = predr.reshape(batch*num_frames,1,numr, numc).to(self.device)
                 else:
                     predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
@@ -362,15 +377,36 @@ class Trainer(nn.Module):
                 outp = self.ispace_model(predr)
                 loss = self.l1loss(outp, targ_vid)
 
-                loss_l1 = (outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]).abs().mean(1).sum().detach().cpu()
-                loss_l2 = (((outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]) ** 2).mean(1).sum()).detach().cpu()
-                ss1 = self.SSIM(outp.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
+                if self.args.numbers_crop:
+                    outp = outp[:,:,96:160,96:160]
+                    targ_vid = targ_vid[:,:,96:160,96:160]
+
+                if self.args.motion_mask:
+                    motion_mask = torch.diff(targ_vid.reshape(batch, num_frames,-1)[:,np.arange(num_frames+1)%(num_frames)], n = 1, dim = 1).reshape(batch*num_frames,1,numr, numc).to(self.device)
+                    motion_mask_min = motion_mask.min(1)[0].min(1)[0].min(1)[0].unsqueeze(1).unsqueeze(1).unsqueeze(1)
+                    motion_mask_max = motion_mask.max(1)[0].max(1)[0].max(1)[0].unsqueeze(1).unsqueeze(1).unsqueeze(1)
+                    motion_mask = (motion_mask - motion_mask_min)/(motion_mask_max+EPS)
+                else:
+                    motion_mask = torch.ones(targ_vid.shape).to(self.device)
+
+                loss_l1 = ((outp*motion_mask)- (targ_vid*motion_mask)).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]).abs().detach().cpu().mean(1)
+                loss_l2 = ((((outp*motion_mask)- (targ_vid*motion_mask)).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]) ** 2)).detach().cpu().mean(1)
+                ss1 = self.SSIM((outp*motion_mask).reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), (targ_vid*motion_mask).reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
                 ss1 = ss1.reshape(ss1.shape[0],-1)
+                if self.args.write_csv:
+                    for bi in range(batch):
+                        for fi in range(num_frames):
+                            f.write('{},'.format(indices[bi,0]))
+                            f.write('{},'.format(indices[bi,1]))
+                            f.write('{},'.format(fi))
+                            f.write('{},'.format(ss1.reshape(batch, num_frames,-1).mean(2)[bi,fi]))
+                            f.write('{},'.format(loss_l1.reshape(batch, num_frames)[bi,fi]))
+                            f.write('{},'.format(loss_l2.reshape(batch, num_frames)[bi,fi]))
+                            f.write('\n')
+                            f.flush()
                 loss_ss1 = ss1.mean(1).sum().detach().cpu()
-                # print(ss1.shape)
-                # print(loss_ss1)
-                # print(dset.total_unskipped_frames)
-                # asdf
+                loss_l1 = loss_l1.sum()
+                loss_l2 = loss_l2.sum()
 
                 avgispacelossreal += float(loss.cpu().item()/(len(dloader)))
                 ispacessim_score += float(loss_ss1.cpu().item()/(dset.total_unskipped_frames/8))
@@ -383,26 +419,43 @@ class Trainer(nn.Module):
         #     print('Train Real Loss for Epoch {} = {}' .format(epoch, avglossreal), flush = True)
         #     print('Train SSIM for Epoch {} = {}' .format(epoch, ssim_score), flush = True)
 
-        print(avgkspacelossmag, avgkspacelossphase, avgkspacelossreal, kspacessim_score, avgkspace_l1_loss, avgkspace_l2_loss, avgispacelossreal, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss)
+        # print(avgkspacelossmag, avgkspacelossphase, avgkspacelossreal, kspacessim_score, avgkspace_l1_loss, avgkspace_l2_loss, avgispacelossreal, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss)
+        if self.args.write_csv:
+            f.flush()
+            f.close()
 
         return avgkspacelossmag, avgkspacelossphase, avgkspacelossreal, kspacessim_score, avgkspace_l1_loss, avgkspace_l2_loss, avgispacelossreal, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss
 
     def time_analysis(self):
-        tqdm_object = enumerate(self.trainloader)
+        tqdm_object = tqdm(enumerate(self.testloader), total = len(self.testloader))
+        times = []
         with torch.no_grad():
             for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in tqdm_object:
             # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
-                undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1))
+                undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1)).cpu()
                 self.kspace_model.eval()
-                time1 = self.kspace_model.module.time_analysis(undersampled_fts[0:1], self.device, periods[0:1].clone(), self.ispace_model)
+                times += self.kspace_model.module.time_analysis(undersampled_fts, self.device, periods[0:1].clone(), self.ispace_model)
+                # print(time1)
+                # torch.cuda.empty_cache()
+                # # time2 = self.kspace_model.module.time_analysis(undersampled_fts[0:1], self.device, periods[0:1].clone(), self.ispace_model)
+                # time1 = self.kspace_model.module.time_analysis(undersampled_fts[0:1], self.device, periods[0:1].clone(), self.ispace_model)
+                # print(time1)
+                # print(undersampled_fts.shape)
+                # asdf
                 # Nf, Nc, R, C = predr.squeeze().shape
                 # time2 = self.ispace_model.module.time_analysis(predr.reshape(Nf,Nc,R,C).to(self.device), self.device)
-                print("Time for Complete Video ({} frames) = {}".format(undersampled_fts.shape[1], time1))
-                print("Avg Time per frame = {}".format((time1)/undersampled_fts.shape[1]))
+                # print("Time for Complete Video ({} frames) = {}".format(undersampled_fts.shape[1], time1))
+                # print("Avg Time per frame = {}".format((time1)/undersampled_fts.shape[1]))
+                # print((time1)/undersampled_fts.shape[1])
+                # print('\n')
                 # print("Time for Ispace Video = {}".format(time2))
                 # print("Time for complete video ({} frames) = {}".format(undersampled_fts.shape[1], time1+time2))
                 # print("Avg Time per frame = {}".format((time1+time2)/undersampled_fts.shape[1]))
-                return
+        
+        # print('Average Time ({} frames) = {} +- {}'.format(undersampled_fts.shape[1], np.mean(total_times), np.std(total_times)))
+        print('Average Time Per Frame = {} +- {}'.format(np.mean(times), np.std(times)), flush = True)
+        scipy.io.savemat(os.path.join(self.args.run_id, 'fps.mat'), {'times': times})
+        return
 
 
     def visualise(self, epoch, train = False):
@@ -443,19 +496,24 @@ class Trainer(nn.Module):
                 num_vids = 1
                 batch = num_vids
                 num_plots = num_vids*num_frames
-
                 predr, _, _, loss_mag, loss_phase, loss_real, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = og_video)
 
-                pred_ft = torch.fft.fftshift(torch.fft.fft2(predr), dim = (-2,-1))
                 print('Predr nan',torch.isnan(predr).any())
                 predr[torch.isnan(predr)] = 0
 
-                predr = predr.reshape(batch*num_frames,num_coils,numr, numc).to(self.device)
+                if self.parameters['ispace_lstm']:
+                    predr = predr.reshape(batch*num_frames,1,numr, numc).to(self.device)
+                else:
+                    predr = predr.reshape(batch*num_frames,num_coils,numr, numc).to(self.device)
                 targ_vid = og_video[:num_vids].reshape(batch*num_frames,1, numr, numc).to(self.device)
                 ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
                 print('ispace_outp nan',torch.isnan(ispace_outp).any())
 
-                predr = predr.reshape(batch,num_frames,num_coils,numr,numc)
+                if self.parameters['ispace_lstm']:
+                    predr = predr.reshape(batch,num_frames,1,numr,numc).repeat(1,1,num_coils,1,1)
+                else:
+                    predr = predr.reshape(batch,num_frames,num_coils,numr,numc)
+                pred_ft = torch.fft.fftshift(torch.fft.fft2(predr), dim = (-2,-1))
                 
                 tot = 0
                 with tqdm(total=num_plots) as pbar:
@@ -480,12 +538,12 @@ class Trainer(nn.Module):
                             
                             plt.subplot(1,3,1)
                             myimshow(og_vidi, cmap = 'gray')
-                            plt.title('Input Video')
+                            plt.title('Ground Truth Frame')
                             # print(f_num, 1)
                             # ispace_outpi = torch.from_numpy(match_histograms(ispace_outpi.numpy(), og_vidi.numpy(), channel_axis=None))
                             plt.subplot(1,3,2)
                             myimshow(ispace_outpi, cmap = 'gray')
-                            plt.title('Ispace Prediction')
+                            plt.title('convLSTM Prediction')
                             # print(f_num, 2)
                             
                             plt.subplot(1,3,3)
@@ -506,90 +564,91 @@ class Trainer(nn.Module):
                             plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/io_frame_{}.jpg'.format(p_num, v_num, f_num)))
                             plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/io_location_{}.jpg'.format(p_num, f_num, v_num)))
 
-                            fig = plt.figure(figsize = (36,4*num_coils-2))
-                            
-                            plt.subplot(num_coils,9,(((num_coils//2)-1)*9)+1)
-                            myimshow(og_vidi, cmap = 'gray')
-                            plt.title('Input Video')
-                            # print(f_num, 1)
-                            
+                            if not self.args.ispace_visual_only:
+                                fig = plt.figure(figsize = (36,4*num_coils-2))
+                                
+                                plt.subplot(num_coils,9,(((num_coils//2)-1)*9)+1)
+                                myimshow(og_vidi, cmap = 'gray')
+                                plt.title('Input Video')
+                                # print(f_num, 1)
+                                
 
-                            plt.subplot(num_coils,9,(((num_coils//2))*9))
-                            myimshow(ispace_outpi, cmap = 'gray')
-                            plt.title('Ispace Prediction')
-                            # print(f_num, 2)
-                            
-                            plt.subplot(num_coils,9,(((num_coils//2)+1)*9))
-                            diffvals = show_difference_image(ispace_outpi, og_vidi.numpy())
-                            plt.title('Difference Frame')
-                            # print(f_num, 3)
+                                plt.subplot(num_coils,9,(((num_coils//2))*9))
+                                myimshow(ispace_outpi, cmap = 'gray')
+                                plt.title('Ispace Prediction')
+                                # print(f_num, 2)
+                                
+                                plt.subplot(num_coils,9,(((num_coils//2)+1)*9))
+                                diffvals = show_difference_image(ispace_outpi, og_vidi.numpy())
+                                plt.title('Difference Frame')
+                                # print(f_num, 3)
 
-                            # plt.subplot(8,8,(((num_coils//2)+2)*8))
-                            # plt.hist(diffvals, range = [0,0.25], density = False, bins = 30)
-                            # plt.ylabel('Pixel Count')
-                            # plt.xlabel('Difference Value')
-                            # print(f_num, 4)
+                                # plt.subplot(8,8,(((num_coils//2)+2)*8))
+                                # plt.hist(diffvals, range = [0,0.25], density = False, bins = 30)
+                                # plt.ylabel('Pixel Count')
+                                # plt.xlabel('Difference Value')
+                                # print(f_num, 4)
 
-                            num_plots -= 1
-                            for c_num in range(num_coils):
-                                if num_plots == 0:
-                                    return
-                                
-                                targi = og_coiled_vids.cpu()[bi,f_num, c_num].squeeze().cpu().numpy()
-                                orig_fti = (og_coiled_fts.cpu()[bi,f_num,c_num].abs()+1).log()
-                                mask_fti = (1+undersampled_fts.cpu()[bi,f_num,c_num].abs()).log()
-                                ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts.cpu()[bi,f_num,c_num], dim = (-2,-1))).abs().squeeze()
-                                pred_fti = (pred_ft.cpu()[bi,f_num,c_num].abs()+1).log()
-                                predi = predr.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
+                                num_plots -= 1
+                                for c_num in range(num_coils):
+                                    if num_plots == 0:
+                                        return
+                                    
+                                    targi = og_coiled_vids.cpu()[bi,f_num, c_num].squeeze().cpu().numpy()
+                                    orig_fti = (og_coiled_fts.cpu()[bi,f_num,c_num].abs()+1).log()
+                                    mask_fti = (1+undersampled_fts.cpu()[bi,f_num,c_num].abs()).log()
+                                    ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts.cpu()[bi,f_num,c_num], dim = (-2,-1))).abs().squeeze()
+                                    pred_fti = (pred_ft.cpu()[bi,f_num,c_num].abs()+1).log()
+                                    predi = predr.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
 
-                                plt.subplot(num_coils,9,9*c_num+2)
-                                myimshow(targi, cmap = 'gray')
-                                if c_num == 0:
-                                    plt.title('Coiled Input')
-                                # print(c_num,1)
-                                
-                                plt.subplot(num_coils,9,9*c_num+3)
-                                myimshow((orig_fti).squeeze(), cmap = 'gray')
-                                if c_num == 0:
-                                    plt.title('FT of Coiled Input')
-                                # print(c_num,2)
-                                
-                                plt.subplot(num_coils,9,9*c_num+4)
-                                myimshow(mask_fti, cmap = 'gray')
-                                if c_num == 0:
-                                    plt.title('Undersampled FT')
-                                # print(c_num,3)
-                                
-                                plt.subplot(num_coils,9,9*c_num+5)
-                                myimshow(ifft_of_undersamp, cmap = 'gray')
-                                if c_num == 0:
-                                    plt.title('IFFT of Undersampled FT')
-                                # print(c_num,4)
-                                
-                                plt.subplot(num_coils,9,9*c_num+6)
-                                myimshow(pred_fti, cmap = 'gray')
-                                if c_num == 0:
-                                    plt.title('FT predicted by Kspace Model')
-                                # print(c_num,5)
-                                
-                                plt.subplot(num_coils,9,9*c_num+7)
-                                myimshow(predi, cmap = 'gray')
-                                if c_num == 0:
-                                    plt.title('IFFT of Kspace Prediction')
-                                # print(c_num,6)
-                                
-                                plt.subplot(num_coils,9,9*c_num+8)
-                                diffvals = show_difference_image(predi, targi)
-                                if c_num == 0:
-                                    plt.title('Difference Image')
-                                # print(c_num,6)
-                                
-                            spec = ''
-                            if f_num < self.parameters['init_skip_frames']:
-                                spec = 'Loss Skipped'
-                            plt.suptitle("Epoch {}\nPatient {} Video {} Frame {}\n{}".format(epoch,p_num, v_num, f_num, spec))
-                            plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}.jpg'.format(p_num, v_num, f_num)))
-                            plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/location_{}.jpg'.format(p_num, f_num, v_num)))
+                                    plt.subplot(num_coils,9,9*c_num+2)
+                                    myimshow(targi, cmap = 'gray')
+                                    if c_num == 0:
+                                        plt.title('Coiled Input')
+                                    # print(c_num,1)
+                                    
+                                    plt.subplot(num_coils,9,9*c_num+3)
+                                    myimshow((orig_fti).squeeze(), cmap = 'gray')
+                                    if c_num == 0:
+                                        plt.title('FT of Coiled Input')
+                                    # print(c_num,2)
+                                    
+                                    plt.subplot(num_coils,9,9*c_num+4)
+                                    myimshow(mask_fti, cmap = 'gray')
+                                    if c_num == 0:
+                                        plt.title('Undersampled FT')
+                                    # print(c_num,3)
+                                    
+                                    plt.subplot(num_coils,9,9*c_num+5)
+                                    myimshow(ifft_of_undersamp, cmap = 'gray')
+                                    if c_num == 0:
+                                        plt.title('IFFT of Undersampled FT')
+                                    # print(c_num,4)
+                                    
+                                    plt.subplot(num_coils,9,9*c_num+6)
+                                    myimshow(pred_fti, cmap = 'gray')
+                                    if c_num == 0:
+                                        plt.title('FT predicted by Kspace Model')
+                                    # print(c_num,5)
+                                    
+                                    plt.subplot(num_coils,9,9*c_num+7)
+                                    myimshow(predi, cmap = 'gray')
+                                    if c_num == 0:
+                                        plt.title('IFFT of Kspace Prediction')
+                                    # print(c_num,6)
+                                    
+                                    plt.subplot(num_coils,9,9*c_num+8)
+                                    diffvals = show_difference_image(predi, targi)
+                                    if c_num == 0:
+                                        plt.title('Difference Image')
+                                    # print(c_num,6)
+                                    
+                                spec = ''
+                                if f_num < self.parameters['init_skip_frames']:
+                                    spec = 'Loss Skipped'
+                                plt.suptitle("Epoch {}\nPatient {} Video {} Frame {}\n{}".format(epoch,p_num, v_num, f_num, spec))
+                                plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}.jpg'.format(p_num, v_num, f_num)))
+                                plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/location_{}.jpg'.format(p_num, f_num, v_num)))
                             plt.close('all')
 
                             tot += 1

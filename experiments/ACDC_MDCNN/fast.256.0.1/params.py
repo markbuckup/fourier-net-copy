@@ -1,7 +1,7 @@
 parameters = {}
 parameters['image_resolution'] = 256
 parameters['train_batch_size'] = 15
-parameters['test_batch_size'] = 25
+parameters['test_batch_size'] = 12
 parameters['lr'] = 1e-3
 parameters['num_epochs'] = 250
 parameters['image_space_real'] = True

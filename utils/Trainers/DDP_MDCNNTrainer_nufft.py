@@ -4,6 +4,7 @@ import sys
 import PIL
 import time
 import torch
+import scipy
 import random
 import pickle
 import kornia
@@ -62,7 +63,7 @@ def show_difference_image(im1, im2):
     diff = (im1-im2)
     plt.axis('off')
     plt.imshow(np.abs(diff), cmap = 'plasma', vmin=0, vmax=0.25)
-    plt.colorbar()
+    # plt.colorbar()
     return np.abs(diff).reshape(-1)
 
 class Trainer(nn.Module):
@@ -155,31 +156,30 @@ class Trainer(nn.Module):
 
     def time_analysis(self):
         with torch.no_grad():
-            tqdm_object = enumerate(self.trainloader)
+            total_times = []
+            times = []
+            tqdm_object = tqdm(enumerate(self.testloader), total = len(self.testloader))
             for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in tqdm_object:
             # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
-                undersampled_fts = (torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1)) + CEPS)
-                start = time.time()
-                undersampled_fts = undersampled_fts.log()
-                undersampled_fts = torch.stack((undersampled_fts.real,undersampled_fts.imag), -1)
-                undersampled_fts = torch.swapaxes(undersampled_fts, 1,2)
-                # og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
-                # og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
-
-                undersampled_fts = undersampled_fts[0:1]
-                batch, chan, num_frames, numr, numc, _ = undersampled_fts.shape
+                undersampled_fts = (torch.fft.fftshift(torch.fft.fft2(coilwise_input), dim = (-2,-1)) + CEPS)
+                batch, num_frames, chan, numr, numc = undersampled_fts.shape
                 self.model.eval()
-                predr = torch.zeros(batch, num_frames-6,numr,numc).to(self.device)
+                predr = torch.zeros(batch, num_frames-6,numr,numc)
+                current_fts = (undersampled_fts[:,:6]).to(self.device)
                 for fii in range(num_frames - 6):
-                    # print(undersampled_fts[:,:,fii:fii+7].shape)
-                    _, temp = self.model((undersampled_fts[:,:,fii:fii+7]))
-                    predr[:,fii] = temp.squeeze()
+                    start = time.time()
+                    current_fts = torch.cat((current_fts, (undersampled_fts[:,fii+6:fii+7]).to(self.device).log()), 1)
+                    # current_fts = (undersampled_fts[:,fii:fii+7]).to(self.device).log()
+                    current_ftss = torch.stack((current_fts.real,current_fts.imag), -1)
+                    current_ftss = torch.swapaxes(current_ftss, 1,2)
+                    _, temp = self.model(current_ftss)
+                    predr[:,fii] = temp.squeeze().cpu()
+                    current_fts = current_fts[:,1:]
+                    times.append(time.time()-start)
 
-                tot_time = time.time()-start
-                print("Time for complete video ({} frames) = {}".format(undersampled_fts.shape[2]-6, tot_time))
-                print("Avg Time per frame = {}".format(tot_time/(num_frames - 6)))
-
-                return
+        print('Average Time Per Frame = {} +- {}'.format(np.mean(times), np.std(times)), flush = True)
+        scipy.io.savemat(os.path.join(self.args.run_id, 'fps.mat'), {'times': times})
+        return
 
 
     def train(self, epoch, print_loss = False):
@@ -246,6 +246,16 @@ class Trainer(nn.Module):
             dloader = self.testloader
             dset = self.testset
             dstr = 'Test'
+        if self.args.write_csv:
+            f = open(os.path.join(self.args.run_id, '{}_results.csv'.format(dstr)), 'w')
+            f.write('patient_number,')
+            f.write('location_number,')
+            f.write('frame_number,')
+            f.write('SSIM,')
+            f.write('L1,')
+            f.write('L2')
+            f.write('\n')
+            f.flush()
         if self.ddp_rank == 0:
             tqdm_object = tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
         else:
@@ -270,11 +280,38 @@ class Trainer(nn.Module):
                     totloss += loss.item()
                 targ_vid = (og_video[:,3:num_frames-3]).squeeze().to(self.device)
 
-                loss_l1 = (predr- targ_vid).reshape(predr.shape[0]*predr.shape[1], predr.shape[2]*predr.shape[3]).abs().mean(1).sum().detach().cpu()
-                loss_l2 = (((predr- targ_vid).reshape(predr.shape[0]*predr.shape[1], predr.shape[2]*predr.shape[3]) ** 2).mean(1).sum()).detach().cpu()
-                ss1 = self.SSIM(predr.reshape(predr.shape[0]*predr.shape[1],1,*predr.shape[2:]), targ_vid.reshape(predr.shape[0]*predr.shape[1],1,*predr.shape[2:]))
+                if self.args.numbers_crop:
+                    predr = predr[:,:,96:160]
+                    targ_vid = targ_vid[:,:,96:160]
+
+                if self.args.motion_mask:
+                    red_num_frames = num_frames-6
+                    motion_mask = torch.diff(targ_vid.reshape(batch, red_num_frames,-1)[:,np.arange(red_num_frames+1)%(red_num_frames)], n = 1, dim = 1).reshape(batch*red_num_frames,1,numr, numc).to(self.device)
+                    motion_mask_min = motion_mask.min(1)[0].min(1)[0].min(1)[0].unsqueeze(1).unsqueeze(1).unsqueeze(1)
+                    motion_mask_max = motion_mask.max(1)[0].max(1)[0].max(1)[0].unsqueeze(1).unsqueeze(1).unsqueeze(1)
+                    motion_mask = ((motion_mask - motion_mask_min)/(motion_mask_max+EPS)).reshape(targ_vid.shape)
+                else:
+                    motion_mask = torch.ones(targ_vid.shape).to(self.device)
+
+                loss_l1 = ((predr*motion_mask)- (targ_vid*motion_mask)).reshape(predr.shape[0]*predr.shape[1], predr.shape[2]*predr.shape[3]).abs().mean(1).detach().cpu()
+                loss_l2 = ((((predr*motion_mask)- (targ_vid*motion_mask)).reshape(predr.shape[0]*predr.shape[1], predr.shape[2]*predr.shape[3]) ** 2).mean(1)).detach().cpu()
+                ss1 = self.SSIM((predr*motion_mask).reshape(predr.shape[0]*predr.shape[1],1,*predr.shape[2:]), (targ_vid*motion_mask).reshape(predr.shape[0]*predr.shape[1],1,*predr.shape[2:]))
+                if self.args.write_csv:
+                    for bi in range(batch):
+                        for fi in range(num_frames-6):
+                            f.write('{},'.format(indices[bi,0]))
+                            f.write('{},'.format(indices[bi,1]))
+                            f.write('{},'.format(fi))
+                            f.write('{},'.format(ss1.reshape(batch, num_frames-6,-1).mean(2)[bi,fi]))
+                            f.write('{},'.format(loss_l1.reshape(batch, num_frames-6)[bi,fi]))
+                            f.write('{},'.format(loss_l2.reshape(batch, num_frames-6)[bi,fi]))
+                            f.write('\n')
+                            f.flush()
+
                 ss1 = ss1.reshape(ss1.shape[0],-1)
                 loss_ss1 = ss1.mean(1).sum().detach().cpu()
+                loss_l1 = loss_l1.sum()
+                loss_l2 = loss_l2.sum()
 
                 avgispaceloss += float(totloss/(len(dloader)))
                 ispacessim_score += float(loss_ss1.cpu().item()/(dset.total_unskipped_frames/8))
@@ -283,6 +320,10 @@ class Trainer(nn.Module):
 
             if self.scheduler is not None:
                 self.scheduler.step()
+
+        if self.args.write_csv:
+            f.flush()
+            f.close()
 
         return avgispaceloss, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss
 
@@ -348,7 +389,7 @@ class Trainer(nn.Module):
                             
                             plt.subplot(1,3,1)
                             myimshow(og_vidi, cmap = 'gray')
-                            plt.title('Input Video')
+                            plt.title('Ground Truth Frame')
                             # print(f_num, 1)
                             # ispace_outpi = torch.from_numpy(match_histograms(ispace_outpi.numpy(), og_vidi.numpy(), channel_axis=None))
                             plt.subplot(1,3,2)
