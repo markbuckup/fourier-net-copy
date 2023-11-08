@@ -375,7 +375,7 @@ class convLSTM_Kspace1(nn.Module):
         return times
 
 
-    def forward(self, fft_exp, gt_masks, device, periods, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
+    def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
         # if self.param_dic['kspace_coil_combination'] and (targ_phase is not None):
         #     targ_real = og_video.unsqueeze(2)
         #     fft_targ = torch.fft.fftshift(torch.fft.fft2(og_video.unsqueeze(2)), dim = (-2,-1))
@@ -417,13 +417,13 @@ class convLSTM_Kspace1(nn.Module):
             predr = torch.zeros(mag_log.shape[0],mag_log.shape[1], 1, mag_log.shape[3], mag_log.shape[4])
         else:
             predr = torch.zeros(mag_log.shape)
-        gt_masks = (gt_masks == 1).repeat(1,1,mag_log.shape[2],1,1).cpu()
-        centre = self.param_dic['image_resolution']//2
-        width = self.param_dic['image_resolution']//8
-        gt_masks[:,:,:,:centre-width,:] = False
-        gt_masks[:,:,:,centre+width:,:] = False
-        gt_masks[:,:,:,:,:centre-width] = False
-        gt_masks[:,:,:,:,centre+width:] = False
+        # gt_masks = (gt_masks == 1).repeat(1,1,mag_log.shape[2],1,1).cpu()
+        # centre = self.param_dic['image_resolution']//2
+        # width = self.param_dic['image_resolution']//8
+        # gt_masks[:,:,:,:centre-width,:] = False
+        # gt_masks[:,:,:,centre+width:,:] = False
+        # gt_masks[:,:,:,:,:centre-width] = False
+        # gt_masks[:,:,:,:,centre+width:] = False
 
         if targ_phase is not None:
             loss_phase = 0
@@ -443,27 +443,31 @@ class convLSTM_Kspace1(nn.Module):
             loss_ss1 = 0
 
         for ti in range(mag_log.shape[1]):
-            hist_ind = (torch.arange(self.history_length+1).repeat(mag_log.shape[0],1) - self.history_length)
-            hist_ind = hist_ind * periods.reshape(-1,1).cpu()
-            hist_ind += ti
-            temp1 = hist_ind.clone()
-            temp1[temp1 < 0] = 9999999999
-            min_vals = temp1.min(1)[0]
-            base = torch.zeros(temp1.shape) + min_vals.reshape(-1,1)
+            if periods is None:
+                hist_phase = phase[:,ti]
+                hist_mag = mag_log[:,ti]
+            else:
+                hist_ind = (torch.arange(self.history_length+1).repeat(mag_log.shape[0],1) - self.history_length)
+                hist_ind = hist_ind * periods.reshape(-1,1).cpu()
+                hist_ind += ti
+                temp1 = hist_ind.clone()
+                temp1[temp1 < 0] = 9999999999
+                min_vals = temp1.min(1)[0]
+                base = torch.zeros(temp1.shape) + min_vals.reshape(-1,1)
 
-            if self.param_dic['scale_input_fft']:
-                bottom_range_ti = targ_mag_log[:,ti:ti+1].min(-1)[0].min(-1)[0].unsqueeze(-1).unsqueeze(-1)
-                range_span_ti = (targ_mag_log[:,ti:ti+1]-bottom_range_ti).max(-1)[0].max(-1)[0].unsqueeze(-1).unsqueeze(-1)
+                if self.param_dic['scale_input_fft']:
+                    bottom_range_ti = targ_mag_log[:,ti:ti+1].min(-1)[0].min(-1)[0].unsqueeze(-1).unsqueeze(-1)
+                    range_span_ti = (targ_mag_log[:,ti:ti+1]-bottom_range_ti).max(-1)[0].max(-1)[0].unsqueeze(-1).unsqueeze(-1)
 
-            hist_ind = hist_ind - base
-            hist_ind[hist_ind < 0] = 0
-            hist_ind = (hist_ind + base).long()
+                hist_ind = hist_ind - base
+                hist_ind[hist_ind < 0] = 0
+                hist_ind = (hist_ind + base).long()
 
-            mult = (torch.arange(mag_log.shape[0])*mag_log.shape[1]).reshape(-1,1)
-            hist_ind = hist_ind + mult      
+                mult = (torch.arange(mag_log.shape[0])*mag_log.shape[1]).reshape(-1,1)
+                hist_ind = hist_ind + mult      
 
-            hist_phase = phase.reshape(-1, *phase.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *phase.shape[3:])
-            hist_mag = mag_log.reshape(-1, *mag_log.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *mag_log.shape[3:])
+                hist_phase = phase.reshape(-1, *phase.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *phase.shape[3:])
+                hist_mag = mag_log.reshape(-1, *mag_log.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *mag_log.shape[3:])
 
             if self.param_dic['kspace_predict_mode'] == 'thetas':
                 hist_phase = torch.atan2(hist_phase[:,:,:,:,1],hist_phase[:,:,:,:,0])

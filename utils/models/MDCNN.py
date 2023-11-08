@@ -7,6 +7,7 @@ import numpy as np
 import os
 import sys
 sys.path.append('../')
+sys.path.append('../../')
 import matplotlib.pyplot as plt
 import utils.models.complexCNNs.cmplx_conv as cmplx_conv
 import utils.models.complexCNNs.cmplx_dropout as cmplx_dropout
