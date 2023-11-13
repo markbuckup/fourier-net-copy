@@ -5,6 +5,9 @@
 *.tgz
 *.big
 *.log
+*.jpg
+*.png
+*.jpeg
 __pycache__/
 .neptune/
 dataset/
