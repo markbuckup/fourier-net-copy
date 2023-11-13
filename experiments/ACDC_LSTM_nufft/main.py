@@ -93,18 +93,6 @@ torch.autograd.set_detect_anomaly(False)
 torch.autograd.profiler.profile(False)
 torch.autograd.profiler.emit_nvtx(False)
 
-checkpoint_path = os.path.join(args.run_id, './checkpoints/')
-if not os.path.isdir(checkpoint_path):
-    os.mkdir(checkpoint_path)
-if not os.path.isdir(os.path.join(args.run_id, './images/')):
-    os.mkdir(os.path.join(args.run_id, './images/'))
-if not os.path.isdir(os.path.join(args.run_id, './images/train')):
-    os.mkdir(os.path.join(args.run_id, './images/train'))
-if not os.path.isdir(os.path.join(args.run_id, './images/test')):
-    os.mkdir(os.path.join(args.run_id, './images/test'))
-if not os.path.isdir(os.path.join(args.run_id, './images/input')):
-    os.mkdir(os.path.join(args.run_id, './images/input'))
-
 if __name__ == '__main__':
     world_size = len(args.gpu) 
     if args.eval:

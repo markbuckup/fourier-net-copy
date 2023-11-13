@@ -51,6 +51,11 @@ def train_paradigm(rank, world_size, args, parameters):
     Model_Kspace, Model_Ispace = rnn_func(parameters)
     from utils.Trainers.DDP_LSTMTrainer_nufft import Trainer
 
+    temp = os.getcwd().split('/')
+    temp = temp[temp.index('experiments'):]
+    save_path = os.path.join(parameters['save_folder'], '/'.join(temp))
+    save_path = os.path.join(save_path, args.run_id)
+
     trainset = dataset(
                         args.dataset_path, 
                         parameters,
@@ -69,7 +74,8 @@ def train_paradigm(rank, world_size, args, parameters):
     kspace_model = Model_Kspace(parameters, proc_device).to(proc_device)
     ispace_model = Model_Ispace(parameters, proc_device).to(proc_device)
     
-    checkpoint_path = os.path.join(args.run_id, 'checkpoints/')
+    checkpoint_path = os.path.join(save_path, 'checkpoints/')
+    os.makedirs(checkpoint_path, exist_ok = True)
 
     parameters['GPUs'] = args.gpu
     if rank == 0:
@@ -301,6 +307,11 @@ def test_paradigm(rank, world_size, args, parameters):
     Model_Kspace, Model_Ispace = rnn_func(parameters)
     from utils.Trainers.DDP_LSTMTrainer_nufft import Trainer
 
+    temp = os.getcwd().split('/')
+    temp = temp[temp.index('experiments'):]
+    save_path = os.path.join(parameters['save_folder'], '/'.join(temp))
+    save_path = os.path.join(save_path, args.run_id)
+
     trainset = dataset(
                         args.dataset_path, 
                         parameters,
@@ -320,7 +331,7 @@ def test_paradigm(rank, world_size, args, parameters):
 
     kspace_model = Model_Kspace(parameters, proc_device).to(proc_device)
     ispace_model = Model_Ispace(parameters, proc_device).to(proc_device)
-    checkpoint_path = os.path.join(args.run_id, 'checkpoints/')
+    checkpoint_path = os.path.join(save_path, 'checkpoints/')
 
     if rank == 0:
         if args.neptune_log:
@@ -400,74 +411,74 @@ def test_paradigm(rank, world_size, args, parameters):
         plt.plot(range(len(losses)), [x[0] for x in losses], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
-        plt.savefig(os.path.join(args.run_id, 'images/kspace_train_mag_loss.png'))
+        plt.savefig(os.path.join(save_path, 'images/kspace_train_mag_loss.png'))
         plt.figure()
         plt.title('Train Phase Loss after {} epochs'.format(pre_e))
         plt.plot(range(len(losses)), [x[1] for x in losses], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
-        plt.savefig(os.path.join(args.run_id, 'images/kspace_train_phase_loss.png'))
+        plt.savefig(os.path.join(save_path, 'images/kspace_train_phase_loss.png'))
         plt.figure()
         plt.title('Train Real Loss after {} epochs'.format(pre_e))
         plt.plot(range(len(losses)), [x[2] for x in losses], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
-        plt.savefig(os.path.join(args.run_id, 'images/kspace_train_real_loss.png'))
+        plt.savefig(os.path.join(save_path, 'images/kspace_train_real_loss.png'))
         plt.figure()
         plt.title('Train SSIM after {} epochs'.format(pre_e))
         plt.plot(range(len(losses)), [x[3] for x in losses], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('ssim')
-        plt.savefig(os.path.join(args.run_id, 'images/kspace_train_ssim.png'))
+        plt.savefig(os.path.join(save_path, 'images/kspace_train_ssim.png'))
         plt.figure()
         plt.title('Train Real Loss after {} epochs'.format(pre_e))
         plt.plot(range(len(losses)), [x[4] for x in losses], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
-        plt.savefig(os.path.join(args.run_id, 'images/ispace_train_real_loss.png'))
+        plt.savefig(os.path.join(save_path, 'images/ispace_train_real_loss.png'))
         plt.figure()
         plt.title('Train SSIM after {} epochs'.format(pre_e))
         plt.plot(range(len(losses)), [x[5] for x in losses], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('ssim')
-        plt.savefig(os.path.join(args.run_id, 'images/ispace_train_ssim.png'))
+        plt.savefig(os.path.join(save_path, 'images/ispace_train_ssim.png'))
 
         plt.figure()
         plt.title('Test Mag Loss after {} epochs'.format(pre_e))
         plt.plot(range(len(test_losses)), [x[0] for x in test_losses], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
-        plt.savefig(os.path.join(args.run_id, 'images/kspace_test_mag_loss.png'))
+        plt.savefig(os.path.join(save_path, 'images/kspace_test_mag_loss.png'))
         plt.figure()
         plt.title('Test Phase Loss after {} epochs'.format(pre_e))
         plt.plot(range(len(test_losses)), [x[1] for x in test_losses], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
-        plt.savefig(os.path.join(args.run_id, 'images/kspace_test_phase_loss.png'))
+        plt.savefig(os.path.join(save_path, 'images/kspace_test_phase_loss.png'))
         plt.figure()
         plt.title('Test Real Loss after {} epochs'.format(pre_e))
         plt.plot(range(len(test_losses)), [x[2] for x in test_losses], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
-        plt.savefig(os.path.join(args.run_id, 'images/kspace_test_real_loss.png'))
+        plt.savefig(os.path.join(save_path, 'images/kspace_test_real_loss.png'))
         plt.figure()
         plt.title('Test SSIM after {} epochs'.format(pre_e))
         plt.plot(range(len(test_losses)), [x[3] for x in test_losses], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('ssim')
-        plt.savefig(os.path.join(args.run_id, 'images/kspace_test_ssim.png'))
+        plt.savefig(os.path.join(save_path, 'images/kspace_test_ssim.png'))
         plt.figure()
         plt.title('Test Real Loss after {} epochs'.format(pre_e))
         plt.plot(range(len(test_losses)), [x[4] for x in test_losses], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
-        plt.savefig(os.path.join(args.run_id, 'images/ispace_test_real_loss.png'))
+        plt.savefig(os.path.join(save_path, 'images/ispace_test_real_loss.png'))
         plt.figure()
         plt.title('Test SSIM after {} epochs'.format(pre_e))
         plt.plot(range(len(test_losses)), [x[5] for x in test_losses], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('ssim')
-        plt.savefig(os.path.join(args.run_id, 'images/ispace_test_ssim.png'))
+        plt.savefig(os.path.join(save_path, 'images/ispace_test_ssim.png'))
         
         plt.close('all')
         if not args.numbers_only:

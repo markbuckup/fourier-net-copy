@@ -78,6 +78,11 @@ class Trainer(nn.Module):
         self.ddp_rank = ddp_rank
         self.ddp_world_size = ddp_world_size
         self.args = args
+        temp = os.getcwd().split('/')
+        temp = temp[temp.index('experiments'):]
+        self.save_path = os.path.join(self.parameters['save_folder'], '/'.join(temp))
+        self.save_path = os.path.join(self.save_path, self.args.run_id)
+        del temp
         # self.scaler = GradScaler(enabled=self.parameters['Automatic_Mixed_Precision'])
         self.train_sampler = DistributedSampler(
                                 self.trainset, 
@@ -327,7 +332,7 @@ class Trainer(nn.Module):
             dset = self.testset
             dstr = 'Test'
         if self.args.write_csv:
-            f = open(os.path.join(self.args.run_id, '{}_results.csv'.format(dstr)), 'w')
+            f = open(os.path.join(self.save_path, '{}_results.csv'.format(dstr)), 'w')
             f.write('patient_number,')
             f.write('location_number,')
             f.write('frame_number,')
@@ -454,7 +459,7 @@ class Trainer(nn.Module):
         
         # print('Average Time ({} frames) = {} +- {}'.format(undersampled_fts.shape[1], np.mean(total_times), np.std(total_times)))
         print('Average Time Per Frame = {} +- {}'.format(np.mean(times), np.std(times)), flush = True)
-        scipy.io.savemat(os.path.join(self.args.run_id, 'fps.mat'), {'times': times})
+        scipy.io.savemat(os.path.join(self.save_path, 'fps.mat'), {'times': times})
         return
 
 
@@ -467,12 +472,12 @@ class Trainer(nn.Module):
             dloader = self.traintestloader
             dset = self.trainset
             dstr = 'Train'
-            path = os.path.join(self.args.run_id, './images/train')
+            path = os.path.join(self.save_path, './images/train')
         else:
             dloader = self.testloader
             dset = self.testset
             dstr = 'Test'
-            path = os.path.join(self.args.run_id, './images/test')
+            path = os.path.join(self.save_path, './images/test')
         
         print('Saving plots for {} data'.format(dstr), flush = True)
         with torch.no_grad():
@@ -519,16 +524,8 @@ class Trainer(nn.Module):
                         p_num, v_num = indices[bi]
                         for f_num in range(undersampled_fts.shape[1]):
 
-                            if not os.path.exists(os.path.join(path, './patient_{}/'.format(p_num))):
-                                os.mkdir(os.path.join(path, './patient_{}/'.format(p_num)))
-                            if not os.path.exists(os.path.join(path, './patient_{}/by_location_number/'.format(p_num))):
-                                os.mkdir(os.path.join(path, './patient_{}/by_location_number/'.format(p_num)))
-                            if not os.path.exists(os.path.join(path, './patient_{}/by_location_number/location_{}'.format(p_num, v_num))):
-                                os.mkdir(os.path.join(path, './patient_{}/by_location_number/location_{}'.format(p_num, v_num)))
-                            if not os.path.exists(os.path.join(path, './patient_{}/by_frame_number/'.format(p_num))):
-                                os.mkdir(os.path.join(path, './patient_{}/by_frame_number/'.format(p_num)))
-                            if not os.path.exists(os.path.join(path, './patient_{}/by_frame_number/frame_{}'.format(p_num, f_num))):
-                                os.mkdir(os.path.join(path, './patient_{}/by_frame_number/frame_{}'.format(p_num, f_num)))
+                            os.makedirs(os.path.join(path, './patient_{}/by_location_number/location_{}'.format(p_num, v_num)), exist_ok=True)
+                            os.makedirs(os.path.join(path, './patient_{}/by_frame_number/frame_{}'.format(p_num, f_num)), exist_ok=True)
                             
                             fig = plt.figure(figsize = (12,6))
                             og_vidi = og_video.cpu()[bi, f_num,0,:,:]
