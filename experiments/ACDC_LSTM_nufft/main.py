@@ -60,7 +60,7 @@ if args.numbers_only or args.visualise_only:
 if args.write_csv:
     assert(args.eval)
 
-if args.time_analysis:
+if args.time_analysis or args.visualise_only:
     parameters['train_batch_size'] = 1
     parameters['test_batch_size'] = 1
 

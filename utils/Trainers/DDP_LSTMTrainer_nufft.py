@@ -478,8 +478,6 @@ class Trainer(nn.Module):
         with torch.no_grad():
             for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in enumerate(dloader):
             # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
-                if i == 2:
-                    break
                 undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1))
                 og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
                 og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
@@ -653,3 +651,4 @@ class Trainer(nn.Module):
 
                             tot += 1
                             pbar.update(1)
+                break
