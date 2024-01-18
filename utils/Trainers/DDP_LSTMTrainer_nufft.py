@@ -362,11 +362,9 @@ class Trainer(nn.Module):
                 avgkspacelossmag += float(loss_mag.item()/(len(dloader)))
                 avgkspacelossreal += float(loss_real.item()/(len(dloader)))
                 
-                kspacessim_score += float(ss1.cpu()/dset.total_unskipped_frames)
-                # print(kspacessim_score)
-                # print(kspacessim_score)
-                avgkspace_l1_loss += float(loss_l1.cpu()/dset.total_unskipped_frames)
-                avgkspace_l2_loss += float(loss_l2.cpu()/dset.total_unskipped_frames)
+                kspacessim_score += float(ss1.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
+                avgkspace_l1_loss += float(loss_l1.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
+                avgkspace_l2_loss += float(loss_l2.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
 
 
                 predr = predr.detach()[:,self.parameters['init_skip_frames']:]
