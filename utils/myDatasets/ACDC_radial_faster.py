@@ -84,7 +84,7 @@ class ACDC_radial(Dataset):
         
         self.num_patients = metadic['num_patients']
         self.omegas = metadic['omegas']
-        self.num_vids_per_patient = metadic['num_vids_per_patient']
+        self.num_vids_per_patient = np.array(metadic['num_vids_per_patient'])
         self.coil_masks = metadic['coil_masks']
         self.coils_per_patient_per_video = metadic['coils_per_patient_per_video']
         self.GAs_per_patient_per_video = metadic['GAs_per_patient_per_video']
@@ -100,6 +100,11 @@ class ACDC_radial(Dataset):
             self.offset = int(self.train_split*self.num_patients)
             self.num_patients = self.num_patients - int(self.train_split*self.num_patients)
         
+        # DEBUG
+        self.num_vids_per_patient *= 0
+        self.num_vids_per_patient += 1
+        # DEBUG
+
         self.num_vids_per_patient = self.num_vids_per_patient[self.offset:self.offset+self.num_patients]
         self.frames_per_vid_per_patient = self.frames_per_vid_per_patient[self.offset:self.offset+self.num_patients]
         self.actual_frames_per_vid_per_patient = self.actual_frames_per_vid_per_patient[self.offset:self.offset+self.num_patients]

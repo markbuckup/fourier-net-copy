@@ -406,6 +406,7 @@ def test_paradigm(rank, world_size, args, parameters):
         #     for x in sorted(os.listdir(os.path.join(args.run_id, 'images/test'))):
         #         run['test/{}'.format(x)].upload(File(os.path.join(args.run_id, 'images/test/{}'.format(x))))
         #         break
+        os.makedirs(os.path.join(save_path, 'images'), exist_ok=True)
         plt.figure()
         plt.title('Train Mag Loss after {} epochs'.format(pre_e))
         plt.plot(range(len(losses)), [x[0] for x in losses], color = 'b')

@@ -250,10 +250,9 @@ class Trainer(nn.Module):
             del loss_phase
             del loss_mag
             del loss_real
-            
-            kspacessim_score += float(ss1.cpu()/self.trainset.total_unskipped_frames)
-            avgkspace_l1_loss += float(loss_l1.cpu()/self.trainset.total_unskipped_frames)
-            avgkspace_l2_loss += float(loss_l2.cpu()/self.trainset.total_unskipped_frames)
+            kspacessim_score += float(ss1.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
+            avgkspace_l1_loss += float(loss_l1.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
+            avgkspace_l2_loss += float(loss_l2.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
 
 
             self.ispace_optim.zero_grad(set_to_none=True)
@@ -284,14 +283,14 @@ class Trainer(nn.Module):
 
             loss_l1 = (outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]).abs().mean(1).sum().detach().cpu()
             loss_l2 = (((outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]) ** 2).mean(1).sum()).detach().cpu()
+            # ss1 = self.SSIM(targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
             ss1 = self.SSIM(outp.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
             ss1 = ss1.reshape(ss1.shape[0],-1)
             loss_ss1 = ss1.mean(1).sum().detach().cpu()
-
             avgispacelossreal += float(loss.cpu().item()/(len(self.trainloader)))
-            ispacessim_score += float(loss_ss1.cpu().item()/self.trainset.total_unskipped_frames)
-            avgispace_l1_loss += float(loss_l1.cpu().item()/self.trainset.total_unskipped_frames)
-            avgispace_l2_loss += float(loss_l2.cpu().item()/self.trainset.total_unskipped_frames)
+            ispacessim_score += float(loss_ss1.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
+            avgispace_l1_loss += float(loss_l1.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
+            avgispace_l2_loss += float(loss_l2.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
 
         if self.parameters['kspace_architecture'] == 'KLSTM1':
             if self.kspace_scheduler_mag is not None:
@@ -413,10 +412,10 @@ class Trainer(nn.Module):
                 loss_l1 = loss_l1.sum()
                 loss_l2 = loss_l2.sum()
 
-                avgispacelossreal += float(loss.cpu().item()/(len(dloader)))
-                ispacessim_score += float(loss_ss1.cpu().item()/(dset.total_unskipped_frames/8))
-                avgispace_l1_loss += float(loss_l1.cpu().item()/(dset.total_unskipped_frames/8))
-                avgispace_l2_loss += float(loss_l2.cpu().item()/(dset.total_unskipped_frames/8))
+                avgispacelossreal += float(loss.cpu().item()/(len(dloader)))*len(self.args.gpu)
+                ispacessim_score += float(loss_ss1.cpu().item()/(dset.total_unskipped_frames/8))*len(self.args.gpu)
+                avgispace_l1_loss += float(loss_l1.cpu().item()/(dset.total_unskipped_frames/8))*len(self.args.gpu)
+                avgispace_l2_loss += float(loss_l2.cpu().item()/(dset.total_unskipped_frames/8))*len(self.args.gpu)
 
         # if print_loss:
         #     print('Train Mag Loss for Epoch {} = {}' .format(epoch, avglossmag), flush = True)

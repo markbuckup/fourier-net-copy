@@ -584,6 +584,7 @@ class convLSTM_Kspace1(nn.Module):
                     with torch.no_grad():
                         loss_l1 += (prev_output3[:,:,start:end,start:end]- targ_now[:,:,start:end,start:end]).reshape(prev_output3.shape[0]*prev_output3.shape[1], -1).abs().mean(1).sum().detach().cpu()
                         loss_l2 += (((prev_output3[:,:,start:end,start:end]- targ_now[:,:,start:end,start:end]).reshape(prev_output3.shape[0]*prev_output3.shape[1], -1) ** 2).mean(1).sum()).detach().cpu()
+                        # ss1 = self.SSIM(targ_now[:,:,start:end,start:end].reshape(targ_now.shape[0]*targ_now.shape[1],1,end-start,end-start), targ_now[:,:,start:end,start:end].reshape(prev_output3.shape[0]*prev_output3.shape[1],1,end-start,end-start))
                         ss1 = self.SSIM(prev_output3[:,:,start:end,start:end].reshape(prev_output3.shape[0]*prev_output3.shape[1],1,end-start,end-start), targ_now[:,:,start:end,start:end].reshape(prev_output3.shape[0]*prev_output3.shape[1],1,end-start,end-start))
                         ss1 = ss1.reshape(ss1.shape[0],-1)
                         loss_ss1 += ss1.mean(1).sum().detach().cpu()
