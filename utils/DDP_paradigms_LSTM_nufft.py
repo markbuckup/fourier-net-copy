@@ -217,10 +217,10 @@ def train_paradigm(rank, world_size, args, parameters):
 
         tt = time.time()
         kspaceloss_mag, kpsaceloss_phase, kspaceloss_real, kspacessim, kpsaceloss_l1, kspaceloss_l2, ispaceloss_real, ispacessim, ipsaceloss_l1, ispaceloss_l2 = trainer.evaluate(e, train = False)
-        print('Time1',time.time()-tt)
+        # print('Time1',time.time()-tt)
         tt = time.time()
         dist.all_gather(collected_test_losses, torch.tensor([kspaceloss_mag, kpsaceloss_phase, kspaceloss_real, kspacessim, kpsaceloss_l1, kspaceloss_l2, ispaceloss_real, ispacessim, ipsaceloss_l1, ispaceloss_l2]).to(proc_device))
-        print('Time2', time.time()-tt)
+        # print('Time2', time.time()-tt)
         if rank == 0:
             avgkspace_test_mag_loss = sum([x[0] for x in collected_test_losses]).cpu().item()/len(args.gpu)
             avgkspace_test_phase_loss = sum([x[1] for x in collected_test_losses]).cpu().item()/len(args.gpu)
