@@ -1,5 +1,5 @@
 parameters = {}
-parameters['save_folder'] = '/Data/ExtraDrive1/niraj/Cardiac-MRI-Recon'
+parameters['save_folder'] = '/Data/ContijochLab/projects/cineMRIRecon'
 parameters['image_resolution'] = 256
 parameters['train_batch_size'] = 2
 parameters['test_batch_size'] = 2
