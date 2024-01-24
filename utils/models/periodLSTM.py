@@ -259,6 +259,20 @@ class convLSTMcell_kspace(nn.Module):
             mag_it = mag_it.repeat(1,self.num_coils,1,1)
             phase_it = phase_it.repeat(1,self.num_coils,1,1)
 
+        # plt.figure()
+        # plt.subplot(1, 2, 1) 
+        # plt.imshow(mag_ft[0,0,:,:].cpu().detach().numpy(), cmap = 'plasma')
+        # plt.xticks([])
+        # plt.yticks([])  
+        # plt.subplot(1, 2, 2) 
+        # plt.imshow(mag_it[0,0,:,:].cpu().detach().numpy(), cmap = 'plasma')
+        # plt.xticks([])
+        # plt.yticks([])
+        # plt.tight_layout()
+        # plt.savefig('mag_ft.jpg')
+        # plt.close('all')
+
+
         mag_Cthat = self.mag_inputProc(mag_inp_cat)
         phase_Cthat = self.phase_activation(self.phase_inputProc(phase_inp_cat))
 
