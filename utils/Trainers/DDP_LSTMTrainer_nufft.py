@@ -136,12 +136,9 @@ class Trainer(nn.Module):
         if self.parameters['optimizer'] == 'Adam':
             if self.parameters['kspace_architecture'] == 'KLSTM1':
                 if self.parameters['ispace_lstm']:
-                    self.kspace_optim_mag = optim.Adam(list(self.kspace_model.module.mag_m.parameters())+list(self.kspace_model.module.ispacem.parameters()), lr=self.parameters['lr_kspace_mag'], betas=self.parameters['optimizer_params'])
+                    self.kspace_optim = optim.Adam(list(self.kspace_model.module.kspace_m.parameters())+list(self.kspace_model.module.ispacem.parameters()), lr=self.parameters['lr_kspace_mag'], betas=self.parameters['optimizer_params'])
                 else:
-                    self.kspace_optim_mag = optim.Adam(self.kspace_model.module.mag_m.parameters(), lr=self.parameters['lr_kspace_mag'], betas=self.parameters['optimizer_params'])
-                self.kspace_optim_phase = optim.Adam(self.kspace_model.module.phase_m.parameters(), lr=self.parameters['lr_kspace_phase'], betas=self.parameters['optimizer_params'])
-            elif self.parameters['kspace_architecture'] == 'KLSTM2':
-                self.kspace_optim = optim.Adam(self.kspace_model.module.parameters(), lr=self.parameters['lr_kspace_phase'], betas=self.parameters['optimizer_params'])
+                    self.kspace_optim = optim.Adam(self.kspace_model.module.kspace_m.parameters(), lr=self.parameters['lr_kspace'], betas=self.parameters['optimizer_params'])
             self.ispace_optim = optim.Adam(self.ispace_model.parameters(), lr=self.parameters['lr_ispace'], betas=self.parameters['optimizer_params'])
             self.parameters['scheduler_params']['cycle_momentum'] = False
             
@@ -152,32 +149,20 @@ class Trainer(nn.Module):
             mydic = self.parameters['scheduler_params']
             if self.ddp_rank == 0:
                 if self.parameters['kspace_architecture'] == 'KLSTM1':
-                    self.kspace_scheduler_mag = optim.lr_scheduler.StepLR(self.kspace_optim_mag, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
-                    self.kspace_scheduler_phase = optim.lr_scheduler.StepLR(self.kspace_optim_phase, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
-                elif self.parameters['kspace_architecture'] == 'KLSTM2':
                     self.kspace_scheduler = optim.lr_scheduler.StepLR(self.kspace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
                 self.ispace_scheduler = optim.lr_scheduler.StepLR(self.ispace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
             else:
                 if self.parameters['kspace_architecture'] == 'KLSTM1':
-                    self.kspace_scheduler_mag = optim.lr_scheduler.StepLR(self.kspace_optim_mag, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
-                    self.kspace_scheduler_phase = optim.lr_scheduler.StepLR(self.kspace_optim_phase, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
-                elif self.parameters['kspace_architecture'] == 'KLSTM2':
                     self.kspace_scheduler = optim.lr_scheduler.StepLR(self.kspace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
                 self.ispace_scheduler = optim.lr_scheduler.StepLR(self.ispace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
         if self.parameters['scheduler'] == 'CyclicLR':
             mydic = self.parameters['scheduler_params']
             if self.ddp_rank == 0:
                 if self.parameters['kspace_architecture'] == 'KLSTM1':
-                    self.kspace_scheduler_mag = optim.lr_scheduler.CyclicLR(self.kspace_optim_mag, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=False)
-                    self.kspace_scheduler_phase = optim.lr_scheduler.CyclicLR(self.kspace_optim_phase, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=False)
-                elif self.parameters['kspace_architecture'] == 'KLSTM2':
                     self.kspace_scheduler = optim.lr_scheduler.CyclicLR(self.kspace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=False)
                 self.ispace_scheduler = optim.lr_scheduler.CyclicLR(self.ispace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=False)
             else:
                 if self.parameters['kspace_architecture'] == 'KLSTM1':
-                    self.kspace_scheduler_mag = optim.lr_scheduler.CyclicLR(self.kspace_optim_mag, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
-                    self.kspace_scheduler_phase = optim.lr_scheduler.CyclicLR(self.kspace_optim_phase, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
-                elif self.parameters['kspace_architecture'] == 'KLSTM2':
                     self.kspace_scheduler = optim.lr_scheduler.CyclicLR(self.kspace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
                 self.ispace_scheduler = optim.lr_scheduler.CyclicLR(self.ispace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
 
@@ -211,11 +196,7 @@ class Trainer(nn.Module):
             og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
             og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
 
-            if self.parameters['kspace_architecture'] == 'KLSTM1':
-                self.kspace_optim_mag.zero_grad(set_to_none=True)
-                self.kspace_optim_phase.zero_grad(set_to_none=True)
-            elif self.parameters['kspace_architecture'] == 'KLSTM2':
-                self.kspace_optim.zero_grad(set_to_none=True)
+            self.kspace_optim.zero_grad(set_to_none=True)
 
             
             batch, num_frames, chan, numr, numc = undersampled_fts.shape
@@ -236,11 +217,7 @@ class Trainer(nn.Module):
                     # print(0.06*loss_mag,100*loss_phase,5*loss_real)
 
                 loss.backward()
-                if self.parameters['kspace_architecture'] == 'KLSTM1':
-                    self.kspace_optim_mag.step()
-                    self.kspace_optim_phase.step()
-                elif self.parameters['kspace_architecture'] == 'KLSTM2':
-                    self.kspace_optim.step()
+                self.kspace_optim.step()
 
                 del loss
             
@@ -263,7 +240,7 @@ class Trainer(nn.Module):
                 predr = predr[:,self.parameters['init_skip_frames']:]
 
             num_frames = num_frames - self.parameters['init_skip_frames']
-            if self.parameters['kspace_coil_combination'] or self.parameters['ispace_lstm']:
+            if self.parameters['ispace_lstm']:
                 predr = predr.reshape(batch*num_frames,1,numr, numc).to(self.device)
             else:
                 predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
@@ -281,11 +258,7 @@ class Trainer(nn.Module):
             self.ispace_optim.step()
 
             if self.parameters['end-to-end-supervision']:
-                if self.parameters['kspace_architecture'] == 'KLSTM1':
-                    self.kspace_optim_mag.step()
-                    self.kspace_optim_phase.step()
-                elif self.parameters['kspace_architecture'] == 'KLSTM2':
-                    self.kspace_optim.step()
+                self.kspace_optim.step()
 
 
             loss_l1 = (outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]).abs().mean(1).sum().detach().cpu()
@@ -301,10 +274,6 @@ class Trainer(nn.Module):
 
             if self.parameters['scheduler'] == 'CyclicLR':
                 if self.parameters['kspace_architecture'] == 'KLSTM1':
-                    if self.kspace_scheduler_mag is not None:
-                        self.kspace_scheduler_mag.step()
-                        self.kspace_scheduler_phase.step()
-                elif self.parameters['kspace_architecture'] == 'KLSTM2':
                     if self.kspace_scheduler is not None:
                         self.kspace_scheduler.step()
 
@@ -313,10 +282,6 @@ class Trainer(nn.Module):
         
         if not self.parameters['scheduler'] == 'CyclicLR':
             if self.parameters['kspace_architecture'] == 'KLSTM1':
-                if self.kspace_scheduler_mag is not None:
-                    self.kspace_scheduler_mag.step()
-                    self.kspace_scheduler_phase.step()
-            elif self.parameters['kspace_architecture'] == 'KLSTM2':
                 if self.kspace_scheduler is not None:
                     self.kspace_scheduler.step()
 
@@ -389,7 +354,7 @@ class Trainer(nn.Module):
 
                 predr = predr.detach()[:,self.parameters['init_skip_frames']:]
                 num_frames = num_frames - self.parameters['init_skip_frames']
-                if self.parameters['kspace_coil_combination'] or self.parameters['ispace_lstm']:
+                if  self.parameters['ispace_lstm']:
                     predr = predr.reshape(batch*num_frames,1,numr, numc).to(self.device)
                 else:
                     predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
@@ -487,9 +452,6 @@ class Trainer(nn.Module):
 
     def visualise(self, epoch, train = False):
 
-        if self.parameters['kspace_coil_combination']:
-            self.visualise_kspace(epoch, train = train)
-            return
         if train:
             dloader = self.traintestloader
             dset = self.trainset

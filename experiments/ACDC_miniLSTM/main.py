@@ -48,7 +48,7 @@ parser.add_argument('--neptune_log', action = 'store_true')
 # parser.add_argument('--gpu', type = int, default = '-1')
 args = parser.parse_args()
 
-sys.path.append('/root/Cardiac-MRI-Reconstrucion/experiments/ACDC_LSTM_nufft/{}/'.format(args.run_id))
+sys.path.append('/root/Cardiac-MRI-Reconstrucion/experiments/ACDC_miniLSTM/{}/'.format(args.run_id))
 
 from params import parameters
 if parameters['dataset'] == 'acdc':

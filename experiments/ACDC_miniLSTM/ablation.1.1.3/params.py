@@ -12,6 +12,13 @@ parameters['crop_loss'] = False
 parameters['double_kspace_proc'] = False
 parameters['end-to-end-supervision'] = False
 parameters['kspace_real_loss_only'] = False
+
+parameters['lstm_input_mask'] = False
+parameters['forget_gate_coupled'] = False
+parameters['forget_gate_same_coils'] = True
+parameters['forget_gate_same_phase_mag'] = False
+
+
 parameters['ispace_lstm'] = False
 parameters['ispace_architecture'] = 'ILSTM1'
 parameters['image_space_real'] = True
@@ -55,7 +62,6 @@ parameters['shuffle_coils'] = False
 parameters['memoise'] = False
 parameters['memoise_RAM'] = False
 
-parameters['kspace_coilwise'] = False
 parameters['kspace_predict_mode'] = 'thetas'
 # parameters['kspace_predict_mode'] = 'thetas' or 'cosine' or 'unit-vector'
 parameters['loss_phase'] = 'raw_L1'
@@ -64,4 +70,3 @@ parameters['kspace_tanh'] = False
 parameters['ground_truth_weight'] = 1
 parameters['ground_truth_enforce'] = False
 parameters['kspace_linear'] = False
-parameters['kspace_coil_combination'] = False

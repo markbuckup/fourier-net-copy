@@ -69,8 +69,6 @@ def train_paradigm(rank, world_size, args, parameters):
                         train = False, 
                     )
 
-
-
     kspace_model = Model_Kspace(parameters, proc_device).to(proc_device)
     ispace_model = Model_Ispace(parameters, proc_device).to(proc_device)
     
@@ -117,18 +115,12 @@ def train_paradigm(rank, world_size, args, parameters):
         kspace_model.load_state_dict(dic['kspace_model'])
         ispace_model.load_state_dict(dic['ispace_model'])
         if parameters['kspace_architecture'] == 'KLSTM1':
-            opt_dict_kspace_mag = dic['kspace_optim_mag']
-            opt_dict_kspace_phase = dic['kspace_optim_phase']
-        elif parameters['kspace_architecture'] == 'KLSTM2':
             opt_dict_kspace = dic['kspace_optim']
         opt_dict_ispace = dic['ispace_optim']
         # scaler_dict = dic['scaler']
         if parameters['scheduler'] != 'None':
             scheduler_dict_ispace = dic['ispace_scheduler']
             if parameters['kspace_architecture'] == 'KLSTM1':
-                scheduler_dict_kspace_phase = dic['kspace_scheduler_phase']
-                scheduler_dict_kspace_mag = dic['kspace_scheduler_mag']
-            elif parameters['kspace_architecture'] == 'KLSTM2':
                 scheduler_dict_kspace = dic['kspace_scheduler']
         losses = dic['losses']
         test_losses = dic['test_losses']
@@ -161,17 +153,11 @@ def train_paradigm(rank, world_size, args, parameters):
     if args.resume:
         trainer.ispace_optim.load_state_dict(opt_dict_ispace)
         if parameters['kspace_architecture'] == 'KLSTM1':
-            trainer.kspace_optim_mag.load_state_dict(opt_dict_kspace_mag)
-            trainer.kspace_optim_phase.load_state_dict(opt_dict_kspace_phase)
-        elif parameters['kspace_architecture'] == 'KLSTM2':
             trainer.kspace_optim.load_state_dict(opt_dict_kspace)
         # trainer.scaler.load_state_dict(scaler_dict)
         if parameters['scheduler'] != 'None':
             trainer.ispace_scheduler.load_state_dict(scheduler_dict_ispace)
             if parameters['kspace_architecture'] == 'KLSTM1':
-                trainer.kspace_scheduler_phase.load_state_dict(scheduler_dict_kspace_phase)
-                trainer.kspace_scheduler_mag.load_state_dict(scheduler_dict_kspace_mag)
-            elif parameters['kspace_architecture'] == 'KLSTM2':
                 trainer.kspace_scheduler.load_state_dict(scheduler_dict_kspace)
 
     for e in range(parameters['num_epochs_ispace'] + parameters['num_epochs_kspace']):
@@ -264,18 +250,12 @@ def train_paradigm(rank, world_size, args, parameters):
             dic['kspace_model'] = trainer.kspace_model.module.state_dict()
             dic['ispace_model'] = trainer.ispace_model.module.state_dict()
             if parameters['kspace_architecture'] == 'KLSTM1':
-                dic['kspace_optim_mag'] = trainer.kspace_optim_mag.state_dict()
-                dic['kspace_optim_phase'] = trainer.kspace_optim_phase.state_dict()
-            elif parameters['kspace_architecture'] == 'KLSTM2':
                 dic['kspace_optim'] = trainer.kspace_optim.state_dict()
 
             dic['ispace_optim'] = trainer.ispace_optim.state_dict()
             if parameters['scheduler'] != 'None':
                 dic['ispace_scheduler'] = trainer.ispace_scheduler.state_dict()
                 if parameters['kspace_architecture'] == 'KLSTM1':
-                    dic['kspace_scheduler_phase'] = trainer.kspace_scheduler_phase.state_dict()
-                    dic['kspace_scheduler_mag'] = trainer.kspace_scheduler_mag.state_dict()
-                elif parameters['kspace_architecture'] == 'KLSTM2':
                     dic['kspace_scheduler'] = trainer.kspace_scheduler.state_dict()
             dic['losses'] = losses
             dic['test_losses'] = test_losses

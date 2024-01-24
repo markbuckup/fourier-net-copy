@@ -56,14 +56,247 @@ def fetch_lstm_type(parameters):
         km = convLSTM_Kspace2
     return km, im
 
+class convLSTMcell_kspace(nn.Module):
+    def __init__(self, history_length = 1, num_coils = 8, phase_tanh_mode = False, sigmoid_mode = True, phase_real_mode = False, phase_theta = False, linear_post_process = False, double_proc = False, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, lstm_input_mask = False):
+        super(convLSTMcell_kspace, self).__init__()
+        self.phase_tanh_mode = phase_tanh_mode
+        self.double_proc = double_proc
+        self.sigmoid_mode = sigmoid_mode
+        self.history_length = history_length
+        self.num_coils = num_coils
+        self.linear_post_process = linear_post_process
+        self.phase_real_mode = phase_real_mode
+        self.phase_theta = phase_theta
+        self.forget_gate_coupled = forget_gate_coupled
+        self.forget_gate_same_coils = forget_gate_same_coils
+        self.forget_gate_same_phase_mag = forget_gate_same_phase_mag
+        self.lstm_input_mask = lstm_input_mask
+        
+        mag_cnn_func = nn.Conv2d
+        mag_relu_func = nn.ReLU
+        
+        if phase_real_mode:
+            phase_cnn_func = nn.Conv2d
+            phase_relu_func = nn.ReLU
+        else:
+            phase_cnn_func = cmplx_conv.ComplexConv2d
+            phase_relu_func = cmplx_activation.CReLU
+
+        if self.phase_theta:
+            if self.phase_tanh_mode:
+                self.phase_activation = lambda x: np.pi*torch.tanh(x)
+            else:
+                self.phase_activation = lambda x: x
+        else:
+            if self.phase_tanh_mode:
+                self.phase_activation = lambda x: torch.tanh(x)
+            else:
+                self.phase_activation = lambda x: x
+
+        input_gate_output_size = self.num_coils
+        gate_input_size = input_gate_output_size + ((1 + self.history_length)*self.num_coils)
+        if self.lstm_input_mask:
+            gate_input_size += 1
+
+        hidden_channels = 2*self.num_coils
+
+        if self.forget_gate_same_coils:
+            forget_gate_output_size = 1
+        else:
+            forget_gate_output_size = self.num_coils
+
+        self.mag_inputGate = nn.Sequential(
+                mag_cnn_func(gate_input_size, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                mag_relu_func(),
+                mag_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                mag_relu_func(),
+                mag_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                mag_relu_func(),
+                mag_cnn_func(hidden_channels, forget_gate_output_size, (1,1), stride = (1,1), padding = (0,0)),
+                # relu_func(),
+            )
+        if not self.forget_gate_same_phase_mag:
+            self.phase_inputGate = nn.Sequential(
+                    phase_cnn_func(gate_input_size, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    phase_relu_func(),
+                    phase_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    phase_relu_func(),
+                    phase_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    phase_relu_func(),
+                    phase_cnn_func(hidden_channels, forget_gate_output_size, (1,1), stride = (1,1), padding = (0,0)),
+                    # relu_func(),
+                )
+        if not self.forget_gate_coupled:
+            self.mag_forgetGate = nn.Sequential(
+                    mag_cnn_func(gate_input_size, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    mag_relu_func(),
+                    mag_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    mag_relu_func(),
+                    mag_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    mag_relu_func(),
+                    mag_cnn_func(hidden_channels, forget_gate_output_size, (1,1), stride = (1,1), padding = (0,0)),
+                    # relu_func(),
+                )
+            if not self.forget_gate_same_phase_mag:
+                self.phase_forgetGate = nn.Sequential(
+                        phase_cnn_func(gate_input_size, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                        phase_relu_func(),
+                        phase_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                        phase_relu_func(),
+                        phase_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                        phase_relu_func(),
+                        phase_cnn_func(hidden_channels, forget_gate_output_size, (1,1), stride = (1,1), padding = (0,0)),
+                        # relu_func(),
+                    )
+            self.mag_outputGate = nn.Sequential(
+                    mag_cnn_func(gate_input_size, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    mag_relu_func(),
+                    mag_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    mag_relu_func(),
+                    mag_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    mag_relu_func(),
+                    mag_cnn_func(hidden_channels, input_gate_output_size, (1,1), stride = (1,1), padding = (0,0)),
+                    # relu_func(),
+                )
+            self.phase_outputGate = nn.Sequential(
+                    phase_cnn_func(gate_input_size, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    phase_relu_func(),
+                    phase_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    phase_relu_func(),
+                    phase_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    phase_relu_func(),
+                    phase_cnn_func(hidden_channels, input_gate_output_size, (1,1), stride = (1,1), padding = (0,0)),
+                    # relu_func(),
+                )
+        self.mag_inputProc = nn.Sequential(
+                mag_cnn_func(gate_input_size, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                mag_relu_func(),
+                mag_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                mag_relu_func(),
+                mag_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                mag_relu_func(),
+                mag_cnn_func(hidden_channels, input_gate_output_size, (1,1), stride = (1,1), padding = (0,0)),
+                # relu_func(),
+            )
+        self.phase_inputProc = nn.Sequential(
+                phase_cnn_func(gate_input_size, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                phase_relu_func(),
+                phase_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                phase_relu_func(),
+                phase_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                phase_relu_func(),
+                phase_cnn_func(hidden_channels, input_gate_output_size, (1,1), stride = (1,1), padding = (0,0)),
+                # relu_func(),
+            )
+        if self.double_proc:
+            self.mag_inputProc2 = nn.Sequential(
+                    mag_cnn_func(input_gate_output_size, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    mag_relu_func(),
+                    mag_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    mag_relu_func(),
+                    mag_cnn_func(hidden_channels, input_gate_output_size, (1,1), stride = (1,1), padding = (0,0)),
+                    # relu_func(),
+            )
+            self.phase_inputProc2 = nn.Sequential(
+                    phase_cnn_func(input_gate_output_size, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    phase_relu_func(),
+                    phase_cnn_func(hidden_channels, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
+                    phase_relu_func(),
+                    phase_cnn_func(hidden_channels, input_gate_output_size, (1,1), stride = (1,1), padding = (0,0)),
+                    # relu_func(),
+            )
+
+        if self.linear_post_process:
+            if self.real_mode:
+                self.linear = nn.Linear(8*8,8*8)
+            else:
+                self.linear = nn.Linear(8*8*2,8*8*2)
+
+        # self.decoder2 = nn.Linear(64*64*2, 64*64)
+
+    def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_state = None, mag_prev_output = None, phase_prev_state = None, phase_prev_output = None):
+        # x is a batch of video frames at a single time stamp
+        if mag_prev_state is None:
+            mag_shape1 = (hist_mag.shape[0], self.num_coils, *hist_mag.shape[2:])
+            phase_shape1 = (hist_phase.shape[0], self.num_coils, *hist_phase.shape[2:])
+            mag_prev_state = torch.zeros(mag_shape1, device = hist_mag.device)
+            mag_prev_output = torch.zeros(mag_shape1, device = hist_mag.device)
+            phase_prev_state = torch.zeros(phase_shape1, device = hist_phase.device)
+            phase_prev_output = torch.zeros(phase_shape1, device = hist_phase.device)
+
+        if self.lstm_input_mask:
+            mag_inp_cat = torch.cat((hist_mag, mag_prev_output, ((gt_mask*2.)-1.).type(torch.float)), 1)
+            phase_inp_cat = torch.cat((hist_phase, phase_prev_output, ((gt_mask*2.)-1.).type(torch.float)), 1)
+        else:
+            mag_inp_cat = torch.cat((hist_mag, mag_prev_output), 1)
+            phase_inp_cat = torch.cat((hist_phase, phase_prev_output), 1)
+
+        assert(self.sigmoid_mode)
+
+        mag_it = torch.sigmoid(self.mag_inputGate(mag_inp_cat))
+        if not self.forget_gate_same_phase_mag:
+            phase_it = torch.sigmoid(self.phase_inputGate(phase_inp_cat))
+        else:
+            phase_it = mag_it
+
+        if not self.forget_gate_coupled:
+            mag_ft = torch.sigmoid(self.mag_forgetGate(mag_inp_cat))
+            if not self.forget_gate_same_phase_mag:
+                phase_ft = torch.sigmoid(self.phase_forgetGate(phase_inp_cat))
+            else:
+                phase_ft = mag_ft
+            mag_ot = torch.sigmoid(self.mag_outputGate(mag_inp_cat))
+            phase_ot = torch.sigmoid(self.phase_outputGate(phase_inp_cat))
+        else:
+            mag_ft = 1 - mag_it
+            phase_ft = 1 - phase_it
+            mag_ot = torch.ones_like(mag_ft, device = mag_ft.device)
+            phase_ot = torch.ones_like(phase_ft, device = phase_ft.device)
+
+        if self.forget_gate_same_coils:
+            mag_ft = mag_ft.repeat(1,self.num_coils,1,1)
+            phase_ft = phase_ft.repeat(1,self.num_coils,1,1)
+            mag_it = mag_it.repeat(1,self.num_coils,1,1)
+            phase_it = phase_it.repeat(1,self.num_coils,1,1)
+
+        mag_Cthat = self.mag_inputProc(mag_inp_cat)
+        phase_Cthat = self.phase_activation(self.phase_inputProc(phase_inp_cat))
+
+        if self.double_proc:
+            mag_Cthat = self.mag_inputProc2(mag_Cthat)
+            phase_Cthat = self.phase_inputProc2(phase_Cthat)
+
+        assert(not self.linear_post_process)
+        # if self.linear_post_process:
+        #     batch_size, coils, res1, res2 = Cthat.shape[:4]
+        #     mid1 = res1//2
+        #     mid2 = res2//2
+        #     inp = Cthat[:,:,mid1-4:mid1+4,mid2-4:mid2+4]
+        #     in_shape = inp.shape
+        #     inp = inp.reshape(batch_size*coils,-1)
+        #     inp = self.linear(inp).reshape(*in_shape)
+        #     Cthat[:,:,mid1-4:mid1+4,mid2-4:mid2+4] = inp
+
+        mag_Ct_new = (mag_ft * mag_prev_state) + (mag_it * mag_Cthat)
+        phase_Ct_new = (phase_ft * phase_prev_state) + (phase_it * phase_Cthat)
+
+        mag_ht = mag_Ct_new*mag_ot
+        phase_ht = self.phase_activation(phase_Ct_new)*phase_ot
+        # print(ht.min())
+        # print(ht.max())
+        # print(x.min())
+        # print(x.max())
+        # print('------------------------------------------')
+            # ht = ht + x
+
+        return mag_Ct_new, phase_Ct_new, mag_ht, phase_ht
 
 class convLSTMcell(nn.Module):
-    def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, sigmoid_mode = True, real_mode = False, theta = False, linear_post_process = False, mini = False, skip_connection = False, double_proc = False):
+    def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, sigmoid_mode = True, real_mode = False, theta = False, linear_post_process = False, mini = False, double_proc = False):
         super(convLSTMcell, self).__init__()
         self.tanh_mode = tanh_mode
         self.mini = mini
         self.double_proc = double_proc
-        self.skip_connection = skip_connection
         self.sigmoid_mode = sigmoid_mode
         self.out_channels = out_channels
         self.in_channels = in_channels
@@ -202,10 +435,7 @@ class convLSTMcell(nn.Module):
             it = self.inputGate(inp_cat)
             ot = self.outputGate(inp_cat)
         #### DEBUG - remove tanh if doesnt work here
-        if self.skip_connection:
-            Cthat = self.activation(self.inputProc(inp_cat))+x
-        else:
-            Cthat = self.activation(self.inputProc(inp_cat))
+        Cthat = self.activation(self.inputProc(inp_cat))
         if self.double_proc:
             Cthat = self.inputProc2(Cthat) + Cthat
         if self.linear_post_process:
@@ -219,7 +449,6 @@ class convLSTMcell(nn.Module):
             Cthat[:,:,mid1-4:mid1+4,mid2-4:mid2+4] = inp
         Ct_new = (ft * prev_state) + (it * Cthat)
         ht = self.activation(Ct_new)*ot
-        # if self.skip_connection:
         # print(ht.min())
         # print(ht.max())
         # print(x.min())
@@ -236,20 +465,6 @@ class convLSTM_Kspace1(nn.Module):
         self.history_length = self.param_dic['history_length']
         self.n_coils = self.param_dic['num_coils']
 
-        assert(not(self.param_dic['kspace_coilwise'] and self.param_dic['kspace_coil_combination']))
-        assert(not(self.param_dic['ground_truth_enforce'] and self.param_dic['kspace_coil_combination']))
-
-        # if self.param_dic['scale_input_fft']:
-        #     tanh_mode = True
-        if self.param_dic['kspace_coilwise']:
-            in_channels = (1 + self.history_length)
-            out_channels = 1
-        elif self.param_dic['kspace_coil_combination']:
-            in_channels = (1 + self.history_length)*self.n_coils
-            out_channels = 1
-        else:
-            in_channels = (1 + self.history_length)*self.n_coils
-            out_channels = self.n_coils
 
         if self.param_dic['kspace_predict_mode'] == 'thetas':
             theta = True
@@ -264,27 +479,19 @@ class convLSTM_Kspace1(nn.Module):
         else:
             assert 0
 
-        self.mag_m = convLSTMcell(
-                    tanh_mode = False, 
+        self.kspace_m = convLSTMcell_kspace(
+                    phase_tanh_mode = self.param_dic['kspace_tanh'], 
                     sigmoid_mode = sigmoid_mode, 
-                    real_mode = True, 
-                    in_channels = in_channels, 
-                    out_channels = out_channels, 
-                    mini = self.param_dic['lstm_mini'], 
-                    skip_connection = self.param_dic['skip_connection'],
-                    double_proc = self.param_dic['double_kspace_proc']
-                )
-        self.phase_m = convLSTMcell(
-                    tanh_mode = self.param_dic['kspace_tanh'], 
-                    sigmoid_mode = sigmoid_mode, 
-                    real_mode = self.real_mode, 
-                    in_channels = in_channels,
-                    out_channels = out_channels,
-                    theta = theta, 
+                    phase_real_mode = self.real_mode, 
+                    num_coils = self.n_coils,
+                    history_length = self.history_length,
+                    phase_theta = theta, 
                     linear_post_process = self.param_dic['kspace_linear'], 
-                    mini = self.param_dic['lstm_mini'], 
-                    skip_connection = self.param_dic['skip_connection'],
-                    double_proc = self.param_dic['double_kspace_proc']
+                    double_proc = self.param_dic['double_kspace_proc'],
+                    forget_gate_coupled = self.param_dic['forget_gate_coupled'],
+                    forget_gate_same_coils = self.param_dic['forget_gate_same_coils'],
+                    forget_gate_same_phase_mag = self.param_dic['forget_gate_same_phase_mag'],
+                    lstm_input_mask = self.param_dic['lstm_input_mask'],
                 )
 
         if self.param_dic['ispace_lstm']:
@@ -294,8 +501,6 @@ class convLSTM_Kspace1(nn.Module):
                     real_mode = True, 
                     in_channels = out_channels, 
                     out_channels = 1, 
-                    mini = self.param_dic['lstm_mini'], 
-                    skip_connection = False,
                     double_proc = self.param_dic['double_kspace_proc']
                 )
         self.SSIM = kornia.metrics.SSIM(11)
@@ -347,8 +552,7 @@ class convLSTM_Kspace1(nn.Module):
                 else:
                     assert 0
 
-                prev_state1, prev_output1 = self.phase_m(hist_phase, prev_state1, prev_output1)
-                prev_state2, prev_output2 = self.mag_m(hist_mag, prev_state2, prev_output2)
+                prev_state2, prev_state1, prev_output2, prev_output1 = self.kspace_m(hist_mag, hist_phase, prev_state2, prev_output2, prev_state1, prev_output1)
 
                 if self.param_dic['kspace_predict_mode'] == 'cosine':
                     phase_ti = torch.complex(prev_output1, ((1-(prev_output1**2)) + EPS)**0.5)
@@ -376,12 +580,6 @@ class convLSTM_Kspace1(nn.Module):
 
 
     def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
-        # if self.param_dic['kspace_coil_combination'] and (targ_phase is not None):
-        #     targ_real = og_video.unsqueeze(2)
-        #     fft_targ = torch.fft.fftshift(torch.fft.fft2(og_video.unsqueeze(2)), dim = (-2,-1))
-        #     targ_mag_log = (fft_targ.abs()+EPS).log()
-        #     targ_phase = fft_targ / targ_mag_log.exp()
-        #     targ_phase = torch.stack((targ_phase.real, targ_phase.imag),-1)
 
         mag_log = (fft_exp.abs()+EPS).log()
         phase = fft_exp / (mag_log.exp())
@@ -478,61 +676,18 @@ class convLSTM_Kspace1(nn.Module):
             else:
                 assert 0
 
-            if self.param_dic['kspace_coilwise']:
-                if self.real_mode:
-                    B, n_coil, r, c = hist_phase.shape
-                else:
-                    B, n_coil, r, c, _ = hist_phase.shape
-
-                if self.real_mode:    
-                    hist_phase = hist_phase.reshape(B*n_coil,1,r,c)
-                else:
-                    hist_phase = hist_phase.reshape(B*n_coil,1,r,c,2)
-                hist_mag = hist_mag.reshape(B*n_coil,1,r,c)
-                if prev_state1 is not None:
-                    if self.real_mode:    
-                        prev_output1 = prev_output1.reshape(B*n_coil,1,r,c)
-                        prev_state1 = prev_state1.reshape(B*n_coil,1,r,c)
-                    else:
-                        prev_output1 = prev_output1.reshape(B*n_coil,1,r,c,2)
-                        prev_state1 = prev_state1.reshape(B*n_coil,1,r,c,2)
-                    prev_output2 = prev_output2.reshape(B*n_coil,1,r,c)
-                    prev_state2 = prev_state2.reshape(B*n_coil,1,r,c)
-            
             hist_mag = hist_mag + 10
             hist_mag = hist_mag / 20
             if prev_output2 is not None:
                 prev_output2 = prev_output2 + 10
                 prev_output2 = prev_output2 / 20
-            prev_state2, prev_output2 = self.mag_m(hist_mag, prev_state2, prev_output2)
+            prev_state2, prev_state1, prev_output2, prev_output1 = self.kspace_m(hist_mag, hist_phase, gt_masks[:,ti,:,:,:], prev_state2, prev_output2, prev_state1, prev_output1)
             prev_output2 = prev_output2 * 20
             prev_output2 = prev_output2 - 10
-            prev_state1, prev_output1 = self.phase_m(hist_phase, prev_state1, prev_output1)
 
             del hist_mag
             del hist_phase
             
-            if self.param_dic['kspace_coilwise']:
-                if self.real_mode:
-                    prev_output1 = prev_output1.reshape(B,n_coil,r,c)
-                else:
-                    prev_output1 = prev_output1.reshape(B,n_coil,r,c,2)
-                prev_output2 = prev_output2.reshape(B,n_coil,r,c)
-
-            if self.param_dic['ground_truth_enforce']:
-                if self.param_dic['kspace_predict_mode'] == 'cosine':
-                    temp1 = phase[:,ti,:,:,:,0]
-                elif self.param_dic['kspace_predict_mode'] == 'thetas':
-                    temp1 = torch.atan2(phase[:,ti,:,:,:,1],phase[:,ti,:,:,:,0])
-                elif self.param_dic['kspace_predict_mode'] == 'unit-vector':
-                    temp1 = phase[:,ti,:,:,:]
-                else:
-                    assert 0
-                prev_output1[gt_masks[:,ti,:,:,:]] = temp1[gt_masks[:,ti,:,:,:]]
-                temp2 = mag_log[:,ti,:,:,:]
-                prev_output2[gt_masks[:,ti,:,:,:]] = temp2[gt_masks[:,ti,:,:,:]]
-                del temp1
-                del temp2
 
             if self.param_dic['scale_input_fft']:
                 prev_output2 = prev_output2 * (range_span_ti/2)
@@ -618,206 +773,6 @@ class convLSTM_Kspace1(nn.Module):
                 predr[:,ti,:,:] = predr_ti.detach()
 
         return predr, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, loss_ss1)
-
-# class convLSTM_Kspace2(nn.Module):
-#     def __init__(self, parameters, proc_device, sigmoid_mode = True, two_cell = False):
-#         super(convLSTM_Kspace2, self).__init__()
-#         self.param_dic = parameters
-#         self.history_length = self.param_dic['history_length']
-#         self.n_coils = self.param_dic['num_coils']
-
-#         assert(not(self.param_dic['kspace_coilwise'] and self.param_dic['kspace_coil_combination']))
-#         assert(not(self.param_dic['ground_truth_enforce'] and self.param_dic['kspace_coil_combination']))
-
-#         # if self.param_dic['scale_input_fft']:
-#         #     tanh_mode = True
-#         if self.param_dic['kspace_coilwise']:
-#             in_channels = (1 + self.history_length)
-#             out_channels = 1
-#         elif self.param_dic['kspace_coil_combination']:
-#             in_channels = (1 + self.history_length)*self.n_coils
-#             out_channels = 1
-#         else:
-#             in_channels = (1 + self.history_length)*self.n_coils
-#             out_channels = self.n_coils
-
-#         theta = False
-
-#         self.model = convLSTMcell(
-#                         tanh_mode = False, 
-#                         sigmoid_mode = sigmoid_mode, 
-#                         real_mode = False, 
-#                         in_channels = in_channels, 
-#                         out_channels = out_channels, 
-#                         theta = False, 
-#                         mini = self.param_dic['lstm_mini'], 
-#                         skip_connection = self.param_dic['skip_connection'],
-#                         double_proc = self.param_dic['double_kspace_proc']
-#                     )
-#         self.SSIM = kornia.metrics.SSIM(11)
-#         assert(sigmoid_mode)
-
-#     def time_analysis(self, fft_exp, device, periods):
-#         start = time.time()
-#         with torch.no_grad():
-#             real = fft_exp
-#             phase = fft_exp / (mag_log.exp())
-#             phase = torch.stack((phase.real, phase.imag), -1)
-
-#             prev_state1 = None
-#             prev_output1 = None
-#             prev_state2 = None
-#             prev_output2 = None
-
-#             predr = torch.zeros(mag_log.shape)
- 
-#             for ti in range(mag_log.shape[1]):
-#                 hist_ind = (torch.arange(self.history_length+1).repeat(mag_log.shape[0],1) - self.history_length)
-#                 hist_ind = hist_ind * periods.reshape(-1,1).cpu()
-#                 hist_ind += ti
-#                 temp1 = hist_ind.clone()
-#                 temp1[temp1 < 0] = 9999999999
-#                 min_vals = temp1.min(1)[0]
-#                 base = torch.zeros(temp1.shape) + min_vals.reshape(-1,1)
-
-#                 hist_ind = hist_ind - base
-#                 hist_ind[hist_ind < 0] = 0
-#                 hist_ind = (hist_ind + base).long()
-
-#                 mult = (torch.arange(mag_log.shape[0])*mag_log.shape[1]).reshape(-1,1)
-#                 hist_ind = hist_ind + mult      
-
-#                 hist_phase = phase.reshape(-1, *phase.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *phase.shape[3:])
-#                 hist_mag = mag_log.reshape(-1, *mag_log.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *mag_log.shape[3:])
-
-#                 if self.param_dic['kspace_predict_mode'] == 'thetas':
-#                     hist_phase = torch.atan2(hist_phase[:,:,:,:,1],hist_phase[:,:,:,:,0])
-#                 elif self.param_dic['kspace_predict_mode'] == 'cosine':
-#                     hist_phase = hist_phase[:,:,:,:,0]
-#                 elif self.param_dic['kspace_predict_mode'] == 'unit-vector':
-#                     hist_phase = hist_phase
-#                 else:
-#                     assert 0
-
-#                 prev_state1, prev_output1 = self.phase_m(hist_phase, prev_state1, prev_output1)
-#                 prev_state2, prev_output2 = self.mag_m(hist_mag, prev_state2, prev_output2)
-
-#                 if self.param_dic['kspace_predict_mode'] == 'cosine':
-#                     phase_ti = torch.complex(prev_output1, ((1-(prev_output1**2)) + EPS)**0.5)
-#                 elif self.param_dic['kspace_predict_mode'] == 'thetas':
-#                     phase_ti = torch.complex(torch.cos(prev_output1), torch.sin(prev_output1))
-#                 elif self.param_dic['kspace_predict_mode'] == 'unit-vector':
-#                     prev_output1 = prev_output1 / (((prev_output1**2).sum(-1)+EPS)**0.5).unsqueeze(-1).detach()
-#                     phase_ti = torch.complex(prev_output1[:,:,:,:,0], prev_output1[:,:,:,:,1])
-
-#                 predr_ti = torch.fft.ifft2(torch.fft.ifftshift(prev_output2.exp()*phase_ti, dim = (-2,-1))).real.clip(-10,10)
-#                 print(predr_ti.min(),predr_ti.max())
-#                 predr[:,ti,:,:] = ispace_model(predr_ti)
-                
-#                 prev_output2 = prev_output2.detach()
-#                 prev_output1 = prev_output1.detach()            
-
-#         tot_time = time.time()-start
-#         return tot_time
-
-
-#     def forward(self, fft_exp, gt_masks, device, periods, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
-#         # if self.param_dic['kspace_coil_combination'] and (targ_phase is not None):
-#         #     targ_real = og_video.unsqueeze(2)
-#         #     fft_targ = torch.fft.fftshift(torch.fft.fft2(og_video.unsqueeze(2)), dim = (-2,-1))
-#         #     targ_mag_log = (fft_targ.abs()+EPS).log()
-#         #     targ_phase = fft_targ / targ_mag_log.exp()
-#         #     targ_phase = torch.stack((targ_phase.real, targ_phase.imag),-1)
-
-#         inp = (fft_exp.abs()+CEPS).log()
-#         inp = torch.stack((inp.real,inp.imag), -1)
-#         predr = torch.zeros(fft_exp.shape)
-#         del fft_exp
-
-#         prev_state1 = None
-#         prev_output1 = None
-
-
-#         if targ_phase is not None:
-#             loss_phase = 0
-#             loss_mag = 0
-#             loss_real = 0
-#             loss_l1 = 0
-#             loss_l2 = 0
-#             loss_ss1 = 0
-#             criterionL1 = nn.L1Loss().to(device)
-#             criterionCos = nn.CosineSimilarity(dim = 4) 
-#         else:
-#             loss_phase = None
-#             loss_mag = None
-#             loss_real = None
-#             loss_l1 = 0
-#             loss_l2 = 0
-#             loss_ss1 = 0
-
-#         for ti in range(inp.shape[1]):
-#             hist_ind = (torch.arange(self.history_length+1).repeat(inp.shape[0],1) - self.history_length)
-#             hist_ind = hist_ind * periods.reshape(-1,1).cpu()
-#             hist_ind += ti
-#             temp1 = hist_ind.clone()
-#             temp1[temp1 < 0] = 9999999999
-#             min_vals = temp1.min(1)[0]
-#             base = torch.zeros(temp1.shape) + min_vals.reshape(-1,1)
-
-#             hist_ind = hist_ind - base
-#             hist_ind[hist_ind < 0] = 0
-#             hist_ind = (hist_ind + base).long()
-
-#             mult = (torch.arange(inp.shape[0])*inp.shape[1]).reshape(-1,1)
-#             hist_ind = hist_ind + mult
-#             hist_inp = inp.reshape(-1, *inp.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *inp.shape[3:])
-
-#             prev_state1, prev_output1 = self.model(hist_inp, prev_state1, prev_output1)
-            
-#             predr_ti = torch.fft.ifft2(torch.fft.ifftshift(torch.complex(prev_output1[:,:,:,:,0], prev_output1[:,:,:,:,1]), dim = (-2,-1))).real.clip(-200,200)
-            
-#             if ti >= self.param_dic['init_skip_frames']:
-#                 if targ_phase is not None:
-#                     # loss_mag += criterionL1(prev_output2*dists, targ_mag_log[:,ti,:,:,:].to(device)*dists)/mag_log.shape[1]
-#                     # if self.param_dic['loss_phase'] == 'L1':
-#                     #     loss_phase += criterionL1(stacked_phase, targ_phase[:,ti,:,:,:,:].to(device))/mag_log.shape[1]
-#                     # elif self.param_dic['loss_phase'] == 'Cosine':
-#                     #     loss_phase += (1 - criterionCos(stacked_phase, targ_phase[:,ti,:,:,:,:].to(device))).mean()/mag_log.shape[1]
-#                     # elif self.param_dic['loss_phase'] == 'raw_L1':
-#                     #     if self.param_dic['kspace_predict_mode'] == 'cosine':
-#                     #         loss_phase += criterionL1(prev_output1, targ_phase[:,ti,:,:,:,0].to(device))/mag_log.shape[1]
-#                     #     elif self.param_dic['kspace_predict_mode'] == 'thetas':
-#                     #         targ_angles = torch.atan2(targ_phase[:,ti,:,:,:,1],targ_phase[:,ti,:,:,:,0]).to(device)
-#                     #         loss_phase += criterionL1(prev_output1, targ_angles)/mag_log.shape[1]
-#                     #     elif self.param_dic['kspace_predict_mode'] == 'unit-vector':
-#                     #         loss_phase += criterionL1(stacked_phase, targ_phase[:,ti,:,:,:,:].to(device))/mag_log.shape[1]
-#                     #     else:
-#                     #         assert 0
-#                     # else:
-#                     #     assert 0
-                    
-#                     targ_now = targ_real[:,ti,:,:,:].to(device)
-#                     loss_real += criterionL1(predr_ti, targ_now)/inp.shape[1]
-                
-#                     with torch.no_grad():
-#                         loss_l1 += (predr_ti- targ_now).reshape(predr_ti.shape[0]*predr_ti.shape[1], predr_ti.shape[2]*predr_ti.shape[3]).abs().mean(1).sum().detach().cpu()
-#                         loss_l2 += (((predr_ti- targ_now).reshape(predr_ti.shape[0]*predr_ti.shape[1], predr_ti.shape[2]*predr_ti.shape[3]) ** 2).mean(1).sum()).detach().cpu()
-#                         ss1 = self.SSIM(predr_ti.reshape(predr_ti.shape[0]*predr_ti.shape[1],1,*predr_ti.shape[2:]), targ_now.reshape(predr_ti.shape[0]*predr_ti.shape[1],1,*predr_ti.shape[2:]))
-#                         ss1 = ss1.reshape(ss1.shape[0],-1)
-#                         loss_ss1 += ss1.mean(1).sum().detach().cpu()
-
-#             # prev_output2 = prev_output2.detach()
-#             prev_output1 = prev_output1.detach()            
-
-#             # ans_mag_log[:,ti,:,:] = prev_output2.detach()
-#             # ans_phase[:,ti,:,:,:,:] = stacked_phase.detach()
-#             predr[:,ti,:,:] = predr_ti.detach()
-
-#         # return predr, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, loss_ss1)
-#         if loss_real is not None:
-#             return predr, None, None, loss_real.detach()*0, loss_real.detach()*0, loss_real, (loss_l1, loss_l2, loss_ss1)
-#         else:
-#             return predr, None, None, loss_real, loss_real, loss_real, (loss_l1, loss_l2, loss_ss1)
 
 
 class CoupledDown(nn.Module):
@@ -988,7 +943,7 @@ class ImageSpaceModel1(nn.Module):
         self.param_dic = parameters
         self.image_space_real = self.param_dic['image_space_real']
         self.num_coils = self.param_dic['num_coils']
-        if self.param_dic['kspace_coil_combination'] or self.param_dic['ispace_lstm']:
+        if self.param_dic['ispace_lstm']:
             self.input_size = 1
         else:
             self.input_size = self.num_coils
