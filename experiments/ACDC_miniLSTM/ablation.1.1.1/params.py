@@ -13,10 +13,10 @@ parameters['double_kspace_proc'] = False
 parameters['end-to-end-supervision'] = False
 parameters['kspace_real_loss_only'] = False
 
-parameters['lstm_input_mask'] = True
-parameters['forget_gate_coupled'] = False
-parameters['forget_gate_same_coils'] = False
-parameters['forget_gate_same_phase_mag'] = False
+parameters['lstm_input_mask'] = False
+parameters['forget_gate_coupled'] = True
+parameters['forget_gate_same_coils'] = True
+parameters['forget_gate_same_phase_mag'] = True
 
 
 parameters['ispace_lstm'] = False
