@@ -168,11 +168,11 @@ class Trainer(nn.Module):
             mydic = self.parameters['scheduler_params']
             if self.ddp_rank == 0:
                 if self.parameters['kspace_architecture'] == 'KLSTM1':
-                    self.kspace_scheduler_mag = optim.lr_scheduler.CyclicLR(self.kspace_optim_mag, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
-                    self.kspace_scheduler_phase = optim.lr_scheduler.CyclicLR(self.kspace_optim_phase, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
+                    self.kspace_scheduler_mag = optim.lr_scheduler.CyclicLR(self.kspace_optim_mag, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=False)
+                    self.kspace_scheduler_phase = optim.lr_scheduler.CyclicLR(self.kspace_optim_phase, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=False)
                 elif self.parameters['kspace_architecture'] == 'KLSTM2':
-                    self.kspace_scheduler = optim.lr_scheduler.CyclicLR(self.kspace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
-                self.ispace_scheduler = optim.lr_scheduler.CyclicLR(self.ispace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=mydic['verbose'])
+                    self.kspace_scheduler = optim.lr_scheduler.CyclicLR(self.kspace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=False)
+                self.ispace_scheduler = optim.lr_scheduler.CyclicLR(self.ispace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=False)
             else:
                 if self.parameters['kspace_architecture'] == 'KLSTM1':
                     self.kspace_scheduler_mag = optim.lr_scheduler.CyclicLR(self.kspace_optim_mag, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
@@ -231,8 +231,9 @@ class Trainer(nn.Module):
                 if self.parameters['kspace_real_loss_only']:
                     loss = 10*loss_real
                 else:
-                    loss = 0.06*loss_mag + loss_phase + 5*loss_real
-                    # print(0.05*loss_mag,loss_phase,5*loss_real)
+                    # loss = 10*loss_real
+                    loss = 0.06*loss_mag + 2*loss_phase + 5*loss_real
+                    # print(0.06*loss_mag,100*loss_phase,5*loss_real)
 
                 loss.backward()
                 if self.parameters['kspace_architecture'] == 'KLSTM1':
@@ -269,6 +270,12 @@ class Trainer(nn.Module):
             targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
 
             outp = self.ispace_model(predr)
+            
+            outp = outp - outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+            outp = outp / (EPS + outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+            targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+            targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+            
             loss = self.l1loss(outp, targ_vid)
             loss.backward()
             self.ispace_optim.step()
@@ -292,16 +299,29 @@ class Trainer(nn.Module):
             avgispace_l1_loss += float(loss_l1.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
             avgispace_l2_loss += float(loss_l2.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
 
-        if self.parameters['kspace_architecture'] == 'KLSTM1':
-            if self.kspace_scheduler_mag is not None:
-                self.kspace_scheduler_mag.step()
-                self.kspace_scheduler_phase.step()
-        elif self.parameters['kspace_architecture'] == 'KLSTM2':
-            if self.kspace_scheduler is not None:
-                self.kspace_scheduler.step()
+            if self.parameters['scheduler'] == 'CyclicLR':
+                if self.parameters['kspace_architecture'] == 'KLSTM1':
+                    if self.kspace_scheduler_mag is not None:
+                        self.kspace_scheduler_mag.step()
+                        self.kspace_scheduler_phase.step()
+                elif self.parameters['kspace_architecture'] == 'KLSTM2':
+                    if self.kspace_scheduler is not None:
+                        self.kspace_scheduler.step()
 
-        if self.ispace_scheduler is not None:
-            self.ispace_scheduler.step()
+                if self.ispace_scheduler is not None:
+                    self.ispace_scheduler.step()
+        
+        if not self.parameters['scheduler'] == 'CyclicLR':
+            if self.parameters['kspace_architecture'] == 'KLSTM1':
+                if self.kspace_scheduler_mag is not None:
+                    self.kspace_scheduler_mag.step()
+                    self.kspace_scheduler_phase.step()
+            elif self.parameters['kspace_architecture'] == 'KLSTM2':
+                if self.kspace_scheduler is not None:
+                    self.kspace_scheduler.step()
+
+            if self.ispace_scheduler is not None:
+                self.ispace_scheduler.step()
         # if print_loss:
         #     print('Train Mag Loss for Epoch {} = {}' .format(epoch, avglossmag), flush = True)
         #     print('Train Phase Loss for Epoch {} = {}' .format(epoch, avglossphase), flush = True)
@@ -377,6 +397,11 @@ class Trainer(nn.Module):
 
                 self.ispace_model.eval()
                 outp = self.ispace_model(predr)
+                outp = outp - outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                outp = outp / (EPS + outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+
                 loss = self.l1loss(outp, targ_vid)
 
                 if self.args.numbers_crop:

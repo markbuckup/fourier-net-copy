@@ -3,7 +3,7 @@ parameters['save_folder'] = '/Data/ContijochLab/projects/cineMRIRecon'
 parameters['image_resolution'] = 256
 parameters['train_batch_size'] = 4
 parameters['test_batch_size'] = 3
-parameters['lr_kspace_mag'] = 1e-3
+parameters['lr_kspace_mag'] = 1e-4
 parameters['lr_kspace_phase'] = 1e-4
 parameters['lr_ispace'] = 1e-4
 parameters['num_epochs_ispace'] = 100000
@@ -35,7 +35,7 @@ parameters['scheduler'] = 'CyclicLR'
 parameters['optimizer_params'] = (0.9, 0.999)
 parameters['scheduler_params'] = {
     'base_lr': 4e-5,
-    'max_lr': 1e-4,
+    'max_lr': 3e-5,
     'step_size_up': 10,
     'mode': 'triangular',
     'step_size': parameters['num_epochs_kspace']//3,
@@ -63,7 +63,7 @@ parameters['kspace_predict_mode'] = 'thetas'
 # parameters['kspace_predict_mode'] = 'thetas' or 'cosine' or 'unit-vector'
 parameters['loss_phase'] = 'raw_L1'
 # parameters['loss_phase'] = 'L1' or 'Cosine' or 'raw_L1'
-parameters['kspace_tanh'] = True
+parameters['kspace_tanh'] = False
 parameters['ground_truth_weight'] = 1
 parameters['ground_truth_enforce'] = False
 parameters['kspace_linear'] = False
