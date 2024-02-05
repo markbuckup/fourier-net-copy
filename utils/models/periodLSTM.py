@@ -742,19 +742,19 @@ class convLSTM_Kspace1(nn.Module):
                         start = 0
                         end = 256
                     if not self.param_dic['end-to-end-supervision']:
-                        loss_mag += criterionL1((prev_output2*dists)[:,:,start:end,start:end], (targ_mag_log[:,ti,:,:,:].to(device)*dists)[:,:,start:end,start:end])/mag_log.shape[1]
+                        loss_mag += criterionL1((prev_output2*dists), (targ_mag_log[:,ti,:,:,:].to(device)*dists))/mag_log.shape[1]
                         if self.param_dic['loss_phase'] == 'L1':
-                            loss_phase += criterionL1(stacked_phase[:,:,start:end,start:end], (targ_phase[:,ti,:,:,:,:].to(device))[:,:,start:end,start:end])/mag_log.shape[1]
+                            loss_phase += criterionL1(stacked_phase, (targ_phase[:,ti,:,:,:,:].to(device)))/mag_log.shape[1]
                         elif self.param_dic['loss_phase'] == 'Cosine':
-                            loss_phase += (1 - criterionCos(stacked_phase[:,:,start:end,start:end], (targ_phase[:,ti,:,:,:,:])[:,:,start:end,start:end].to(device))).mean()/mag_log.shape[1]
+                            loss_phase += (1 - criterionCos(stacked_phase, (targ_phase[:,ti,:,:,:,:]).to(device))).mean()/mag_log.shape[1]
                         elif self.param_dic['loss_phase'] == 'raw_L1':
                             if self.param_dic['kspace_predict_mode'] == 'cosine':
-                                loss_phase += criterionL1(prev_output1[:,:,start:end,start:end], (targ_phase[:,ti,:,:,:,0])[:,:,start:end,start:end].to(device))/mag_log.shape[1]
+                                loss_phase += criterionL1(prev_output1, (targ_phase[:,ti,:,:,:,0]).to(device))/mag_log.shape[1]
                             elif self.param_dic['kspace_predict_mode'] == 'thetas':
-                                targ_angles = torch.atan2((targ_phase[:,ti,:,:,:,1])[:,:,start:end,start:end],(targ_phase[:,ti,:,:,:,0])[:,:,start:end,start:end]).to(device)
-                                loss_phase += criterionL1(prev_output1[:,:,start:end,start:end], targ_angles)/mag_log.shape[1]
+                                targ_angles = torch.atan2((targ_phase[:,ti,:,:,:,1]),(targ_phase[:,ti,:,:,:,0])).to(device)
+                                loss_phase += criterionL1(prev_output1, targ_angles)/mag_log.shape[1]
                             elif self.param_dic['kspace_predict_mode'] == 'unit-vector':
-                                loss_phase += criterionL1(stacked_phase[:,:,start:end,start:end], (targ_phase[:,ti,:,:,:,:])[:,:,start:end,start:end].to(device))/mag_log.shape[1]
+                                loss_phase += criterionL1(stacked_phase, (targ_phase[:,ti,:,:,:,:]).to(device))/mag_log.shape[1]
                             else:
                                 assert 0
                         else:
