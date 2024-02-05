@@ -136,7 +136,7 @@ class Trainer(nn.Module):
         if self.parameters['optimizer'] == 'Adam':
             if self.parameters['kspace_architecture'] == 'KLSTM1':
                 if self.parameters['ispace_lstm']:
-                    self.kspace_optim = optim.Adam(list(self.kspace_model.module.kspace_m.parameters())+list(self.kspace_model.module.ispacem.parameters()), lr=self.parameters['lr_kspace_mag'], betas=self.parameters['optimizer_params'])
+                    self.kspace_optim = optim.Adam(list(self.kspace_model.module.kspace_m.parameters())+list(self.kspace_model.module.ispacem.parameters()), lr=self.parameters['lr_kspace'], betas=self.parameters['optimizer_params'])
                 else:
                     self.kspace_optim = optim.Adam(self.kspace_model.module.kspace_m.parameters(), lr=self.parameters['lr_kspace'], betas=self.parameters['optimizer_params'])
             self.ispace_optim = optim.Adam(self.ispace_model.parameters(), lr=self.parameters['lr_ispace'], betas=self.parameters['optimizer_params'])
@@ -213,7 +213,7 @@ class Trainer(nn.Module):
                     loss = 10*loss_real
                 else:
                     # loss = 10*loss_real
-                    loss = 0.06*loss_mag + 2*loss_phase + 5*loss_real
+                    loss = 0.06*loss_mag + 2*loss_phase + 18*loss_real
                     # print(0.06*loss_mag,100*loss_phase,5*loss_real)
 
                 loss.backward()

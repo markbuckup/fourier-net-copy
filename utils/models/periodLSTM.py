@@ -513,7 +513,7 @@ class convLSTM_Kspace1(nn.Module):
                     tanh_mode = True, 
                     sigmoid_mode = sigmoid_mode, 
                     real_mode = True, 
-                    in_channels = out_channels, 
+                    in_channels = self.n_coils, 
                     out_channels = 1, 
                     double_proc = self.param_dic['double_kspace_proc']
                 )
