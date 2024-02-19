@@ -695,7 +695,8 @@ class convLSTM_Kspace1(nn.Module):
             else:
                 assert 0
 
-            hist_phase = hist_phase * hist_mask
+            if not self.param_dic['kspace_predict_mode'] == 'unit-vector':
+                hist_phase = hist_phase * hist_mask
 
             # hist_mag = hist_mag + 10
             # hist_mag = hist_mag / 20
