@@ -16,7 +16,7 @@ parameters['kspace_real_loss_only'] = False
 parameters['lstm_input_mask'] = True
 parameters['forget_gate_coupled'] = True
 parameters['forget_gate_same_coils'] = True
-parameters['forget_gate_same_phase_mag'] = False
+parameters['forget_gate_same_phase_mag'] = True
 
 
 parameters['ispace_lstm'] = False
@@ -62,11 +62,11 @@ parameters['shuffle_coils'] = False
 parameters['memoise'] = False
 parameters['memoise_RAM'] = False
 
-parameters['kspace_predict_mode'] = 'unit-vector'
+parameters['kspace_predict_mode'] = 'thetas'
 # parameters['kspace_predict_mode'] = 'thetas' or 'cosine' or 'unit-vector'
 parameters['loss_phase'] = 'raw_L1'
 # parameters['loss_phase'] = 'L1' or 'Cosine' or 'raw_L1'
-parameters['kspace_tanh'] = True
+parameters['kspace_tanh'] = False
 parameters['ground_truth_weight'] = 1
 parameters['ground_truth_enforce'] = False
 parameters['kspace_linear'] = False
