@@ -56,10 +56,10 @@ def special_trim(x):
     return x
 
 def show_difference_image(im1, im2):
-    im1 = (im1 - im1.min())
-    im1 = (im1 / (im1.max() + EPS))
-    im2 = (im2 - im2.min())
-    im2 = (im2 / (im2.max() + EPS))
+    # im1 = (im1 - im1.min())
+    # im1 = (im1 / (im1.max() + EPS))
+    # im2 = (im2 - im2.min())
+    # im2 = (im2 / (im2.max() + EPS))
     diff = (im1-im2)
     plt.axis('off')
     plt.imshow(np.abs(diff), cmap = 'plasma', vmin=0, vmax=0.25)
@@ -200,8 +200,8 @@ class Trainer(nn.Module):
 
             
             batch, num_frames, chan, numr, numc = undersampled_fts.shape
-            inpt_mag_log = (og_coiled_fts.abs()+EPS).log()
-            inpt_phase = og_coiled_fts / inpt_mag_log.exp()
+            inpt_mag_log = (og_coiled_fts.abs()+EPS).log10()
+            inpt_phase = og_coiled_fts / (10**inpt_mag_log)
             inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
             self.kspace_model.train()
             predr, _, _, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
@@ -213,7 +213,8 @@ class Trainer(nn.Module):
                     loss = 10*loss_real
                 else:
                     # loss = 10*loss_real
-                    loss = 0.06*loss_mag + 2*loss_phase + 18*loss_real
+                    # print(0.06*loss_mag , 2*loss_phase , 50*loss_real)
+                    loss = 0.06*loss_mag + 2*loss_phase + 50*loss_real
                     # print(0.06*loss_mag,100*loss_phase,5*loss_real)
 
                 loss.backward()
@@ -337,8 +338,8 @@ class Trainer(nn.Module):
                 og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
 
                 batch, num_frames, chan, numr, numc = undersampled_fts.shape
-                inpt_mag_log = (og_coiled_fts.abs()+EPS).log()
-                inpt_phase = og_coiled_fts / inpt_mag_log.exp()
+                inpt_mag_log = (og_coiled_fts.abs()+EPS).log10()
+                inpt_phase = og_coiled_fts / (10**inpt_mag_log)
                 inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
                 self.kspace_model.eval()
                 predr, _, _, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
@@ -475,8 +476,8 @@ class Trainer(nn.Module):
 
                 batch, num_frames, num_coils, numr, numc = undersampled_fts.shape
                 
-                inpt_mag_log = (og_coiled_fts.abs()+EPS).log()
-                inpt_phase = og_coiled_fts / inpt_mag_log.exp()
+                inpt_mag_log = (og_coiled_fts.abs()+EPS).log10()
+                inpt_phase = og_coiled_fts / (10**inpt_mag_log)
                 inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
 
                 tot_vids_per_patient = (dset.num_vids_per_patient*dset.frames_per_vid_per_patient)
@@ -495,6 +496,18 @@ class Trainer(nn.Module):
                 targ_vid = og_video[:num_vids].reshape(batch*num_frames,1, numr, numc).to(self.device)
                 ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
                 print('ispace_outp nan',torch.isnan(ispace_outp).any())
+                
+                # # B, 1, 120, X, Y - B, 120, 1, X, Y
+                # B,F,R,C = ispace_outp.shape
+                # idffs = ((ispace_outp.unsqueeze(1) - og_video)**2)
+                # for i in range(F):
+                #     idffs[:,i,i,:] = 1000000000000
+                # print((idffs).reshape(B,F,F,-1).mean(3).min(2))
+                # lags = torch.arange(F).reshape(1,F) - idffs.reshape(B,F,F,-1).mean(3).min(2)[1]
+                # print(lags)
+                # print(lags.min())
+                # asdf
+                
 
                 if self.parameters['ispace_lstm']:
                     predr = predr.reshape(batch,num_frames,1,numr,numc).repeat(1,1,num_coils,1,1)
@@ -574,10 +587,10 @@ class Trainer(nn.Module):
                                         return
                                     
                                     targi = og_coiled_vids.cpu()[bi,f_num, c_num].squeeze().cpu().numpy()
-                                    orig_fti = (og_coiled_fts.cpu()[bi,f_num,c_num].abs()+1).log()
-                                    mask_fti = (1+undersampled_fts.cpu()[bi,f_num,c_num].abs()).log()
+                                    orig_fti = (og_coiled_fts.cpu()[bi,f_num,c_num].abs()+1).log10()
+                                    mask_fti = (1+undersampled_fts.cpu()[bi,f_num,c_num].abs()).log10()
                                     ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts.cpu()[bi,f_num,c_num], dim = (-2,-1))).abs().squeeze()
-                                    pred_fti = (pred_ft.cpu()[bi,f_num,c_num].abs()+1).log()
+                                    pred_fti = (pred_ft.cpu()[bi,f_num,c_num].abs()+1).log10()
                                     predi = predr.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
 
                                     plt.subplot(num_coils,9,9*c_num+2)

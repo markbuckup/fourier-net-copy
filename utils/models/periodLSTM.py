@@ -553,8 +553,8 @@ class convLSTM_Kspace1(nn.Module):
                 mult = (torch.arange(fft_exp.shape[0])*fft_exp.shape[1]).reshape(-1,1)
                 hist_ind = hist_ind + mult
                 hist_fft = fft_exp.reshape(-1, *fft_exp.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *fft_exp.shape[3:]).to(device)
-                hist_mag = (hist_fft.abs()+EPS).log()
-                hist_phase = hist_fft / (hist_mag.exp())
+                hist_mag = (hist_fft.abs()+EPS).log10()
+                hist_phase = hist_fft / (10**hist_mag)
                 hist_phase = torch.stack((hist_phase.real, hist_phase.imag), -1)
 
                 if self.param_dic['kspace_predict_mode'] == 'thetas':
@@ -576,7 +576,7 @@ class convLSTM_Kspace1(nn.Module):
                     prev_output1 = prev_output1 / (((prev_output1**2).sum(-1)+EPS)**0.5).unsqueeze(-1).detach()
                     phase_ti = torch.complex(prev_output1[:,:,:,:,0], prev_output1[:,:,:,:,1])
 
-                predr_ti = torch.fft.ifft2(torch.fft.ifftshift(prev_output2.exp()*phase_ti, dim = (-2,-1))).real.clip(-200,200)
+                predr_ti = torch.fft.ifft2(torch.fft.ifftshift((10**prev_output2)*phase_ti, dim = (-2,-1))).real.clip(-200,200)
                 if self.param_dic['ispace_lstm']:
                     prev_state3, prev_output3 = self.ispacem(predr_ti, prev_state3, prev_output3)
                 else:
@@ -595,8 +595,12 @@ class convLSTM_Kspace1(nn.Module):
 
     def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
 
-        mag_log = (fft_exp.abs()+EPS).log()
-        phase = fft_exp / (mag_log.exp())
+        mag_log = (fft_exp.abs()+EPS).log10()
+        phase = fft_exp / (10**mag_log)
+        #made change
+        mag_log = mag_log + 4
+        mag_log = mag_log * gt_masks
+        phase = phase * gt_masks
         del fft_exp
 
         if self.param_dic['scale_input_fft']:
@@ -680,6 +684,7 @@ class convLSTM_Kspace1(nn.Module):
 
                 hist_phase = phase.reshape(-1, *phase.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *phase.shape[3:])
                 hist_mag = mag_log.reshape(-1, *mag_log.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *mag_log.shape[3:])
+                hist_mask = gt_masks.reshape(-1, *gt_masks.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *gt_masks.shape[3:])
 
             if self.param_dic['kspace_predict_mode'] == 'thetas':
                 hist_phase = torch.atan2(hist_phase[:,:,:,:,1],hist_phase[:,:,:,:,0])
@@ -690,14 +695,30 @@ class convLSTM_Kspace1(nn.Module):
             else:
                 assert 0
 
-            hist_mag = hist_mag + 10
-            hist_mag = hist_mag / 20
+            hist_phase = hist_phase * hist_mask
+
+            # hist_mag = hist_mag + 10
+            # hist_mag = hist_mag / 20
             if prev_output2 is not None:
-                prev_output2 = prev_output2 + 10
-                prev_output2 = prev_output2 / 20
+                prev_output2 = prev_output2 + 4
+            #     prev_output2 = prev_output2 + 10
+            #     prev_output2 = prev_output2 / 20
+            # if ti == 5:
+            #     print(hist_phase[0,0,0:8,0:8])
+            #     print(hist_mag[0,0,0:8,0:8])
+            #     print(hist_mag.min(), hist_mag.max())
             prev_state2, prev_state1, prev_output2, prev_output1 = self.kspace_m(hist_mag, hist_phase, gt_masks[:,ti,:,:,:], prev_state2, prev_output2, prev_state1, prev_output1)
-            prev_output2 = prev_output2 * 20
-            prev_output2 = prev_output2 - 10
+            # if ti == 5:
+            #     print(prev_output2.min(), prev_output2.max())
+            #     print(targ_mag_log[:,ti].min(), targ_mag_log[:,ti].max())
+            #     print('\n\n')
+            #     asdf
+            # print(prev_output2.shape)
+            # print(gt_masks[:,ti].shape)
+            # print(hist_mag.shape)
+            # prev_output2 = (prev_output2 * (1- gt_masks[:,ti,:,:,:])) + (mag_log[:,ti] * gt_masks[:,ti,:,:,:])
+            # prev_output2 = prev_output2 * 20
+            prev_output2 = prev_output2 - 4
 
             del hist_mag
             del hist_phase
@@ -717,9 +738,9 @@ class convLSTM_Kspace1(nn.Module):
 
             stacked_phase = torch.stack((phase_ti.real, phase_ti.imag), -1)
 
-            lstm_predicted_fft = prev_output2.exp()*phase_ti
-            lstm_predicted_fft.real = lstm_predicted_fft.real - lstm_predicted_fft.real.reshape(*lstm_predicted_fft.shape[:2], -1).mean(2).unsqueeze(-1).unsqueeze(-1).detach()
-            lstm_predicted_fft.imag = lstm_predicted_fft.imag - lstm_predicted_fft.imag.reshape(*lstm_predicted_fft.shape[:2], -1).mean(2).unsqueeze(-1).unsqueeze(-1).detach()
+            lstm_predicted_fft = (10**prev_output2)*phase_ti
+            # lstm_predicted_fft.real = lstm_predicted_fft.real - lstm_predicted_fft.real.reshape(*lstm_predicted_fft.shape[:2], -1).mean(2).unsqueeze(-1).unsqueeze(-1).detach()
+            # lstm_predicted_fft.imag = lstm_predicted_fft.imag - lstm_predicted_fft.imag.reshape(*lstm_predicted_fft.shape[:2], -1).mean(2).unsqueeze(-1).unsqueeze(-1).detach()
             predr_ti = torch.fft.ifft2(torch.fft.ifftshift(lstm_predicted_fft, dim = (-2,-1))).real.clip(-200,200)
             # predr_ti = predr_ti - predr_ti.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
             # predr_ti = predr_ti / (EPS + predr_ti.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
@@ -767,7 +788,8 @@ class convLSTM_Kspace1(nn.Module):
                         loss_real += criterionL1(predr_ti[:,:,start:end,start:end], targ_now[:,:,start:end,start:end])/mag_log.shape[1]
                         if self.param_dic['ispace_lstm']:
                             targ_now = og_video[:,ti,:,:,:].to(device)
-                            loss_real += criterionL1(prev_output3[:,:,start:end,start:end], targ_now[:,:,start:end,start:end])/mag_log.shape[1]
+                            loss_real += 16*criterionL1(prev_output3[:,:,start:end,start:end], targ_now[:,:,start:end,start:end])/mag_log.shape[1]
+                            loss_real += criterionL1(prev_output3, targ_now)/mag_log.shape[1]
                 
                     with torch.no_grad():
                         loss_l1 += (prev_output3[:,:,start:end,start:end]- targ_now[:,:,start:end,start:end]).reshape(prev_output3.shape[0]*prev_output3.shape[1], -1).abs().mean(1).sum().detach().cpu()
