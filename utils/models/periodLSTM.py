@@ -85,7 +85,7 @@ def fetch_lstm_type(parameters):
     return km, im
 
 class concatConv(nn.Module):
-    def __init__(self, cnn_func, relu_func, gate_input_size = 8, hidden_channels = 16, gate_output_size = 1, n_layers = 4, catmode = True):
+    def __init__(self, cnn_func, relu_func, gate_input_size = 8, hidden_channels = 32, gate_output_size = 1, n_layers = 4, catmode = True):
         super(concatConv, self).__init__()
         self.layerlist = []
         self.catmode = catmode
@@ -503,6 +503,7 @@ class convLSTM_Kspace1(nn.Module):
                     forget_gate_same_coils = self.param_dic['forget_gate_same_coils'],
                     forget_gate_same_phase_mag = self.param_dic['forget_gate_same_phase_mag'],
                     lstm_input_mask = self.param_dic['lstm_input_mask'],
+                    catmode = self.param_dic['concat'],
                     n_layers = self.param_dic['n_layers'],
                 )
 
