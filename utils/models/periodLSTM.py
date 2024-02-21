@@ -125,7 +125,7 @@ class concatConv(nn.Module):
 
 
 class convLSTMcell_kspace(nn.Module):
-    def __init__(self, history_length = 1, num_coils = 8, phase_tanh_mode = False, sigmoid_mode = True, phase_real_mode = False, phase_theta = False, linear_post_process = False, double_proc = False, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, lstm_input_mask = False, catmode = False):
+    def __init__(self, history_length = 1, num_coils = 8, phase_tanh_mode = False, sigmoid_mode = True, phase_real_mode = False, phase_theta = False, linear_post_process = False, double_proc = False, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, lstm_input_mask = False, catmode = False, n_layers = 4):
         super(convLSTMcell_kspace, self).__init__()
         self.phase_tanh_mode = phase_tanh_mode
         self.double_proc = double_proc
@@ -503,7 +503,7 @@ class convLSTM_Kspace1(nn.Module):
                     forget_gate_same_coils = self.param_dic['forget_gate_same_coils'],
                     forget_gate_same_phase_mag = self.param_dic['forget_gate_same_phase_mag'],
                     lstm_input_mask = self.param_dic['lstm_input_mask'],
-                    catmode = self.param_dic['concat'],
+                    n_layers = self.param_dic['n_layers'],
                 )
 
         if self.param_dic['ispace_lstm']:
