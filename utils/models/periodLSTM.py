@@ -174,17 +174,17 @@ class convLSTMcell_kspace(nn.Module):
         else:
             forget_gate_output_size = self.num_coils
 
-        self.mag_inputGate = concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = 4, catmode = self.catmode)
+        self.mag_inputGate = concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode)
         if not self.forget_gate_same_phase_mag:
-            self.phase_inputGate = concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = 4, catmode = self.catmode)
+            self.phase_inputGate = concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode)
         if not self.forget_gate_coupled:
-            self.mag_forgetGate = concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = 4, catmode = self.catmode)
+            self.mag_forgetGate = concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode)
             if not self.forget_gate_same_phase_mag:
-                self.phase_forgetGate = concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = 4, catmode = self.catmode)
-            self.mag_outputGate = concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = 4, catmode = self.catmode)
-            self.phase_outputGate = concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = 4, catmode = self.catmode)
-        self.mag_inputProc = concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = 4, catmode = self.catmode)
-        self.phase_inputProc = concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = 4, catmode = self.catmode)
+                self.phase_forgetGate = concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode)
+            self.mag_outputGate = concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode)
+            self.phase_outputGate = concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode)
+        self.mag_inputProc = concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode)
+        self.phase_inputProc = concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode)
         if self.double_proc:
             self.mag_inputProc2 = nn.Sequential(
                     mag_cnn_func(input_gate_output_size, hidden_channels, (3,3), stride = (1,1), padding = (1,1)),
