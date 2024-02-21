@@ -30,6 +30,7 @@ import sys
 sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
 
 from utils.functions import fetch_loss_function
+from utils.models.periodLSTM import gaussian_2d, mylog
 
 def complex_log(ct):
     indices = ct.abs() < 1e-10
@@ -200,8 +201,8 @@ class Trainer(nn.Module):
 
             
             batch, num_frames, chan, numr, numc = undersampled_fts.shape
-            inpt_mag_log = (og_coiled_fts.abs()+EPS).log10()
-            inpt_phase = og_coiled_fts / (10**inpt_mag_log)
+            inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])
+            inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
             inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
             self.kspace_model.train()
             predr, _, _, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
@@ -247,14 +248,25 @@ class Trainer(nn.Module):
                 predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
             targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
 
-            outp = self.ispace_model(predr)
+            mask = torch.FloatTensor(gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution']), sigma = self.parameters['image_resolution']//10))
+            mask = torch.fft.fftshift(mask)
+            mask = mask - mask.min()
+            mask = mask / (mask.max() + EPS)
+            mask = (1-mask).unsqueeze(0).unsqueeze(0).to(self.device)
+
+            outp = self.ispace_model(predr*mask)
             
             # outp = outp - outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
             # outp = outp / (EPS + outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
             # targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
             # targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
             
-            loss = self.l1loss(outp, targ_vid)
+            if self.parameters['crop_loss']:
+                mask = gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution'])).reshape(1,1,self.parameters['image_resolution'],self.parameters['image_resolution'])
+            else:
+                mask = np.ones((1,1,self.parameters['image_resolution'],self.parameters['image_resolution']))
+            mask = torch.FloatTensor(mask).to(outp.device)
+            loss = self.l1loss(outp*mask, targ_vid*mask)
             loss.backward()
             self.ispace_optim.step()
 
@@ -338,8 +350,8 @@ class Trainer(nn.Module):
                 og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
 
                 batch, num_frames, chan, numr, numc = undersampled_fts.shape
-                inpt_mag_log = (og_coiled_fts.abs()+EPS).log10()
-                inpt_phase = og_coiled_fts / (10**inpt_mag_log)
+                inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])
+                inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
                 inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
                 self.kspace_model.eval()
                 predr, _, _, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
@@ -476,8 +488,8 @@ class Trainer(nn.Module):
 
                 batch, num_frames, num_coils, numr, numc = undersampled_fts.shape
                 
-                inpt_mag_log = (og_coiled_fts.abs()+EPS).log10()
-                inpt_phase = og_coiled_fts / (10**inpt_mag_log)
+                inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])
+                inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
                 inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
 
                 tot_vids_per_patient = (dset.num_vids_per_patient*dset.frames_per_vid_per_patient)
@@ -587,10 +599,10 @@ class Trainer(nn.Module):
                                         return
                                     
                                     targi = og_coiled_vids.cpu()[bi,f_num, c_num].squeeze().cpu().numpy()
-                                    orig_fti = (og_coiled_fts.cpu()[bi,f_num,c_num].abs()+1).log10()
-                                    mask_fti = (1+undersampled_fts.cpu()[bi,f_num,c_num].abs()).log10()
+                                    orig_fti = mylog((og_coiled_fts.cpu()[bi,f_num,c_num].abs()+1), base = self.parameters['logarithm_base'])
+                                    mask_fti = mylog((1+undersampled_fts.cpu()[bi,f_num,c_num].abs()), base = self.parameters['logarithm_base'])
                                     ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts.cpu()[bi,f_num,c_num], dim = (-2,-1))).abs().squeeze()
-                                    pred_fti = (pred_ft.cpu()[bi,f_num,c_num].abs()+1).log10()
+                                    pred_fti = mylog((pred_ft.cpu()[bi,f_num,c_num].abs()+1), base = self.parameters['logarithm_base'])
                                     predi = predr.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
 
                                     plt.subplot(num_coils,9,9*c_num+2)

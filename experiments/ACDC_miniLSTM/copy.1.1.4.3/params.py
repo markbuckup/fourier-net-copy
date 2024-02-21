@@ -14,6 +14,7 @@ parameters['end-to-end-supervision'] = False
 parameters['kspace_real_loss_only'] = False
 
 parameters['lstm_input_mask'] = True
+parameters['concat'] = True
 parameters['forget_gate_coupled'] = True
 parameters['forget_gate_same_coils'] = True
 parameters['forget_gate_same_phase_mag'] = True
