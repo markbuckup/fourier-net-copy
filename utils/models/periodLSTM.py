@@ -605,7 +605,6 @@ class convLSTM_Kspace1(nn.Module):
         mag_log = mylog((mag_log+torch.tensor(1e-4)).clip(1e-4, 1e20), base = self.param_dic['logarithm_base'])
         mag_log = mag_log + 4
 
-        phase = phase + 4 + CEPS
         del fft_exp
 
         if self.param_dic['scale_input_fft']:
@@ -685,7 +684,7 @@ class convLSTM_Kspace1(nn.Module):
                 # hist_mask = gt_masks.reshape(-1, *gt_masks.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *gt_masks.shape[3:])
 
             if self.param_dic['kspace_predict_mode'] == 'thetas':
-                hist_phase = torch.atan2(hist_phase[:,:,:,:,1],hist_phase[:,:,:,:,0])
+                hist_phase = torch.atan2(hist_phase[:,:,:,:,1],hist_phase[:,:,:,:,0]) + 4
             elif self.param_dic['kspace_predict_mode'] == 'cosine':
                 hist_phase = hist_phase[:,:,:,:,0]
             elif self.param_dic['kspace_predict_mode'] == 'unit-vector':
