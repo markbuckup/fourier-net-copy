@@ -242,10 +242,7 @@ class Trainer(nn.Module):
                 predr = predr[:,self.parameters['init_skip_frames']:]
 
             num_frames = num_frames - self.parameters['init_skip_frames']
-            if self.parameters['ispace_lstm']:
-                predr = predr.reshape(batch*num_frames,1,numr, numc).to(self.device)
-            else:
-                predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
+            predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
             targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
 
             mask = torch.FloatTensor(gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution']), sigma = self.parameters['image_resolution']//10))
@@ -367,10 +364,7 @@ class Trainer(nn.Module):
 
                 predr = predr.detach()[:,self.parameters['init_skip_frames']:]
                 num_frames = num_frames - self.parameters['init_skip_frames']
-                if  self.parameters['ispace_lstm']:
-                    predr = predr.reshape(batch*num_frames,1,numr, numc).to(self.device)
-                else:
-                    predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
+                predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
                 targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
 
                 self.ispace_model.eval()
@@ -501,10 +495,7 @@ class Trainer(nn.Module):
                 print('Predr nan',torch.isnan(predr).any())
                 predr[torch.isnan(predr)] = 0
 
-                if self.parameters['ispace_lstm']:
-                    predr = predr.reshape(batch*num_frames,1,numr, numc).to(self.device)
-                else:
-                    predr = predr.reshape(batch*num_frames,num_coils,numr, numc).to(self.device)
+                predr = predr.reshape(batch*num_frames,num_coils,numr, numc).to(self.device)
                 targ_vid = og_video[:num_vids].reshape(batch*num_frames,1, numr, numc).to(self.device)
                 ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
                 print('ispace_outp nan',torch.isnan(ispace_outp).any())
@@ -521,10 +512,6 @@ class Trainer(nn.Module):
                 # asdf
                 
 
-                if self.parameters['ispace_lstm']:
-                    predr = predr.reshape(batch,num_frames,1,numr,numc).repeat(1,1,num_coils,1,1)
-                else:
-                    predr = predr.reshape(batch,num_frames,num_coils,numr,numc)
                 pred_ft = torch.fft.fftshift(torch.fft.fft2(predr), dim = (-2,-1))
                 
                 tot = 0

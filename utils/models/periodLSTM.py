@@ -125,11 +125,12 @@ class concatConv(nn.Module):
 
 
 class convLSTMcell_kspace(nn.Module):
-    def __init__(self, history_length = 1, num_coils = 8, phase_tanh_mode = False, sigmoid_mode = True, phase_real_mode = False, phase_theta = False, linear_post_process = False, double_proc = False, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, lstm_input_mask = False, catmode = False, n_layers = 4):
+    def __init__(self, history_length = 1, num_coils = 8, phase_tanh_mode = False, sigmoid_mode = True, phase_real_mode = False, phase_theta = False, linear_post_process = False, double_proc = False, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, lstm_input_mask = False, catmode = False, n_layers = 4, n_hidden = 16):
         super(convLSTMcell_kspace, self).__init__()
         self.phase_tanh_mode = phase_tanh_mode
         self.double_proc = double_proc
         self.sigmoid_mode = sigmoid_mode
+        self.n_hidden = n_hidden
         self.history_length = history_length
         self.num_coils = num_coils
         self.catmode = catmode
@@ -167,7 +168,7 @@ class convLSTMcell_kspace(nn.Module):
         if self.lstm_input_mask:
             gate_input_size += 1
 
-        hidden_channels = 2*self.num_coils
+        hidden_channels = self.n_hidden
 
         if self.forget_gate_same_coils:
             forget_gate_output_size = 1
@@ -505,6 +506,7 @@ class convLSTM_Kspace1(nn.Module):
                     lstm_input_mask = self.param_dic['lstm_input_mask'],
                     catmode = self.param_dic['concat'],
                     n_layers = self.param_dic['n_layers'],
+                    n_hidden = self.param_dic['n_hidden'],
                 )
 
         if self.param_dic['ispace_lstm']:
@@ -513,7 +515,7 @@ class convLSTM_Kspace1(nn.Module):
                     sigmoid_mode = sigmoid_mode, 
                     real_mode = True, 
                     in_channels = self.n_coils, 
-                    out_channels = 1, 
+                    out_channels = self.n_coils, 
                     double_proc = self.param_dic['double_kspace_proc']
                 )
         self.SSIM = kornia.metrics.SSIM(11)
@@ -633,10 +635,7 @@ class convLSTM_Kspace1(nn.Module):
         dists = ((x_arr - cell[0])**2 + (y_arr - cell[1])**2)**0.33
         dists = torch.FloatTensor(dists+1).to(device)
         ans_phase = torch.zeros(phase.shape)
-        if self.param_dic['ispace_lstm']:
-            predr = torch.zeros(mag_log.shape[0],mag_log.shape[1], 1, mag_log.shape[3], mag_log.shape[4])
-        else:
-            predr = torch.zeros(mag_log.shape)
+        predr = torch.zeros(mag_log.shape)
 
         if targ_phase is not None:
             loss_phase = 0
@@ -785,7 +784,7 @@ class convLSTM_Kspace1(nn.Module):
                         # print(predr_ti.min(), predr_ti.max())
                         # print(self.lossmask.min(), self.lossmask.max())
                         # print('\n\n')
-                        loss_real += criterionL1(predr_ti*self.lossmask, targ_now*self.lossmask)/mag_log.shape[1]
+                        loss_real += criterionL1(prev_output3*self.lossmask, targ_now*self.lossmask)/mag_log.shape[1]
                         # loss_real += imag_sum
                 
                     with torch.no_grad():
@@ -980,7 +979,7 @@ class ImageSpaceModel1(nn.Module):
         self.image_space_real = self.param_dic['image_space_real']
         self.num_coils = self.param_dic['num_coils']
         if self.param_dic['ispace_lstm']:
-            self.input_size = 1
+            self.input_size = self.num_coils
         else:
             self.input_size = self.num_coils
         if self.image_space_real:
