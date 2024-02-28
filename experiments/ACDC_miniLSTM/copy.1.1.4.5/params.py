@@ -36,7 +36,6 @@ parameters['init_skip_frames'] = 10
 parameters['SHM_looping'] = False
 parameters['FT_radial_sampling'] = 10
 parameters['num_coils'] = 8
-parameters['scale_input_fft'] = False
 parameters['dataloader_num_workers'] = 2
 parameters['optimizer'] = 'Adam'
 parameters['scheduler'] = 'CyclicLR'
