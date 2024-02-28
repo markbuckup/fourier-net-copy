@@ -245,13 +245,14 @@ class Trainer(nn.Module):
             predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
             targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
 
-            mask = torch.FloatTensor(gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution']), sigma = self.parameters['image_resolution']//10))
-            mask = torch.fft.fftshift(mask)
-            mask = mask - mask.min()
-            mask = mask / (mask.max() + EPS)
-            mask = (1-mask).unsqueeze(0).unsqueeze(0).to(self.device)
+            # mask = torch.FloatTensor(gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution']), sigma = self.parameters['image_resolution']//10))
+            # mask = torch.fft.fftshift(mask)
+            # mask = mask - mask.min()
+            # mask = mask / (mask.max() + EPS)
+            # mask = (1-mask).unsqueeze(0).unsqueeze(0).to(self.device)
 
-            outp = self.ispace_model(predr*mask)
+            # outp = self.ispace_model(predr*mask)
+            outp = self.ispace_model(predr)
             
             # outp = outp - outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
             # outp = outp / (EPS + outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())

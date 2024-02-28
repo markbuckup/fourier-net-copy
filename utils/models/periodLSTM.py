@@ -522,9 +522,19 @@ class convLSTM_Kspace1(nn.Module):
 
         if self.param_dic['crop_loss']:
             mask = gaussian_2d((self.param_dic['image_resolution'],self.param_dic['image_resolution'])).reshape(1,1,self.param_dic['image_resolution'],self.param_dic['image_resolution'])
+
         else:
             mask = np.ones((1,1,self.param_dic['image_resolution'],self.param_dic['image_resolution']))
+
         self.lossmask = torch.FloatTensor(mask).to(proc_device)
+
+        mask = torch.FloatTensor(gaussian_2d((self.param_dic['image_resolution'],self.param_dic['image_resolution']), sigma = self.param_dic['image_resolution']//10))
+        mask = torch.fft.fftshift(mask)
+        mask = mask - mask.min()
+        mask = mask / (mask.max() + EPS)
+        mask = (1-mask).unsqueeze(0).unsqueeze(0).unsqueeze(0)
+        self.predr_mask = torch.FloatTensor(mask)
+
         assert(sigmoid_mode)
 
     def time_analysis(self, fft_exp, device, periods, ispace_model):
@@ -806,6 +816,8 @@ class convLSTM_Kspace1(nn.Module):
                 predr[:,ti,:,:] = prev_output3.detach()
             else:
                 predr[:,ti,:,:] = predr_ti.detach()
+
+        predr = predr * self.predr_mask
 
         return predr, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, loss_ss1)
 
