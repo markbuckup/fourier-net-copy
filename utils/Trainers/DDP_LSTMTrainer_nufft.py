@@ -234,70 +234,75 @@ class Trainer(nn.Module):
             avgkspace_l1_loss += float(loss_l1.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
             avgkspace_l2_loss += float(loss_l2.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
 
+            ##############################################################################
+            #ISPACE CODE - also check scheduler
+            ##############################################################################
 
-            self.ispace_optim.zero_grad(set_to_none=True)
-            if not self.parameters['end-to-end-supervision']:
-                predr = predr.detach()[:,self.parameters['init_skip_frames']:]
-            else:
-                predr = predr[:,self.parameters['init_skip_frames']:]
+            # self.ispace_optim.zero_grad(set_to_none=True)
+            # if not self.parameters['end-to-end-supervision']:
+            #     predr = predr.detach()[:,self.parameters['init_skip_frames']:]
+            # else:
+            #     predr = predr[:,self.parameters['init_skip_frames']:]
 
-            num_frames = num_frames - self.parameters['init_skip_frames']
-            predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
-            targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
+            # num_frames = num_frames - self.parameters['init_skip_frames']
+            # predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
+            # targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
 
-            # mask = torch.FloatTensor(gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution']), sigma = self.parameters['image_resolution']//10))
-            # mask = torch.fft.fftshift(mask)
-            # mask = mask - mask.min()
-            # mask = mask / (mask.max() + EPS)
-            # mask = (1-mask).unsqueeze(0).unsqueeze(0).to(self.device)
+            # # mask = torch.FloatTensor(gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution']), sigma = self.parameters['image_resolution']//10))
+            # # mask = torch.fft.fftshift(mask)
+            # # mask = mask - mask.min()
+            # # mask = mask / (mask.max() + EPS)
+            # # mask = (1-mask).unsqueeze(0).unsqueeze(0).to(self.device)
 
-            # outp = self.ispace_model(predr*mask)
-            outp = self.ispace_model(predr)
+            # # outp = self.ispace_model(predr*mask)
+            # outp = self.ispace_model(predr)
             
-            # outp = outp - outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-            # outp = outp / (EPS + outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
-            # targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-            # targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+            # # outp = outp - outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+            # # outp = outp / (EPS + outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+            # # targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+            # # targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
             
-            if self.parameters['crop_loss']:
-                mask = gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution'])).reshape(1,1,self.parameters['image_resolution'],self.parameters['image_resolution'])
-            else:
-                mask = np.ones((1,1,self.parameters['image_resolution'],self.parameters['image_resolution']))
-            mask = torch.FloatTensor(mask).to(outp.device)
-            loss = self.l1loss(outp*mask, targ_vid*mask)
-            loss.backward()
-            self.ispace_optim.step()
+            # if self.parameters['crop_loss']:
+            #     mask = gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution'])).reshape(1,1,self.parameters['image_resolution'],self.parameters['image_resolution'])
+            # else:
+            #     mask = np.ones((1,1,self.parameters['image_resolution'],self.parameters['image_resolution']))
+            # mask = torch.FloatTensor(mask).to(outp.device)
+            # loss = self.l1loss(outp*mask, targ_vid*mask)
+            # loss.backward()
+            # self.ispace_optim.step()
 
-            if self.parameters['end-to-end-supervision']:
-                self.kspace_optim.step()
+            # if self.parameters['end-to-end-supervision']:
+            #     self.kspace_optim.step()
 
 
-            loss_l1 = (outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]).abs().mean(1).sum().detach().cpu()
-            loss_l2 = (((outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]) ** 2).mean(1).sum()).detach().cpu()
-            # ss1 = self.SSIM(targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
-            ss1 = self.SSIM(outp.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
-            ss1 = ss1.reshape(ss1.shape[0],-1)
-            loss_ss1 = ss1.mean(1).sum().detach().cpu()
-            avgispacelossreal += float(loss.cpu().item()/(len(self.trainloader)))
-            ispacessim_score += float(loss_ss1.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
-            avgispace_l1_loss += float(loss_l1.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
-            avgispace_l2_loss += float(loss_l2.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
+            # loss_l1 = (outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]).abs().mean(1).sum().detach().cpu()
+            # loss_l2 = (((outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]) ** 2).mean(1).sum()).detach().cpu()
+            # # ss1 = self.SSIM(targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
+            # ss1 = self.SSIM(outp.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
+            # ss1 = ss1.reshape(ss1.shape[0],-1)
+            # loss_ss1 = ss1.mean(1).sum().detach().cpu()
+            # avgispacelossreal += float(loss.cpu().item()/(len(self.trainloader)))
+            # ispacessim_score += float(loss_ss1.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
+            # avgispace_l1_loss += float(loss_l1.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
+            # avgispace_l2_loss += float(loss_l2.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
+
+            ##############################################################################
 
             if self.parameters['scheduler'] == 'CyclicLR':
                 if self.parameters['kspace_architecture'] == 'KLSTM1':
                     if self.kspace_scheduler is not None:
                         self.kspace_scheduler.step()
 
-                if self.ispace_scheduler is not None:
-                    self.ispace_scheduler.step()
+                # if self.ispace_scheduler is not None:
+                #     self.ispace_scheduler.step()
         
         if not self.parameters['scheduler'] == 'CyclicLR':
             if self.parameters['kspace_architecture'] == 'KLSTM1':
                 if self.kspace_scheduler is not None:
                     self.kspace_scheduler.step()
 
-            if self.ispace_scheduler is not None:
-                self.ispace_scheduler.step()
+            # if self.ispace_scheduler is not None:
+            #     self.ispace_scheduler.step()
         # if print_loss:
         #     print('Train Mag Loss for Epoch {} = {}' .format(epoch, avglossmag), flush = True)
         #     print('Train Phase Loss for Epoch {} = {}' .format(epoch, avglossphase), flush = True)
