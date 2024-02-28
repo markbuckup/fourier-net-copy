@@ -512,6 +512,7 @@ class Trainer(nn.Module):
                 # asdf
                 
 
+                predr = predr.reshape(batch,num_frames,num_coils,numr, numc).to(self.device)
                 pred_ft = torch.fft.fftshift(torch.fft.fft2(predr), dim = (-2,-1))
                 
                 tot = 0
