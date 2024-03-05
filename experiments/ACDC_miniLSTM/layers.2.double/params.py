@@ -1,8 +1,8 @@
 parameters = {}
 parameters['save_folder'] = '/Data/ContijochLab/projects/cineMRIRecon'
 parameters['image_resolution'] = 256
-parameters['train_batch_size'] = 6
-parameters['test_batch_size'] = 6
+parameters['train_batch_size'] = 4
+parameters['test_batch_size'] = 4
 parameters['lr_kspace'] = 1e-5
 parameters['lr_ispace'] = 1e-5
 parameters['num_epochs_ispace'] = 10000
