@@ -200,6 +200,8 @@ class convLSTMcell_kspace(nn.Module):
 
         new_mag_outputs = [hist_mag]
         new_phase_outputs = [hist_phase]
+        new_mag_states = []
+        new_phase_states = []
         for i_cell in range(self.n_lstm_cells):
             if self.lstm_input_mask:
                 mag_inp_cat = torch.cat((new_mag_outputs[i_cell], mag_prev_outputs[i_cell], ((gt_mask*2.)-1.).type(torch.float)), 1)
@@ -240,13 +242,13 @@ class convLSTMcell_kspace(nn.Module):
             phase_Cthat = self.phase_activation(self.phase_inputProcs[i_cell](phase_inp_cat))
 
 
-            mag_Ct_new = (mag_ft * mag_prev_states[i_cell]) + (mag_it * mag_Cthat)
-            phase_Ct_new = (phase_ft * phase_prev_states[i_cell]) + (phase_it * phase_Cthat)
+            new_mag_states.append((mag_ft * mag_prev_states[i_cell]) + (mag_it * mag_Cthat))
+            new_phase_states.append((phase_ft * phase_prev_states[i_cell]) + (phase_it * phase_Cthat))
 
-            new_mag_outputs.append(mag_Ct_new*mag_ot)
-            new_phase_outputs.append(self.phase_activation(phase_Ct_new)*phase_ot)
+            new_mag_outputs.append(new_mag_states[i_cell]*mag_ot)
+            new_phase_outputs.append(self.phase_activation(new_phase_states[i_cell])*phase_ot)
 
-        return mag_Ct_new, phase_Ct_new, new_mag_outputs[1:], new_phase_outputs[1:]
+        return new_mag_states, new_phase_states, new_mag_outputs[1:], new_phase_outputs[1:]
 
 class convLSTMcell(nn.Module):
     def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, sigmoid_mode = True, real_mode = False, theta = False, mini = False):

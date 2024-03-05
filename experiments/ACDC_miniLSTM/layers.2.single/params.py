@@ -15,7 +15,7 @@ parameters['kspace_real_loss_only'] = False
 
 parameters['lstm_input_mask'] = True
 parameters['concat'] = True
-parameters['n_layers'] = 1
+parameters['n_layers'] = 2
 parameters['n_hidden'] = 16
 parameters['n_lstm_cells'] = 1
 parameters['forget_gate_coupled'] = True

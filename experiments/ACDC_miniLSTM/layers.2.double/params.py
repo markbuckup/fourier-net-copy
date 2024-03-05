@@ -1,8 +1,8 @@
 parameters = {}
 parameters['save_folder'] = '/Data/ContijochLab/projects/cineMRIRecon'
 parameters['image_resolution'] = 256
-parameters['train_batch_size'] = 10
-parameters['test_batch_size'] = 10
+parameters['train_batch_size'] = 6
+parameters['test_batch_size'] = 6
 parameters['lr_kspace'] = 1e-5
 parameters['lr_ispace'] = 1e-5
 parameters['num_epochs_ispace'] = 10000
@@ -15,9 +15,9 @@ parameters['kspace_real_loss_only'] = False
 
 parameters['lstm_input_mask'] = True
 parameters['concat'] = True
-parameters['n_layers'] = 1
+parameters['n_layers'] = 2
 parameters['n_hidden'] = 16
-parameters['n_lstm_cells'] = 1
+parameters['n_lstm_cells'] = 2
 parameters['forget_gate_coupled'] = True
 parameters['forget_gate_same_coils'] = True
 parameters['forget_gate_same_phase_mag'] = True
