@@ -48,13 +48,29 @@ def myimshow(x, cmap = 'gray', trim = False):
     plt.axis('off')
     plt.imshow(x, cmap = cmap)
 
-def special_trim(x):
-    percentile_95 = np.percentile(x.detach().cpu(), 95)
-    percentile_5 = np.percentile(x.detach().cpu(), 5)
-    x = x.clip(percentile_5, percentile_95)
-    x = x - x.min().detach()
-    x = x/ (x.max().detach() + EPS)
-    return x
+def torch_trim(x):
+    B,C,row,col = x.shape
+    
+    with torch.no_grad():
+        x = x.reshape(B,C,row*col)
+        x = x - x.min(2, keepdim = True)[0]
+        x = x / (x.max(2, keepdim = True)[0] + 1e-10)
+
+        percentile_95 = torch.quantile(x, .95, dim = 2, keepdim = True)
+        percentile_5 = torch.quantile(x, .05, dim = 2, keepdim = True)
+
+        x = x - percentile_5
+        x[x<0] = 0
+        x = x + percentile_5
+
+        x = x - percentile_95
+        x[x>0] = 0
+        x = x + percentile_95
+
+        x = x - x.min(2, keepdim = True)[0]
+        x = x / (x.max(2, keepdim = True)[0] + 1e-10)
+
+        return x.reshape(B,C,row,col)
 
 def show_difference_image(im1, im2):
     # im1 = (im1 - im1.min())
@@ -253,7 +269,7 @@ class Trainer(nn.Module):
                     predr = predr[:,self.parameters['init_skip_frames']:]
 
                 num_frames = num_frames - self.parameters['init_skip_frames']
-                predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
+                predr = torch_trim(predr.reshape(batch*num_frames,chan,numr, numc).to(self.device))
                 targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
 
                 # mask = torch.FloatTensor(gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution']), sigma = self.parameters['image_resolution']//10))
@@ -263,19 +279,39 @@ class Trainer(nn.Module):
                 # mask = (1-mask).unsqueeze(0).unsqueeze(0).to(self.device)
 
                 # outp = self.ispace_model(predr*mask)
-                outp = self.ispace_model(predr)
-                
-                # outp = outp - outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                # outp = outp / (EPS + outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
-                # targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                # targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
-                
-                if self.parameters['crop_loss']:
+                predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                outp = self.ispace_model(predr.detach())
+
+                targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+
+                #####################################################################################################################################################
+                #####################################################################################################################################################
+                #####################################################################################################################################################
+                #####################################################################################################################################################
+                #####################################################################################################################################################
+                #####################################################################################################################################################
+                #####################################################################################################################################################
+                #####################################################################################################################################################
+                # no crop loss
+                #####################################################################################################################################################
+                #####################################################################################################################################################
+                #####################################################################################################################################################
+                #####################################################################################################################################################
+                #####################################################################################################################################################
+                #####################################################################################################################################################
+                if self.parameters['crop_loss'] and 0:
                     mask = gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution'])).reshape(1,1,self.parameters['image_resolution'],self.parameters['image_resolution'])
                 else:
                     mask = np.ones((1,1,self.parameters['image_resolution'],self.parameters['image_resolution']))
                 mask = torch.FloatTensor(mask).to(outp.device)
-                loss = self.l1loss(outp*mask, targ_vid*mask)
+                loss = self.l1loss(outp, targ_vid)
+
+                # ss1 = self.SSIM(outp.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
+                # ss1 = ss1.reshape(ss1.shape[0],-1)
+                # loss = ss1.mean(1).sum()
+
                 loss.backward()
                 self.ispace_optim.step()
 
@@ -301,8 +337,8 @@ class Trainer(nn.Module):
                     if self.kspace_scheduler is not None:
                         self.kspace_scheduler.step()
 
-                # if self.ispace_scheduler is not None:
-                #     self.ispace_scheduler.step()
+                if self.ispace_scheduler is not None and self.args.train_ispace:
+                    self.ispace_scheduler.step()
         
         if not self.parameters['scheduler'] == 'CyclicLR':
             if self.parameters['kspace_architecture'] == 'KLSTM1':
@@ -395,8 +431,11 @@ class Trainer(nn.Module):
                     predr = predr.reshape(batch*num_frames,ans_coils,numr, numc).to(self.device)
                     targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
 
+                    predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                    predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+
                     self.ispace_model.eval()
-                    outp = self.ispace_model(predr)
+                    outp = self.ispace_model(predr.detach())
                     outp = outp - outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                     outp = outp / (EPS + outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
                     targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
@@ -541,8 +580,9 @@ class Trainer(nn.Module):
                     ans_coils = self.parameters['num_coils']
                 predr = predr.reshape(batch*num_frames,ans_coils,numr, numc).to(self.device)
                 targ_vid = og_video[:num_vids].reshape(batch*num_frames,1, numr, numc).to(self.device)
+                predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
                 ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
-                print('ispace_outp nan',torch.isnan(ispace_outp).any())
                 
                 # # B, 1, 120, X, Y - B, 120, 1, X, Y
                 # B,F,R,C = ispace_outp.shape
@@ -583,6 +623,7 @@ class Trainer(nn.Module):
                             # print(f_num, 2)
                             
                             plt.subplot(1,3,3)
+                            print(ispace_outpi.min(), ispace_outpi.max())
                             diffvals = show_difference_image(ispace_outpi, og_vidi)
                             plt.title('Difference Frame')
                             # print(f_num, 3)

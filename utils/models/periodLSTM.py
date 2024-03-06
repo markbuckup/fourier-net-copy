@@ -930,6 +930,7 @@ class ImageSpaceModel1(nn.Module):
                     nn.ReLU(),
                     nn.BatchNorm2d(32),
                     nn.Conv2d(32, 1, (3,3), stride = (1,1), padding = (1,1)),
+                    nn.ReLU()
                 )
         # else:
             # self.block1 = nn.Sequential(
