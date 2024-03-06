@@ -194,16 +194,22 @@ class Trainer(nn.Module):
         for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in tqdm_object:
         # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
             undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1))
-            og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
-            og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
-
             self.kspace_optim.zero_grad(set_to_none=True)
 
-            
             batch, num_frames, chan, numr, numc = undersampled_fts.shape
-            inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])
-            inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
-            inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
+            if self.parameters['kspace_combine_coils']:
+                og_coiled_vids = og_video.to(self.device)
+                og_fts = torch.fft.fftshift(torch.fft.fft2(og_video.to(self.device)), dim = (-2,-1))
+                inpt_mag_log = mylog((og_fts.abs()+EPS), base = self.parameters['logarithm_base'])
+                inpt_phase = og_fts / (self.parameters['logarithm_base']**inpt_mag_log)
+                inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
+            else:
+                og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
+                og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
+                inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])
+                inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
+                inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
+            
             self.kspace_model.train()
             predr, _, _, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
             del masks
@@ -349,13 +355,22 @@ class Trainer(nn.Module):
             for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in tqdm_object:
             # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
                 undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1))
-                og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
-                og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
 
                 batch, num_frames, chan, numr, numc = undersampled_fts.shape
-                inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])
-                inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
-                inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
+                if self.parameters['kspace_combine_coils']:
+                    og_coiled_vids = og_video.to(self.device)
+                    og_fts = torch.fft.fftshift(torch.fft.fft2(og_video.to(self.device)), dim = (-2,-1))
+                    inpt_mag_log = mylog((og_fts.abs()+EPS), base = self.parameters['logarithm_base'])
+                    inpt_phase = og_fts / (self.parameters['logarithm_base']**inpt_mag_log)
+                    inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
+                else:
+                    og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
+                    og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
+                    inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])
+                    inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
+                    inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
+
+
                 self.kspace_model.eval()
                 predr, _, _, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
 
@@ -368,14 +383,18 @@ class Trainer(nn.Module):
                 avgkspace_l2_loss += float(loss_l2.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
 
 
-                predr = predr.detach()[:,self.parameters['init_skip_frames']:]
-                num_frames = num_frames - self.parameters['init_skip_frames']
-                predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
-                targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
-
                 ##################################################################################################
                 # ISPACE Pred
                 ##################################################################################################
+
+                # predr = predr.detach()[:,self.parameters['init_skip_frames']:]
+                # num_frames = num_frames - self.parameters['init_skip_frames']
+                # if self.parameters['kspace_combine_coils']:
+                #     ans_coils = 1
+                # else:
+                #     ans_coils = self.parameters['num_coils']
+                # predr = predr.reshape(batch*num_frames,ans_coils,numr, numc).to(self.device)
+                # targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
 
                 # self.ispace_model.eval()
                 # outp = self.ispace_model(predr)
@@ -488,17 +507,26 @@ class Trainer(nn.Module):
             for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in enumerate(dloader):
             # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
                 undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1))
-                og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
-                og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
+                
+                batch, num_frames, chan, numr, numc = undersampled_fts.shape
+                if self.parameters['kspace_combine_coils']:
+                    og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
+                    og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids.to(self.device)), dim = (-2,-1))
+                    inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])
+                    inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
+                    inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
+                else:
+                    og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
+                    og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
+                    inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])
+                    inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
+                    inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
+
                 self.kspace_model.eval()
                 self.ispace_model.eval()
 
                 batch, num_frames, num_coils, numr, numc = undersampled_fts.shape
                 
-                inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])
-                inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
-                inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
-
                 tot_vids_per_patient = (dset.num_vids_per_patient*dset.frames_per_vid_per_patient)
                 num_vids = 1
                 batch = num_vids
@@ -508,7 +536,11 @@ class Trainer(nn.Module):
                 print('Predr nan',torch.isnan(predr).any())
                 predr[torch.isnan(predr)] = 0
 
-                predr = predr.reshape(batch*num_frames,num_coils,numr, numc).to(self.device)
+                if self.parameters['kspace_combine_coils']:
+                    ans_coils = 1
+                else:
+                    ans_coils = self.parameters['num_coils']
+                predr = predr.reshape(batch*num_frames,ans_coils,numr, numc).to(self.device)
                 targ_vid = og_video[:num_vids].reshape(batch*num_frames,1, numr, numc).to(self.device)
                 ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
                 print('ispace_outp nan',torch.isnan(ispace_outp).any())
@@ -525,7 +557,7 @@ class Trainer(nn.Module):
                 # asdf
                 
 
-                predr = predr.reshape(batch,num_frames,num_coils,numr, numc).to(self.device)
+                predr = predr.reshape(batch,num_frames,ans_coils,numr, numc).to(self.device)
                 pred_ft = torch.fft.fftshift(torch.fft.fft2(predr), dim = (-2,-1))
                 
                 tot = 0
@@ -561,7 +593,10 @@ class Trainer(nn.Module):
                             # plt.ylabel('Pixel Count')
                             # plt.xlabel('Difference Value')
                             # print(f_num, 4)
-
+                            if self.parameters['kspace_combine_coils']:
+                                kspace_out_size = 1
+                            else:
+                                kspace_out_size = self.parameters['num_coils']
                             spec = ''
                             if f_num < self.parameters['init_skip_frames']:
                                 spec = 'Loss Skipped'
@@ -570,32 +605,27 @@ class Trainer(nn.Module):
                             plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/io_location_{}.jpg'.format(p_num, f_num, v_num)))
 
                             if not self.args.ispace_visual_only:
-                                fig = plt.figure(figsize = (36,4*num_coils-2))
+                                fig = plt.figure(figsize = (22,4*kspace_out_size))
                                 
-                                plt.subplot(num_coils,9,(((num_coils//2)-1)*9)+1)
-                                myimshow(og_vidi, cmap = 'gray')
-                                plt.title('Input Video')
+                                # plt.subplot(kspace_out_size,7,(((kspace_out_size//2))*7)+1)
+                                # myimshow(og_vidi, cmap = 'gray')
+                                # plt.title('Input Video')
                                 # print(f_num, 1)
-                                
 
-                                plt.subplot(num_coils,9,(((num_coils//2))*9))
-                                myimshow(ispace_outpi, cmap = 'gray')
-                                plt.title('Ispace Prediction')
-                                # print(f_num, 2)
                                 
-                                plt.subplot(num_coils,9,(((num_coils//2)+1)*9))
-                                diffvals = show_difference_image(ispace_outpi, og_vidi.numpy())
-                                plt.title('Difference Frame')
+                                # plt.subplot(kspace_out_size,7,(((kspace_out_size//2)+1)*7))
+                                # diffvals = show_difference_image(ispace_outpi, og_vidi.numpy())
+                                # plt.title('Difference Frame')
                                 # print(f_num, 3)
 
-                                # plt.subplot(8,8,(((num_coils//2)+2)*8))
+                                # plt.subplot(8,8,(((kspace_out_size//2)+2)*8))
                                 # plt.hist(diffvals, range = [0,0.25], density = False, bins = 30)
                                 # plt.ylabel('Pixel Count')
                                 # plt.xlabel('Difference Value')
                                 # print(f_num, 4)
 
                                 num_plots -= 1
-                                for c_num in range(num_coils):
+                                for c_num in range(kspace_out_size):
                                     if num_plots == 0:
                                         return
                                     
@@ -606,43 +636,43 @@ class Trainer(nn.Module):
                                     pred_fti = mylog((pred_ft.cpu()[bi,f_num,c_num].abs()+1), base = self.parameters['logarithm_base'])
                                     predi = predr.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
 
-                                    plt.subplot(num_coils,9,9*c_num+2)
+                                    plt.subplot(kspace_out_size,7,7*c_num+1)
                                     myimshow(targi, cmap = 'gray')
                                     if c_num == 0:
                                         plt.title('Coiled Input')
                                     # print(c_num,1)
                                     
-                                    plt.subplot(num_coils,9,9*c_num+3)
+                                    plt.subplot(kspace_out_size,7,7*c_num+2)
                                     myimshow((orig_fti).squeeze(), cmap = 'gray')
                                     if c_num == 0:
                                         plt.title('FT of Coiled Input')
                                     # print(c_num,2)
                                     
-                                    plt.subplot(num_coils,9,9*c_num+4)
+                                    plt.subplot(kspace_out_size,7,7*c_num+3)
                                     myimshow(mask_fti, cmap = 'gray')
                                     if c_num == 0:
                                         plt.title('Undersampled FT')
                                     # print(c_num,3)
                                     
-                                    plt.subplot(num_coils,9,9*c_num+5)
-                                    myimshow(ifft_of_undersamp, cmap = 'gray')
-                                    if c_num == 0:
-                                        plt.title('IFFT of Undersampled FT')
-                                    # print(c_num,4)
+                                    # plt.subplot(kspace_out_size,7,7*c_num+5)
+                                    # myimshow(ifft_of_undersamp, cmap = 'gray')
+                                    # if c_num == 0:
+                                    #     plt.title('IFFT of Undersampled FT')
+                                    # # print(c_num,4)
                                     
-                                    plt.subplot(num_coils,9,9*c_num+6)
+                                    plt.subplot(kspace_out_size,7,7*c_num+4)
                                     myimshow(pred_fti, cmap = 'gray')
                                     if c_num == 0:
                                         plt.title('FT predicted by Kspace Model')
                                     # print(c_num,5)
                                     
-                                    plt.subplot(num_coils,9,9*c_num+7)
+                                    plt.subplot(kspace_out_size,7,7*c_num+5)
                                     myimshow(predi, cmap = 'gray')
                                     if c_num == 0:
                                         plt.title('IFFT of Kspace Prediction')
                                     # print(c_num,6)
                                     
-                                    plt.subplot(num_coils,9,9*c_num+8)
+                                    plt.subplot(kspace_out_size,7,7*c_num+6)
                                     diffvals = show_difference_image(predi, targi)
                                     if c_num == 0:
                                         plt.title('Difference Image')

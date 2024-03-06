@@ -125,7 +125,7 @@ class concatConv(nn.Module):
 
 
 class convLSTMcell_kspace(nn.Module):
-    def __init__(self, history_length = 1, num_coils = 8, phase_tanh_mode = False, sigmoid_mode = True, phase_real_mode = False, phase_theta = False, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, lstm_input_mask = False, catmode = False, n_layers = 4, n_hidden = 16, n_lstm_cells = 1):
+    def __init__(self, history_length = 1, num_coils = 8, phase_tanh_mode = False, sigmoid_mode = True, phase_real_mode = False, phase_theta = False, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, lstm_input_mask = False, catmode = False, n_layers = 4, n_hidden = 16, n_lstm_cells = 1, coilwise = False, kspace_combine_coils = False):
         super(convLSTMcell_kspace, self).__init__()
         self.phase_tanh_mode = phase_tanh_mode
         self.n_lstm_cells = n_lstm_cells
@@ -134,6 +134,8 @@ class convLSTMcell_kspace(nn.Module):
         self.history_length = history_length
         self.num_coils = num_coils
         self.catmode = catmode
+        self.kspace_combine_coils = kspace_combine_coils
+        self.coilwise = coilwise
         self.phase_real_mode = phase_real_mode
         self.phase_theta = phase_theta
         self.forget_gate_coupled = forget_gate_coupled
@@ -162,8 +164,17 @@ class convLSTMcell_kspace(nn.Module):
             else:
                 self.phase_activation = lambda x: x
 
-        input_gate_output_size = self.num_coils
-        gate_input_size = input_gate_output_size + ((1 + self.history_length)*self.num_coils)
+        if self.kspace_combine_coils:
+            self.input_gate_output_size = 1
+        else:
+            self.input_gate_output_size = self.num_coils
+
+        if self.coilwise:
+            gate_input_size = 1 + ((1 + self.history_length))
+            self.input_gate_output_size = 1
+        else:
+            gate_input_size = self.input_gate_output_size + ((1 + self.history_length)*self.num_coils)
+
         if self.lstm_input_mask:
             gate_input_size += 1
 
@@ -172,7 +183,10 @@ class convLSTMcell_kspace(nn.Module):
         if self.forget_gate_same_coils:
             forget_gate_output_size = 1
         else:
-            forget_gate_output_size = self.num_coils
+            if self.kspace_combine_coils:
+                forget_gate_output_size = 1
+            else:
+                forget_gate_output_size = self.num_coils
 
         self.mag_inputGates = nn.ModuleList([concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode) for i in range(self.n_lstm_cells)])
         if not self.forget_gate_same_phase_mag:
@@ -190,13 +204,30 @@ class convLSTMcell_kspace(nn.Module):
 
     def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_states = None, mag_prev_outputs = None, phase_prev_states = None, phase_prev_outputs = None):
         # x is a batch of video frames at a single time stamp
+
         if mag_prev_states is None:
-            mag_shape1 = (hist_mag.shape[0], self.num_coils, *hist_mag.shape[2:])
-            phase_shape1 = (hist_phase.shape[0], self.num_coils, *hist_phase.shape[2:])
+            if self.coilwise:
+                mag_shape1 = (hist_mag.shape[0], self.num_coils, *hist_mag.shape[2:])
+                phase_shape1 = (hist_phase.shape[0], self.num_coils, *hist_phase.shape[2:])
+            else:
+                mag_shape1 = (hist_mag.shape[0], self.input_gate_output_size, *hist_mag.shape[2:])
+                phase_shape1 = (hist_phase.shape[0], self.input_gate_output_size, *hist_phase.shape[2:])
             mag_prev_states = [torch.zeros(mag_shape1, device = hist_mag.device) for _ in range(self.n_lstm_cells)]
             mag_prev_outputs = [torch.zeros(mag_shape1, device = hist_mag.device) for _ in range(self.n_lstm_cells)]
             phase_prev_states = [torch.zeros(phase_shape1, device = hist_phase.device) for _ in range(self.n_lstm_cells)]
             phase_prev_outputs = [torch.zeros(phase_shape1, device = hist_phase.device) for _ in range(self.n_lstm_cells)]
+
+
+        og_B, og_C, _,_ = hist_mag.shape
+        if self.coilwise:
+            hist_mag = hist_mag.reshape(og_B*og_C, 1, *hist_mag.shape[2:])
+            hist_phase = hist_phase.reshape(og_B*og_C, 1, *hist_phase.shape[2:])
+            gt_mask = gt_mask.repeat((1, self.num_coils,1,1)).reshape(og_B*og_C, 1, *hist_phase.shape[2:])
+            for i_cell in range(self.n_lstm_cells):
+                mag_prev_states[i_cell] = mag_prev_states[i_cell].reshape(og_B*og_C, 1, *mag_prev_states[i_cell].shape[2:])
+                phase_prev_states[i_cell] = phase_prev_states[i_cell].reshape(og_B*og_C, 1, *phase_prev_states[i_cell].shape[2:])
+                mag_prev_outputs[i_cell] = mag_prev_outputs[i_cell].reshape(og_B*og_C, 1, *mag_prev_outputs[i_cell].shape[2:])
+                phase_prev_outputs[i_cell] = phase_prev_outputs[i_cell].reshape(og_B*og_C, 1, *phase_prev_outputs[i_cell].shape[2:])
 
         new_mag_outputs = [hist_mag]
         new_phase_outputs = [hist_phase]
@@ -211,7 +242,6 @@ class convLSTMcell_kspace(nn.Module):
                 phase_inp_cat = torch.cat((new_phase_outputs[i_cell], phase_prev_outputs[i_cell]), 1)
 
             assert(self.sigmoid_mode)
-
             mag_it = torch.sigmoid(self.mag_inputGates[i_cell](mag_inp_cat))
             if not self.forget_gate_same_phase_mag:
                 phase_it = torch.sigmoid(self.phase_inputGates[i_cell](phase_inp_cat))
@@ -233,10 +263,10 @@ class convLSTMcell_kspace(nn.Module):
                 phase_ot = torch.ones_like(phase_ft, device = phase_ft.device)
 
             if self.forget_gate_same_coils:
-                mag_ft = mag_ft.repeat(1,self.num_coils,1,1)
-                phase_ft = phase_ft.repeat(1,self.num_coils,1,1)
-                mag_it = mag_it.repeat(1,self.num_coils,1,1)
-                phase_it = phase_it.repeat(1,self.num_coils,1,1)
+                mag_ft = mag_ft.repeat(1,self.input_gate_output_size,1,1)
+                phase_ft = phase_ft.repeat(1,self.input_gate_output_size,1,1)
+                mag_it = mag_it.repeat(1,self.input_gate_output_size,1,1)
+                phase_it = phase_it.repeat(1,self.input_gate_output_size,1,1)
 
             mag_Cthat = self.mag_inputProcs[i_cell](mag_inp_cat)
             phase_Cthat = self.phase_activation(self.phase_inputProcs[i_cell](phase_inp_cat))
@@ -247,6 +277,14 @@ class convLSTMcell_kspace(nn.Module):
 
             new_mag_outputs.append(new_mag_states[i_cell]*mag_ot)
             new_phase_outputs.append(self.phase_activation(new_phase_states[i_cell])*phase_ot)
+
+
+        if self.coilwise:
+            for i_cell in range(self.n_lstm_cells):
+                new_mag_states[i_cell] = new_mag_states[i_cell].reshape(og_B,og_C,*new_mag_states[i_cell].shape[2:])
+                new_phase_states[i_cell] = new_phase_states[i_cell].reshape(og_B,og_C,*new_phase_states[i_cell].shape[2:])
+                new_mag_outputs[i_cell+1] = new_mag_outputs[i_cell+1].reshape(og_B,og_C,*new_mag_outputs[i_cell+1].shape[2:])
+                new_phase_outputs[i_cell+1] = new_phase_outputs[i_cell+1].reshape(og_B,og_C,*new_phase_outputs[i_cell+1].shape[2:])
 
         return new_mag_states, new_phase_states, new_mag_outputs[1:], new_phase_outputs[1:]
 
@@ -416,6 +454,8 @@ class convLSTM_Kspace1(nn.Module):
                     n_layers = self.param_dic['n_layers'],
                     n_hidden = self.param_dic['n_hidden'],
                     n_lstm_cells = self.param_dic['n_lstm_cells'],
+                    kspace_combine_coils = self.param_dic['kspace_combine_coils'],
+                    coilwise = self.param_dic['coilwise'],
                 )
 
         if self.param_dic['ispace_lstm']:
@@ -536,15 +576,20 @@ class convLSTM_Kspace1(nn.Module):
         prev_state3 = None
         prev_output3 = None
 
-        ans_mag_log = torch.zeros(mag_log.shape)
+        if self.param_dic['kspace_combine_coils']:
+            ans_coils = 1
+        else:
+            ans_coils = self.param_dic['num_coils']
+
+        ans_mag_log = torch.zeros(*mag_log.shape[0:2], ans_coils, *mag_log.shape[3:])
         length = ans_mag_log.shape[-1]
         x_size, y_size = length, length
         x_arr, y_arr = np.mgrid[0:x_size, 0:y_size]
         cell = (length//2, length//2)
         dists = ((x_arr - cell[0])**2 + (y_arr - cell[1])**2)**0.33
         dists = torch.FloatTensor(dists+1).to(device)
-        ans_phase = torch.zeros(phase.shape)
-        predr = torch.zeros(mag_log.shape)
+        ans_phase = torch.zeros(*phase.shape[0:2], ans_coils, *phase.shape[3:])
+        predr = torch.zeros(*mag_log.shape[0:2], ans_coils, *mag_log.shape[3:])
 
         if targ_phase is not None:
             loss_phase = 0
@@ -786,70 +831,70 @@ class CoupledUpReal(nn.Module):
     def train_mode_set(self, bool = True):
         self.train_mode = bool
 
-class ImageSpaceModel2(nn.Module):
-    def __init__(self, parameters, proc_device):
-        super(ImageSpaceModel2, self).__init__()
-        self.param_dic = parameters
-        self.image_space_real = self.param_dic['image_space_real']
-        self.num_coils = self.param_dic['num_coils']
-        if self.image_space_real:
-            self.down1 = CoupledDownReal(1, [32,32])
-            self.down2 = CoupledDownReal(32, [64,64])
-            self.down3 = CoupledDownReal(64, [128,128])
-            self.up1 = CoupledUpReal(128, [256,128])
-            self.up2 = CoupledUpReal(256, [128,64])
-            self.up3 = CoupledUpReal(128, [64,32])
-            self.finalblock = nn.Sequential(
-                    nn.Conv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
-                    nn.ReLU(),
-                    nn.BatchNorm2d(32),
-                    nn.Conv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
-                    nn.ReLU(),
-                    nn.BatchNorm2d(32),
-                    nn.Conv2d(32, 1, (3,3), stride = (1,1), padding = (1,1)),
-                )
-        else:
-            self.down1 = CoupledDown(1, [32,32])
-            self.down2 = CoupledDown(32, [64,64])
-            self.down3 = CoupledDown(64, [128,128])
-            self.up1 = CoupledUp(128, [256,128])
-            self.up2 = CoupledUp(256, [128,64])
-            self.up3 = CoupledUp(128, [64,32])
-            self.finalblock = nn.Sequential(
-                    cmplx_conv.ComplexConv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
-                    cmplx_activation.CReLU(),
-                    radial_bn.RadialBatchNorm2d(32),
-                    cmplx_conv.ComplexConv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
-                    cmplx_activation.CReLU(),
-                    radial_bn.RadialBatchNorm2d(32),
-                    cmplx_conv.ComplexConv2d(32, 1,     (3,3), stride = (1,1), padding = (1,1)),
-                )
-        self.train_mode = True
+# class ImageSpaceModel2(nn.Module):
+#     def __init__(self, parameters, proc_device):
+#         super(ImageSpaceModel2, self).__init__()
+#         self.param_dic = parameters
+#         self.image_space_real = self.param_dic['image_space_real']
+#         self.num_coils = self.param_dic['num_coils']
+#         if self.image_space_real:
+#             self.down1 = CoupledDownReal(1, [32,32])
+#             self.down2 = CoupledDownReal(32, [64,64])
+#             self.down3 = CoupledDownReal(64, [128,128])
+#             self.up1 = CoupledUpReal(128, [256,128])
+#             self.up2 = CoupledUpReal(256, [128,64])
+#             self.up3 = CoupledUpReal(128, [64,32])
+#             self.finalblock = nn.Sequential(
+#                     nn.Conv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+#                     nn.ReLU(),
+#                     nn.BatchNorm2d(32),
+#                     nn.Conv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+#                     nn.ReLU(),
+#                     nn.BatchNorm2d(32),
+#                     nn.Conv2d(32, 1, (3,3), stride = (1,1), padding = (1,1)),
+#                 )
+#         else:
+#             self.down1 = CoupledDown(1, [32,32])
+#             self.down2 = CoupledDown(32, [64,64])
+#             self.down3 = CoupledDown(64, [128,128])
+#             self.up1 = CoupledUp(128, [256,128])
+#             self.up2 = CoupledUp(256, [128,64])
+#             self.up3 = CoupledUp(128, [64,32])
+#             self.finalblock = nn.Sequential(
+#                     cmplx_conv.ComplexConv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+#                     cmplx_activation.CReLU(),
+#                     radial_bn.RadialBatchNorm2d(32),
+#                     cmplx_conv.ComplexConv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+#                     cmplx_activation.CReLU(),
+#                     radial_bn.RadialBatchNorm2d(32),
+#                     cmplx_conv.ComplexConv2d(32, 1,     (3,3), stride = (1,1), padding = (1,1)),
+#                 )
+#         self.train_mode = True
 
-    def train_mode_set(self, bool = True):
-        self.train_mode = bool
-        self.down1.train_mode_set(bool)
-        self.down2.train_mode_set(bool)
-        self.down3.train_mode_set(bool)
-        self.up1.train_mode_set(bool)
-        self.up2.train_mode_set(bool)
-        self.up3.train_mode_set(bool)
+#     def train_mode_set(self, bool = True):
+#         self.train_mode = bool
+#         self.down1.train_mode_set(bool)
+#         self.down2.train_mode_set(bool)
+#         self.down3.train_mode_set(bool)
+#         self.up1.train_mode_set(bool)
+#         self.up2.train_mode_set(bool)
+#         self.up3.train_mode_set(bool)
 
-    def forward(self, x):
-        with torch.no_grad():
-            x1 = (x**2).sum(1).unsqueeze(1)
+#     def forward(self, x):
+#         with torch.no_grad():
+#             x1 = (x**2).sum(1).unsqueeze(1)
 
-        x2hat, x2 = self.down1(x1)
-        x3hat, x3 = self.down2(x2)
-        x4hat, x4 = self.down3(x3)
-        x5 = self.up1(x4)
-        x6 = self.up2(torch.cat((x5,x4hat),1))
-        x7 = self.up3(torch.cat((x6,x3hat),1))
-        if self.train_mode:
-            x8 = self.finalblock(torch.cat((x7,x2hat),1))
-        else:
-            x8 = no_bn_forward(self.finalblock, torch.cat((x7,x2hat),1))
-        return x8
+#         x2hat, x2 = self.down1(x1)
+#         x3hat, x3 = self.down2(x2)
+#         x4hat, x4 = self.down3(x3)
+#         x5 = self.up1(x4)
+#         x6 = self.up2(torch.cat((x5,x4hat),1))
+#         x7 = self.up3(torch.cat((x6,x3hat),1))
+#         if self.train_mode:
+#             x8 = self.finalblock(torch.cat((x7,x2hat),1))
+#         else:
+#             x8 = no_bn_forward(self.finalblock, torch.cat((x7,x2hat),1))
+#         return x8
 
 
 class ImageSpaceModel1(nn.Module):
@@ -858,10 +903,10 @@ class ImageSpaceModel1(nn.Module):
         self.param_dic = parameters
         self.image_space_real = self.param_dic['image_space_real']
         self.num_coils = self.param_dic['num_coils']
-        if self.param_dic['ispace_lstm']:
-            self.input_size = self.num_coils
+        if self.param_dic['kspace_combine_coils']:
+            self.input_size = 1
         else:
-            self.input_size = self.num_coils
+            self.input_size = self.param_dic['num_coils']
         if self.image_space_real:
             self.block1 = nn.Sequential(
                     nn.Conv2d(self.input_size, 2*self.input_size, (3,3), stride = (1,1), padding = (1,1), bias = False),
@@ -886,30 +931,30 @@ class ImageSpaceModel1(nn.Module):
                     nn.BatchNorm2d(32),
                     nn.Conv2d(32, 1, (3,3), stride = (1,1), padding = (1,1)),
                 )
-        else:
-            self.block1 = nn.Sequential(
-                    cmplx_conv.ComplexConvd(self.num_coils, 2*self.num_coils, (3,3), stride = (1,1), padding = (1,1), bias = False),
-                    cmplx_activation.CReLU(),
-                    radial_bn.RadialBatchNormd(2*self.num_coils),
-                    cmplx_conv.ComplexConvd(2*self.num_coils, self.num_coils, (3,3), stride = (1,1), padding = (1,1), bias = False),
-                    cmplx_activation.CReLU(),
-                    radial_bn.RadialBatchNormd(self.num_coils)
-                )
-            self.down1 = CoupledDown(self.num_coils, [32,32])
-            self.down2 = CoupledDown(32, [64,64])
-            self.down3 = CoupledDown(64, [128,128])
-            self.up1 = CoupledUp(128, [256,128])
-            self.up2 = CoupledUp(256, [128,64])
-            self.up3 = CoupledUp(128, [64,32])
-            self.finalblock = nn.Sequential(
-                    cmplx_conv.ComplexConv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
-                    cmplx_activation.CReLU(),
-                    radial_bn.RadialBatchNorm2d(32),
-                    cmplx_conv.ComplexConv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
-                    cmplx_activation.CReLU(),
-                    radial_bn.RadialBatchNorm2d(32),
-                    cmplx_conv.ComplexConv2d(32, 1,     (3,3), stride = (1,1), padding = (1,1)),
-                )
+        # else:
+            # self.block1 = nn.Sequential(
+            #         cmplx_conv.ComplexConvd(self.num_coils, 2*self.num_coils, (3,3), stride = (1,1), padding = (1,1), bias = False),
+            #         cmplx_activation.CReLU(),
+            #         radial_bn.RadialBatchNormd(2*self.num_coils),
+            #         cmplx_conv.ComplexConvd(2*self.num_coils, self.num_coils, (3,3), stride = (1,1), padding = (1,1), bias = False),
+            #         cmplx_activation.CReLU(),
+            #         radial_bn.RadialBatchNormd(self.num_coils)
+            #     )
+            # self.down1 = CoupledDown(self.num_coils, [32,32])
+            # self.down2 = CoupledDown(32, [64,64])
+            # self.down3 = CoupledDown(64, [128,128])
+            # self.up1 = CoupledUp(128, [256,128])
+            # self.up2 = CoupledUp(256, [128,64])
+            # self.up3 = CoupledUp(128, [64,32])
+            # self.finalblock = nn.Sequential(
+            #         cmplx_conv.ComplexConv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+            #         cmplx_activation.CReLU(),
+            #         radial_bn.RadialBatchNorm2d(32),
+            #         cmplx_conv.ComplexConv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+            #         cmplx_activation.CReLU(),
+            #         radial_bn.RadialBatchNorm2d(32),
+            #         cmplx_conv.ComplexConv2d(32, 1,     (3,3), stride = (1,1), padding = (1,1)),
+            #     )
         self.train_mode = True
 
     def train_mode_set(self, bool = True):
