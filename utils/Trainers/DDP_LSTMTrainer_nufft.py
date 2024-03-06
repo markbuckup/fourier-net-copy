@@ -582,6 +582,10 @@ class Trainer(nn.Module):
                 targ_vid = og_video[:num_vids].reshape(batch*num_frames,1, numr, numc).to(self.device)
                 predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+
+                og_video = og_video - og_video.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                og_video = og_video / (EPS + og_video.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+
                 ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
                 
                 # # B, 1, 120, X, Y - B, 120, 1, X, Y
