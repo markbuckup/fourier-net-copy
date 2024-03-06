@@ -10,6 +10,9 @@ parameters['num_epochs_kspace'] = 10
 parameters['kspace_architecture'] = 'KLSTM1'
 parameters['crop_loss'] = True
 parameters['double_kspace_proc'] = False
+parameters['kspace_combine_coils'] = False
+parameters['coilwise'] = False
+assert( not (parameters['coilwise'] and parameters['kspace_combine_coils']))
 parameters['end-to-end-supervision'] = False
 parameters['kspace_real_loss_only'] = False
 
