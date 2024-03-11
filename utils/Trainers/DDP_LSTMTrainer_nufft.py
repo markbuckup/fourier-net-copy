@@ -583,13 +583,16 @@ class Trainer(nn.Module):
                 predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
-                og_video = og_video - og_video.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                og_video = og_video / (EPS + og_video.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                # og_video = og_video - og_video.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                # og_video = og_video / (EPS + og_video.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                # print(og_video.min())
+                # print(og_video.max())
+                # asdf
 
                 ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
 
-                ispace_outpi = ispace_outpi - ispace_outpi.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                ispace_outpi = ispace_outpi / (EPS + ispace_outpi.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                ispace_outp = ispace_outp - ispace_outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                ispace_outp = ispace_outp / (EPS + ispace_outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
                 
                 # # B, 1, 120, X, Y - B, 120, 1, X, Y
                 # B,F,R,C = ispace_outp.shape
