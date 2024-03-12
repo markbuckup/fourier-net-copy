@@ -271,6 +271,7 @@ class Trainer(nn.Module):
                 num_frames = num_frames - self.parameters['init_skip_frames']
                 predr = torch_trim(predr.reshape(batch*num_frames,chan,numr, numc).to(self.device))
                 targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
+                # temp = og_coiled_vids[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,chan, numr, numc).to(self.device)
                 targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
@@ -283,8 +284,8 @@ class Trainer(nn.Module):
                 # outp = self.ispace_model(predr*mask)
                 predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
-                # outp = self.ispace_model(predr.detach())
-                outp = self.ispace_model(targ_vid)
+                outp = self.ispace_model(predr.detach())
+                # outp = self.ispace_model(temp)
 
 
                 #####################################################################################################################################################
@@ -431,15 +432,16 @@ class Trainer(nn.Module):
                         ans_coils = self.parameters['num_coils']
                     predr = predr.reshape(batch*num_frames,ans_coils,numr, numc).to(self.device)
                     targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
+                    targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                    targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                    # temp = og_coiled_vids[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,chan, numr, numc).to(self.device)
 
                     predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                     predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
                     self.ispace_model.eval()
-                    targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                    targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
                     
-                    outp = self.ispace_model(outp = self.ispace_model(targ_vid))
+                    outp = self.ispace_model(predr.detach())
                     outp = outp - outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                     outp = outp / (EPS + outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
@@ -582,6 +584,7 @@ class Trainer(nn.Module):
                     ans_coils = self.parameters['num_coils']
                 predr = predr.reshape(batch*num_frames,ans_coils,numr, numc).to(self.device)
                 targ_vid = og_video[:num_vids].reshape(batch*num_frames,1, numr, numc).to(self.device)
+                # temp = og_coiled_vids.reshape(batch*num_frames,chan, numr, numc).to(self.device)
                 predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
@@ -591,8 +594,9 @@ class Trainer(nn.Module):
                 # print(og_video.max())
                 # asdf
 
-                ispace_outp = self.ispace_model(targ_vid).reshape(batch,num_frames,numr,numc)
-                # ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
+                # ispace_outp = self.ispace_model(temp).reshape(batch,num_frames,numr,numc).cpu()
+                
+                ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
 
                 ispace_outp = ispace_outp - ispace_outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 ispace_outp = ispace_outp / (EPS + ispace_outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
