@@ -463,8 +463,8 @@ class convLSTM_Kspace1(nn.Module):
                     tanh_mode = True, 
                     sigmoid_mode = sigmoid_mode, 
                     real_mode = True, 
-                    in_channels = self.n_coils, 
-                    out_channels = self.n_coils, 
+                    in_channels = 1, 
+                    out_channels = 1, 
                 )
         self.SSIM = kornia.metrics.SSIM(11)
 
@@ -669,6 +669,17 @@ class convLSTM_Kspace1(nn.Module):
                 predr_ti = predr_ti.abs()
                 # predr_ti = predr_ti - predr_ti.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 # predr_ti = predr_ti / (EPS + predr_ti.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+
+                if self.param_dic['ispace_lstm']:
+                    B,C,numr, numc = predr_ti.shape
+                    predr_ti = predr_ti.reshape(B*C, 1, numr, numc)
+                    if prev_output3 is not None:
+                        prev_output3 = prev_output3.reshape(B*C, 1, numr, numc)
+                    prev_state3, prev_output3 = self.ispacem(predr_ti, prev_state3, prev_output3)
+                    prev_output3 = prev_output3.reshape(B, C, numr, numc)
+                    predr_ti = predr_ti.reshape(B, C, numr, numc)
+                else:
+                    prev_output3 = None
                 
                 
 
@@ -704,6 +715,8 @@ class convLSTM_Kspace1(nn.Module):
 
 
                             loss_real += criterionL1(predr_ti*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+                            if prev_output3 is not None:
+                                loss_real += criterionL1(prev_output3*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
                     
                         with torch.no_grad():
                             loss_l1 += (predr_ti- targ_now).reshape(predr_ti.shape[0]*predr_ti.shape[1], -1).abs().mean(1).sum().detach().cpu()/self.param_dic['n_lstm_cells']
@@ -713,13 +726,6 @@ class convLSTM_Kspace1(nn.Module):
                             loss_ss1 += ss1.mean(1).sum().detach().cpu() / (self.param_dic['n_lstm_cells'])
 
             
-            if self.param_dic['ispace_lstm']:
-                assert(not self.param_dic['ispace_lstm'])
-                ## loss not being backwarded lol
-                prev_state3, prev_output3 = self.ispacem(predr_ti, prev_state3, prev_output3)
-            else:
-                prev_output3 = predr_ti
-
             for i_cell in range(self.param_dic['n_lstm_cells']):
                 prev_outputs1[i_cell] = prev_outputs1[i_cell].detach()
                 prev_outputs2[i_cell] = prev_outputs2[i_cell].detach()

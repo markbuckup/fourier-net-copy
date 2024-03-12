@@ -583,6 +583,11 @@ class Trainer(nn.Module):
                 else:
                     ans_coils = self.parameters['num_coils']
                 predr = predr.reshape(batch*num_frames,ans_coils,numr, numc).to(self.device)
+                # print(predr.shape)
+                # for j in range(10):
+                #     for i in range(8):
+                #         plt.imsave('{}_{}.jpg'.format(j,i), predr[j,i,:,:].cpu(), cmap = 'gray')
+                # asdf
                 targ_vid = og_video[:num_vids].reshape(batch*num_frames,1, numr, numc).to(self.device)
                 # temp = og_coiled_vids.reshape(batch*num_frames,chan, numr, numc).to(self.device)
                 predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
@@ -596,6 +601,7 @@ class Trainer(nn.Module):
 
                 # ispace_outp = self.ispace_model(temp).reshape(batch,num_frames,numr,numc).cpu()
                 
+
                 ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
 
                 ispace_outp = ispace_outp - ispace_outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
