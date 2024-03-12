@@ -720,6 +720,10 @@ class convLSTM_Kspace1(nn.Module):
             else:
                 prev_output3 = predr_ti
 
+            for i_cell in range(self.param_dic['n_lstm_cells']):
+                prev_outputs1[i_cell] = prev_outputs1[i_cell].detach()
+                prev_outputs2[i_cell] = prev_outputs2[i_cell].detach()
+
             if self.param_dic['ispace_lstm']:
                 prev_output3 = prev_output3.detach()
 

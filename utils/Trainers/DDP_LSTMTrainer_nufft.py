@@ -271,6 +271,8 @@ class Trainer(nn.Module):
                 num_frames = num_frames - self.parameters['init_skip_frames']
                 predr = torch_trim(predr.reshape(batch*num_frames,chan,numr, numc).to(self.device))
                 targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
+                targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
                 # mask = torch.FloatTensor(gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution']), sigma = self.parameters['image_resolution']//10))
                 # mask = torch.fft.fftshift(mask)
@@ -281,10 +283,9 @@ class Trainer(nn.Module):
                 # outp = self.ispace_model(predr*mask)
                 predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
-                outp = self.ispace_model(predr.detach())
+                # outp = self.ispace_model(predr.detach())
+                outp = self.ispace_model(targ_vid)
 
-                targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
                 #####################################################################################################################################################
                 #####################################################################################################################################################
@@ -435,11 +436,12 @@ class Trainer(nn.Module):
                     predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
                     self.ispace_model.eval()
-                    outp = self.ispace_model(predr.detach())
-                    outp = outp - outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                    outp = outp / (EPS + outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
                     targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                     targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                    
+                    outp = self.ispace_model(outp = self.ispace_model(targ_vid))
+                    outp = outp - outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                    outp = outp / (EPS + outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
                     loss = self.l1loss(outp, targ_vid)
 
@@ -589,7 +591,8 @@ class Trainer(nn.Module):
                 # print(og_video.max())
                 # asdf
 
-                ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
+                ispace_outp = self.ispace_model(targ_vid).reshape(batch,num_frames,numr,numc)
+                # ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
 
                 ispace_outp = ispace_outp - ispace_outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 ispace_outp = ispace_outp / (EPS + ispace_outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
