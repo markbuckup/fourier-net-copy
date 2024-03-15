@@ -1,16 +1,17 @@
 parameters = {}
 parameters['save_folder'] = '/Data/ContijochLab/projects/cineMRIRecon'
 parameters['image_resolution'] = 256
-parameters['train_batch_size'] = 2
-parameters['test_batch_size'] = 2
+parameters['train_batch_size'] = 1
+parameters['test_batch_size'] = 1
 parameters['lr_kspace'] = 1e-5
 parameters['lr_ispace'] = 1e-5
-parameters['num_epochs_ispace'] = 10000
-parameters['num_epochs_kspace'] = 10
+parameters['num_epochs_ispace'] = 600
+parameters['num_epochs_kspace'] = 600
 parameters['kspace_architecture'] = 'KLSTM1'
 parameters['crop_loss'] = True
 parameters['double_kspace_proc'] = False
 parameters['kspace_combine_coils'] = False
+parameters['skip_kspace_lstm'] = True
 parameters['coilwise'] = True
 assert( not (parameters['coilwise'] and parameters['kspace_combine_coils']))
 parameters['end-to-end-supervision'] = False
@@ -31,12 +32,12 @@ parameters['ispace_lstm'] = True
 parameters['ispace_architecture'] = 'ILSTM1'
 parameters['image_space_real'] = True
 parameters['history_length'] = 0
-parameters['loop_videos'] = 30
+parameters['loop_videos'] = 60
 parameters['dataset'] = 'acdc'
 parameters['train_test_split'] = 0.8
 parameters['normalisation'] = False
 parameters['window_size'] = -1
-parameters['init_skip_frames'] = 10
+parameters['init_skip_frames'] = 20
 parameters['SHM_looping'] = False
 parameters['FT_radial_sampling'] = 10
 parameters['num_coils'] = 8
@@ -46,8 +47,8 @@ parameters['optimizer'] = 'Adam'
 parameters['scheduler'] = 'CyclicLR'
 parameters['optimizer_params'] = (0.9, 0.999)
 parameters['scheduler_params'] = {
-    'base_lr': 1e-5,
-    'max_lr': 1e-4,
+    'base_lr': 4e-6,
+    'max_lr': 4e-4,
     'step_size_up': 10,
     'mode': 'triangular',
     'step_size': parameters['num_epochs_kspace']//3,
@@ -72,7 +73,7 @@ parameters['memoise_RAM'] = False
 
 parameters['kspace_predict_mode'] = 'thetas'
 # parameters['kspace_predict_mode'] = 'thetas' or 'cosine' or 'unit-vector'
-parameters['loss_phase'] = 'L1'
+parameters['loss_phase'] = 'raw_L1'
 # parameters['loss_phase'] = 'L1' or 'Cosine' or 'raw_L1'
 parameters['kspace_tanh'] = False
 parameters['ground_truth_weight'] = 1

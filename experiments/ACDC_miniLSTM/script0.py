@@ -8,7 +8,12 @@ args = parser.parse_args()
 
 GPUSTR = ' '.join([str(x) for x in args.gpu])
 
-task_list = ['64.0.1.1.1', '64.0.1.1.2', '64.0.1.1.3']
+task_list = [
+	'lt.single.coilwise',
+	'lt.single.coilwise.ispace_lstm',
+	'lt.single.coilwise.ispace_lstm.tanh',
+	'lt.double.coilwise.ispace_lstm',
+	]
 
 prev_task = None
 for task in task_list:
@@ -19,8 +24,9 @@ for task in task_list:
 			break
 	os.system("rm status.txt 2> /dev/null")
 	print("Now Running Task {}".format(task), flush = True)
+	os.system('python3 -Wignore main.py --port 12356 --run_id {} --neptune_log --gpu {} > {}/train.log 2>&1'.format(task, GPUSTR, task))
 	# os.system('python3 -Wignore main.py --port 12356 --run_id {} --neptune_log --gpu {} > {}/train.log 2>&1 && python3 -Wignore main.py --port 12356 --run_id {} --neptune_log --gpu {} --resume --eval > {}/test.log 2>&1'.format(task, GPUSTR, task, task, GPUSTR, task))
-	os.system('python3 -Wignore main.py --port 12356 --run_id {} --gpu {} > {}/train.log 2>&1 && python3 -Wignore main.py --port 12356 --run_id {} --gpu {} --resume --eval > {}/test.log 2>&1'.format(task, GPUSTR, task, task, GPUSTR, task))
+	# os.system('python3 -Wignore main.py --port 12356 --run_id {} --gpu {} > {}/train.log 2>&1 && python3 -Wignore main.py --port 12356 --run_id {} --gpu {} --resume --eval > {}/test.log 2>&1'.format(task, GPUSTR, task, task, GPUSTR, task))
 	# os.system('python3 -Wignore main.py --port 12356 --run_id {} --gpu {} --resume --eval > {}/test.log 2>&1'.format(task, GPUSTR, task, task, GPUSTR, task))
 	print("Task {} Terminated".format(task), flush = True)
 	prev_task = task

@@ -192,6 +192,10 @@ class Trainer(nn.Module):
         #     self.criterion_reconFT = self.criterion_reconFT.to(self.device)
 
     def train(self, epoch, print_loss = False):
+        if epoch >= self.parameters['num_epochs_kspace']:
+            self.ispace_mode = True
+        else:
+            self.ispace_mode = False
         avgkspacelossphase = 0.
         avgkspacelossreal = 0.
         avgkspacelossmag = 0.
@@ -204,15 +208,18 @@ class Trainer(nn.Module):
         avgispace_l2_loss = 0.
         self.trainloader.sampler.set_epoch(epoch)
         if self.ddp_rank == 0:
-            tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | KS Epoch {}".format(os.getpid(), epoch), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
+            if self.ispace_mode:
+                tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | IS Epoch {}/{}".format(os.getpid(), epoch+1, self.parameters['num_epochs_ispace']), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
+            else:
+                tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | KS Epoch {}/{}".format(os.getpid(), epoch+1, self.parameters['num_epochs_kspace']), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
         else:
             tqdm_object = enumerate(self.trainloader)
         for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in tqdm_object:
         # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
-            with torch.set_grad_enabled(not self.args.train_ispace):
+            with torch.set_grad_enabled(not self.ispace_mode):
                 undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1))
 
-                if not self.args.train_ispace:
+                if not self.ispace_mode:
                     self.kspace_optim.zero_grad(set_to_none=True)
 
                 batch, num_frames, chan, numr, numc = undersampled_fts.shape
@@ -229,28 +236,32 @@ class Trainer(nn.Module):
                     inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
                     inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
                 
-                if not self.args.train_ispace:
-                    self.kspace_model.train()
-                predr, _, _, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
-                del masks
-                del inpt_phase
-                del inpt_mag_log
-                if not self.parameters['end-to-end-supervision']:
-                    if self.parameters['kspace_real_loss_only']:
-                        loss = 10*loss_real
+                if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
+                    if not self.ispace_mode:
+                        self.kspace_model.train()
                     else:
-                        # loss = 10*loss_real
-                        # print(0.06*loss_mag , 2*loss_phase , 50*loss_real)
-                        loss = 0.06*loss_mag + 2*loss_phase + 50*loss_real
-                        # print(0.06*loss_mag,100*loss_phase,5*loss_real)
+                        self.kspace_model.eval()
 
-                    if not self.args.train_ispace:
-                        loss.backward()
-                        self.kspace_optim.step()
 
-                    del loss
-                
-                if not self.args.train_ispace:
+                    predr, _, _, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
+                    del masks
+                    del inpt_phase
+                    del inpt_mag_log
+                    if not self.parameters['end-to-end-supervision']:
+                        if self.parameters['kspace_real_loss_only']:
+                            loss = 10*loss_real
+                        else:
+                            # loss = 10*loss_real
+                            # print(0.06*loss_mag , 2*loss_phase , 50*loss_real)
+                            loss = 0.06*loss_mag + 2*loss_phase + 50*loss_real
+                            # print(0.06*loss_mag,100*loss_phase,5*loss_real)
+
+                        if not self.ispace_mode:
+                            loss.backward()
+                            self.kspace_optim.step()
+
+                        del loss
+
                     avgkspacelossphase += float(loss_phase.cpu().item()/(len(self.trainloader)))
                     avgkspacelossmag += float(loss_mag.cpu().item()/(len(self.trainloader)))
                     avgkspacelossreal += float(loss_real.cpu().item()/(len(self.trainloader)))
@@ -260,8 +271,10 @@ class Trainer(nn.Module):
                     kspacessim_score += float(ss1.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
                     avgkspace_l1_loss += float(loss_l1.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
                     avgkspace_l2_loss += float(loss_l2.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
+                else:
+                    predr = coilwise_input.to(self.device)
 
-            if self.args.train_ispace:
+            if self.ispace_mode:
                 self.ispace_optim.zero_grad(set_to_none=True)
                 if not self.parameters['end-to-end-supervision']:
                     predr = predr.detach()[:,self.parameters['init_skip_frames']:]
@@ -269,7 +282,9 @@ class Trainer(nn.Module):
                     predr = predr[:,self.parameters['init_skip_frames']:]
 
                 num_frames = num_frames - self.parameters['init_skip_frames']
-                predr = torch_trim(predr.reshape(batch*num_frames,chan,numr, numc).to(self.device))
+                
+                predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
+                
                 targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
                 # temp = og_coiled_vids[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,chan, numr, numc).to(self.device)
                 targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
@@ -317,6 +332,7 @@ class Trainer(nn.Module):
                 loss.backward()
                 self.ispace_optim.step()
 
+
                 if self.parameters['end-to-end-supervision']:
                     self.kspace_optim.step()
 
@@ -335,17 +351,19 @@ class Trainer(nn.Module):
             ##############################################################################
 
             if self.parameters['scheduler'] == 'CyclicLR':
-                if self.parameters['kspace_architecture'] == 'KLSTM1':
-                    if self.kspace_scheduler is not None:
-                        self.kspace_scheduler.step()
+                if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
+                    if self.parameters['kspace_architecture'] == 'KLSTM1':
+                        if self.kspace_scheduler is not None:
+                            self.kspace_scheduler.step()
 
-                if self.ispace_scheduler is not None and self.args.train_ispace:
+                if self.ispace_scheduler is not None and self.ispace_mode:
                     self.ispace_scheduler.step()
         
         if not self.parameters['scheduler'] == 'CyclicLR':
-            if self.parameters['kspace_architecture'] == 'KLSTM1':
-                if self.kspace_scheduler is not None:
-                    self.kspace_scheduler.step()
+            if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
+                if self.parameters['kspace_architecture'] == 'KLSTM1':
+                    if self.kspace_scheduler is not None:
+                        self.kspace_scheduler.step()
 
             # if self.ispace_scheduler is not None:
             #     self.ispace_scheduler.step()
@@ -357,6 +375,10 @@ class Trainer(nn.Module):
         return avgkspacelossmag, avgkspacelossphase, avgkspacelossreal, kspacessim_score, avgkspace_l1_loss, avgkspace_l2_loss, avgispacelossreal, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss
 
     def evaluate(self, epoch, train = False, print_loss = False):
+        if epoch >= self.parameters['num_epochs_kspace']:
+            self.ispace_mode = True
+        else:
+            self.ispace_mode = False
         avgkspacelossphase = 0.
         avgkspacelossreal = 0.
         avgkspacelossmag = 0.
@@ -410,20 +432,22 @@ class Trainer(nn.Module):
                     inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
                     inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
 
+                if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
+                    self.kspace_model.eval()
+                    predr, _, _, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
 
-                self.kspace_model.eval()
-                predr, _, _, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
+                    avgkspacelossphase += float(loss_phase.item()/(len(dloader)))
+                    avgkspacelossmag += float(loss_mag.item()/(len(dloader)))
+                    avgkspacelossreal += float(loss_real.item()/(len(dloader)))
+                    
+                    kspacessim_score += float(ss1.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
+                    avgkspace_l1_loss += float(loss_l1.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
+                    avgkspace_l2_loss += float(loss_l2.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
+                else:
+                    predr = coilwise_input.to(self.device)
 
-                avgkspacelossphase += float(loss_phase.item()/(len(dloader)))
-                avgkspacelossmag += float(loss_mag.item()/(len(dloader)))
-                avgkspacelossreal += float(loss_real.item()/(len(dloader)))
-                
-                kspacessim_score += float(ss1.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
-                avgkspace_l1_loss += float(loss_l1.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
-                avgkspace_l2_loss += float(loss_l2.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
 
-
-                if self.args.train_ispace:
+                if self.ispace_mode:
                     predr = predr.detach()[:,self.parameters['init_skip_frames']:]
                     num_frames = num_frames - self.parameters['init_skip_frames']
                     if self.parameters['kspace_combine_coils']:
@@ -573,7 +597,10 @@ class Trainer(nn.Module):
                 num_vids = 1
                 batch = num_vids
                 num_plots = num_vids*num_frames
-                predr, _, _, loss_mag, loss_phase, loss_real, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = og_video)
+                if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
+                    predr, _, _, loss_mag, loss_phase, loss_real, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = og_video)
+                else:
+                    predr = coilwise_input.to(self.device)
 
                 print('Predr nan',torch.isnan(predr).any())
                 predr[torch.isnan(predr)] = 0

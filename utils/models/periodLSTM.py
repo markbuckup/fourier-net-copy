@@ -24,12 +24,21 @@ EPS = 1e-10
 CEPS = torch.complex(torch.tensor(EPS),torch.tensor(EPS))
 
 class Identity(nn.Module):
-    def __init__(self, a, b):
+    def __init__(self, n_lstm_cells = 1, ispace_lstm = False):
         super(Identity, self).__init__()
-        self.m = nn.Linear(3,3)
+        if not ispace_lstm:
+            self.m = nn.Linear(3,3)
+        self.n_lstm_cells = n_lstm_cells
 
-    def forward(self, x):
-        return x
+    def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_states = None, mag_prev_outputs = None, phase_prev_states = None, phase_prev_outputs = None):
+
+        new_mag_outputs = [hist_mag for i in range(self.n_lstm_cells)]
+        new_phase_outputs = [hist_phase for i in range(self.n_lstm_cells)]
+        new_mag_states = [hist_mag for i in range(self.n_lstm_cells)]
+        new_phase_states = [hist_phase for i in range(self.n_lstm_cells)]
+
+        return new_mag_states, new_phase_states, new_mag_outputs, new_phase_outputs
+
 
 def mylog(x,base = 10):
     return x.log10()/torch.tensor(base).log10()
@@ -439,24 +448,27 @@ class convLSTM_Kspace1(nn.Module):
         else:
             assert 0
 
-        self.kspace_m = convLSTMcell_kspace(
-                    phase_tanh_mode = self.param_dic['kspace_tanh'], 
-                    sigmoid_mode = sigmoid_mode, 
-                    phase_real_mode = self.real_mode, 
-                    num_coils = self.n_coils,
-                    history_length = self.history_length,
-                    phase_theta = theta, 
-                    forget_gate_coupled = self.param_dic['forget_gate_coupled'],
-                    forget_gate_same_coils = self.param_dic['forget_gate_same_coils'],
-                    forget_gate_same_phase_mag = self.param_dic['forget_gate_same_phase_mag'],
-                    lstm_input_mask = self.param_dic['lstm_input_mask'],
-                    catmode = self.param_dic['concat'],
-                    n_layers = self.param_dic['n_layers'],
-                    n_hidden = self.param_dic['n_hidden'],
-                    n_lstm_cells = self.param_dic['n_lstm_cells'],
-                    kspace_combine_coils = self.param_dic['kspace_combine_coils'],
-                    coilwise = self.param_dic['coilwise'],
-                )
+        if not self.param_dic['skip_kspace_lstm']:
+            self.kspace_m = convLSTMcell_kspace(
+                        phase_tanh_mode = self.param_dic['kspace_tanh'], 
+                        sigmoid_mode = sigmoid_mode, 
+                        phase_real_mode = self.real_mode, 
+                        num_coils = self.n_coils,
+                        history_length = self.history_length,
+                        phase_theta = theta, 
+                        forget_gate_coupled = self.param_dic['forget_gate_coupled'],
+                        forget_gate_same_coils = self.param_dic['forget_gate_same_coils'],
+                        forget_gate_same_phase_mag = self.param_dic['forget_gate_same_phase_mag'],
+                        lstm_input_mask = self.param_dic['lstm_input_mask'],
+                        catmode = self.param_dic['concat'],
+                        n_layers = self.param_dic['n_layers'],
+                        n_hidden = self.param_dic['n_hidden'],
+                        n_lstm_cells = self.param_dic['n_lstm_cells'],
+                        kspace_combine_coils = self.param_dic['kspace_combine_coils'],
+                        coilwise = self.param_dic['coilwise'],
+                    )
+        else:
+            self.kspace_m = Identity(n_lstm_cells = self.param_dic['n_lstm_cells'], ispace_lstm = self.param_dic['ispace_lstm'])
 
         if self.param_dic['ispace_lstm']:
             self.ispacem = convLSTMcell(
@@ -721,7 +733,7 @@ class convLSTM_Kspace1(nn.Module):
                         with torch.no_grad():
                             loss_l1 += (predr_ti- targ_now).reshape(predr_ti.shape[0]*predr_ti.shape[1], -1).abs().mean(1).sum().detach().cpu()/self.param_dic['n_lstm_cells']
                             loss_l2 += (((predr_ti- targ_now).reshape(predr_ti.shape[0]*predr_ti.shape[1], -1) ** 2).mean(1).sum()).detach().cpu()/self.param_dic['n_lstm_cells']
-                            ss1 = self.SSIM(predr_ti.reshape(predr_ti.shape[0]*predr_ti.shape[1],1,self.param_dic['image_resolution'],self.param_dic['image_resolution']), targ_now.reshape(prev_output3.shape[0]*prev_output3.shape[1],1,self.param_dic['image_resolution'],self.param_dic['image_resolution']))
+                            ss1 = self.SSIM(predr_ti.reshape(predr_ti.shape[0]*predr_ti.shape[1],1,self.param_dic['image_resolution'],self.param_dic['image_resolution']), targ_now.reshape(predr_ti.shape[0]*predr_ti.shape[1],1,self.param_dic['image_resolution'],self.param_dic['image_resolution']))
                             ss1 = ss1.reshape(ss1.shape[0],-1)
                             loss_ss1 += ss1.mean(1).sum().detach().cpu() / (self.param_dic['n_lstm_cells'])
 

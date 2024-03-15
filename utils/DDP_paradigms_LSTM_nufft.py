@@ -82,7 +82,7 @@ def train_paradigm(rank, world_size, args, parameters):
                 run_id = torch.load(checkpoint_path + 'neptune_run.pth', map_location = torch.device('cpu'))['run_id']
                 run = neptune.init_run(
                     project="fcrl/Cardiac-MRI-Reconstruction",
-                    with_id=run_id,
+                    custom_run_id=run_id,
                     name = args.run_id,
                     api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZDU2NDJjMy1lNzczLTRkZDEtODAwYy01MWFlM2VmN2Q4ZTEifQ==",
                 )
@@ -94,7 +94,7 @@ def train_paradigm(rank, world_size, args, parameters):
                 )
                 torch.save({'run_id': run["sys/id"].fetch()}, checkpoint_path + 'neptune_run.pth')
             run["parameters"] = parameters
-            if not args.resume:
+            if not (args.resume or args.resume_kspace):
                 if run.exists("train"):
                     run["train"].pop()
                 if run.exists("test"):
@@ -108,6 +108,27 @@ def train_paradigm(rank, world_size, args, parameters):
         model_state = torch.load(checkpoint_path + 'state.pth', map_location = torch.device('cpu'))['state']
         if (not args.state == -1):
             model_state = args.state
+        if rank == 0:
+            print('Loading checkpoint at model state {}'.format(model_state), flush = True)
+        dic = torch.load(checkpoint_path + 'checkpoint_{}.pth'.format(model_state),map_location = proc_device)
+        pre_e = dic['e']
+        kspace_model.load_state_dict(dic['kspace_model'])
+        ispace_model.load_state_dict(dic['ispace_model'])
+        if parameters['kspace_architecture'] == 'KLSTM1':
+            opt_dict_kspace = dic['kspace_optim']
+        opt_dict_ispace = dic['ispace_optim']
+        # scaler_dict = dic['scaler']
+        if parameters['scheduler'] != 'None':
+            scheduler_dict_ispace = dic['ispace_scheduler']
+            if parameters['kspace_architecture'] == 'KLSTM1':
+                scheduler_dict_kspace = dic['kspace_scheduler']
+        losses = dic['losses']
+        test_losses = dic['test_losses']
+        if rank == 0:
+            print('Resuming Training after {} epochs'.format(pre_e), flush = True)
+        del dic
+    elif args.resume_kspace:
+        model_state = 0
         if rank == 0:
             print('Loading checkpoint at model state {}'.format(model_state), flush = True)
         dic = torch.load(checkpoint_path + 'checkpoint_{}.pth'.format(model_state),map_location = proc_device)
@@ -150,7 +171,7 @@ def train_paradigm(rank, world_size, args, parameters):
             trainer.time_analysis()
         return
 
-    if args.resume:
+    if args.resume or args.resume_kspace:
         trainer.ispace_optim.load_state_dict(opt_dict_ispace)
         if parameters['kspace_architecture'] == 'KLSTM1':
             trainer.kspace_optim.load_state_dict(opt_dict_kspace)
@@ -181,6 +202,7 @@ def train_paradigm(rank, world_size, args, parameters):
             ispacel1_score = sum([x[8] for x in collected_train_losses]).cpu().item()/len(args.gpu)
             ispacel2_score = (sum([x[9] for x in collected_train_losses]).cpu().item()/len(args.gpu))**0.5
             if args.neptune_log and rank == 0:
+                run["train/epochs_trained"].log(e)
                 run["train/kspace_train_mag_loss"].log(avgkspace_train_mag_loss)
                 run["train/kspace_train_phase_loss"].log(avgkspace_train_phase_loss)
                 run["train/kspace_train_real_loss"].log(avgkspace_train_real_loss)
@@ -261,8 +283,10 @@ def train_paradigm(rank, world_size, args, parameters):
             dic['test_losses'] = test_losses
             # dic['scaler'] = trainer.scaler.state_dict()
             if (e+1) % SAVE_INTERVAL == 0:
-                # if e > parameters['num_epochs_kspace']:
-                #     model_state = 1
+                if e > parameters['num_epochs_kspace']:
+                    model_state = 1
+                else:
+                    model_state = 0
                 torch.save(dic, checkpoint_path + 'checkpoint_{}.pth'.format(model_state))
                 torch.save({'state': model_state}, checkpoint_path + 'state.pth')
                 # model_state += 1
@@ -271,6 +295,10 @@ def train_paradigm(rank, world_size, args, parameters):
         del collected_test_losses
         del collected_train_losses
         torch.cuda.empty_cache()
+
+    if rank == 0:
+        with open(os.path.join(args.run_id, 'status.txt'), 'w') as f:
+            f.write('1')
 
     cleanup()
 
@@ -319,7 +347,7 @@ def test_paradigm(rank, world_size, args, parameters):
                 run_id = torch.load(checkpoint_path + 'neptune_run.pth', map_location = torch.device('cpu'))['run_id']
                 run = neptune.init_run(
                     project="fcrl/Cardiac-MRI-Reconstruction",
-                    with_id=run_id,
+                    custom_run_id=run_id,
                     name = args.run_id,
                     api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZDU2NDJjMy1lNzczLTRkZDEtODAwYy01MWFlM2VmN2Q4ZTEifQ==",
                 )
@@ -330,7 +358,7 @@ def test_paradigm(rank, world_size, args, parameters):
                     api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZDU2NDJjMy1lNzczLTRkZDEtODAwYy01MWFlM2VmN2Q4ZTEifQ==",
                 )
                 torch.save({'run_id': run["sys/id"].fetch()}, checkpoint_path + 'neptune_run.pth')
-            if not args.resume:
+            if not args.resume or args.resume_kspace:
                 if run.exists("train"):
                     run["train"].pop()
                 if run.exists("test"):
@@ -342,6 +370,24 @@ def test_paradigm(rank, world_size, args, parameters):
 
     if args.resume:
         model_state = torch.load(checkpoint_path + 'state.pth', map_location = torch.device('cpu'))['state']
+        if (not args.state == -1):
+            model_state = args.state
+        if rank == 0:
+            print('Loading checkpoint at model state {}'.format(model_state), flush = True)
+        dic = torch.load(checkpoint_path + 'checkpoint_{}.pth'.format(model_state),map_location = proc_device)
+        pre_e = dic['e']
+        kspace_model.load_state_dict(dic['kspace_model'])
+        ispace_model.load_state_dict(dic['ispace_model'])
+        # scaler_dict = dic['scaler']
+        if rank == 0:
+            print('Loading kspace model after {} epochs'.format(dic['e']), flush = True)
+        losses = dic['losses']
+        test_losses = dic['test_losses']
+        if rank == 0:
+            print('Resuming Training after {} epochs'.format(pre_e), flush = True)
+        del dic
+    elif args.resume_kspace:
+        model_state = 0
         if (not args.state == -1):
             model_state = args.state
         if rank == 0:
@@ -482,16 +528,16 @@ def test_paradigm(rank, world_size, args, parameters):
             avgispace_test_l1 = sum([x[8] for x in collected_test_losses]).item()/len(args.gpu)
             avgispace_test_l2 = (sum([x[9] for x in collected_test_losses]).item()/len(args.gpu))**0.5
             if args.neptune_log and rank == 0:
-                run["test/kspacetest_mag_loss"] = avgkspace_test_mag_loss
-                run["test/kspacetest_phase_loss"] = avgkspace_test_phase_loss
-                run["test/kspacetest_real_loss"] = avgkspace_test_real_loss
-                run["test/kspacetest_ssim_score"] = avgkspace_test_ssim
-                run["test/kspacetest_l1_loss"] = avgkspace_test_l1
-                run["test/kspacetest_l2_loss"] = avgkspace_test_l2
-                run["test/ispacetest_real_loss"] = avgispace_test_real_loss
-                run["test/ispacetest_ssim_score"] = avgispace_test_ssim
-                run["test/ispacetest_l1_loss"] = avgispace_test_l1
-                run["test/ispacetest_l2_loss"] = avgispace_test_l2
+                run["test/kspacetest_mag_loss"].log(avgkspace_test_mag_loss)
+                run["test/kspacetest_phase_loss"].log(avgkspace_test_phase_loss)
+                run["test/kspacetest_real_loss"].log(avgkspace_test_real_loss)
+                run["test/kspacetest_ssim_score"].log(avgkspace_test_ssim)
+                run["test/kspacetest_l1_loss"].log(avgkspace_test_l1)
+                run["test/kspacetest_l2_loss"].log(avgkspace_test_l2)
+                run["test/ispacetest_real_loss"].log(avgispace_test_real_loss)
+                run["test/ispacetest_ssim_score"].log(avgispace_test_ssim)
+                run["test/ispacetest_l1_loss"].log(avgispace_test_l1)
+                run["test/ispacetest_l2_loss"].log(avgispace_test_l2)
 
             print('KSpace Test Losses After Epoch {}:'.format(pre_e), flush = True)
             print('KSpace Mag Loss = {}' .format(avgkspace_test_mag_loss), flush = True)
@@ -518,16 +564,16 @@ def test_paradigm(rank, world_size, args, parameters):
                 avgispace_train_l1 = sum([x[8] for x in collected_train_losses]).item()/len(args.gpu)
                 avgispace_train_l2 = (sum([x[9] for x in collected_train_losses]).item()/len(args.gpu))**0.5
                 if args.neptune_log and rank == 0:
-                    run["test/kspacetrain_mag_loss"] = avgkspace_train_mag_loss
-                    run["test/kspacetrain_phase_loss"] = avgkspace_train_phase_loss
-                    run["test/kspacetrain_real_loss"] = avgkspace_train_real_loss
-                    run["test/kspacetrain_ssim_score"] = avgkspace_train_ssim
-                    run["test/kspacetrain_l1_loss"] = avgkspace_train_l1
-                    run["test/kspacetrain_l2_loss"] = avgkspace_train_l2
-                    run["test/ispacetrain_real_loss"] = avgispace_train_real_loss
-                    run["test/ispacetrain_ssim_score"] = avgispace_train_ssim
-                    run["test/ispacetrain_l1_loss"] = avgispace_train_l1
-                    run["test/ispacetrain_l2_loss"] = avgispace_train_l2
+                    run["test/kspacetrain_mag_loss"].log(avgkspace_train_mag_loss)
+                    run["test/kspacetrain_phase_loss"].log(avgkspace_train_phase_loss)
+                    run["test/kspacetrain_real_loss"].log(avgkspace_train_real_loss)
+                    run["test/kspacetrain_ssim_score"].log(avgkspace_train_ssim)
+                    run["test/kspacetrain_l1_loss"].log(avgkspace_train_l1)
+                    run["test/kspacetrain_l2_loss"].log(avgkspace_train_l2)
+                    run["test/ispacetrain_real_loss"].log(avgispace_train_real_loss)
+                    run["test/ispacetrain_ssim_score"].log(avgispace_train_ssim)
+                    run["test/ispacetrain_l1_loss"].log(avgispace_train_l1)
+                    run["test/ispacetrain_l2_loss"].log(avgispace_train_l2)
 
                 print('KSpace Test Losses After Epoch {}:'.format(pre_e), flush = True)
                 print('KSpace Mag Loss = {}' .format(avgkspace_train_mag_loss), flush = True)
@@ -540,6 +586,6 @@ def test_paradigm(rank, world_size, args, parameters):
 
     if rank == 0:
         with open(os.path.join(args.run_id, 'status.txt'), 'w') as f:
-            f.write('1')
+            f.write('2')
 
     cleanup()
