@@ -100,10 +100,10 @@ class ACDC_radial(Dataset):
             self.offset = int(self.train_split*self.num_patients)
             self.num_patients = self.num_patients - int(self.train_split*self.num_patients)
         
-        # # # DEBUG
-        # self.num_vids_per_patient *= 0
-        # self.num_vids_per_patient += 1
-        # # # DEBUG
+        # # DEBUG
+        self.num_vids_per_patient *= 0
+        self.num_vids_per_patient += 1
+        # # DEBUG
 
         self.num_vids_per_patient = self.num_vids_per_patient[self.offset:self.offset+self.num_patients]
         self.frames_per_vid_per_patient = self.frames_per_vid_per_patient[self.offset:self.offset+self.num_patients]
@@ -163,6 +163,8 @@ class ACDC_radial(Dataset):
         masks_applicable = (self.masks[GAs_used.reshape(-1),:,:]).reshape(self.loop_videos,-1,self.final_resolution,self.final_resolution)
         masks_applicable = torch.from_numpy(masks_applicable.any(1)).unsqueeze(1).type(torch.int32)
 
+
+
         dic_path = os.path.join(self.data_path, 'patient_{}/vid_{}.pth'.format(actual_pnum+1, v_num))
 
         dic = torch.load(dic_path, map_location = torch.device('cpu'))
@@ -174,6 +176,11 @@ class ACDC_radial(Dataset):
         # og_coiled_fft = torch.fft.fftshift(torch.fft.fft2(og_video_coils), dim = (-2,-1))
 
         # grid_data, masks_applicable, og_coiled_fft, og_video_coils, og_video = grid_data.cpu(), masks_applicable.cpu(), og_coiled_fft.cpu(), og_video_coils.cpu(), og_video.cpu()
+        
+        plt.imsave('masks.jpg', masks_applicable[0,0])
+        plt.imsave('fft_mag.jpg', torch.log(torch.fft.fftshift(torch.fft.fft2(coilwise_input), dim = (-2,-1)).abs())[0,0])
+        print(masks_applicable.shape)
+        asdf
 
         # print('Time = ', time.time() - start)
         # del dic

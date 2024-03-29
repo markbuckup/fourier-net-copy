@@ -69,12 +69,10 @@ def gaussian_2d(shape, sigma=None):
     h += 1
     return h
 
-def special_trim(x):
-    percentile_95 = np.percentile(x.detach().cpu(), 95)
-    percentile_5 = np.percentile(x.detach().cpu(), 5)
+def special_trim(x, l = 5, u = 95):
+    percentile_95 = np.percentile(x.detach().cpu(), u)
+    percentile_5 = np.percentile(x.detach().cpu(), l)
     x = x.clip(percentile_5, percentile_95)
-    x = x - x.min().detach()
-    x = x/ (x.max().detach() + EPS)
     return x
 
 def fetch_lstm_type(parameters):
@@ -572,10 +570,16 @@ class convLSTM_Kspace1(nn.Module):
 
     def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
 
-        mag_log = fft_exp.abs()
-        phase = fft_exp / (self.param_dic['logarithm_base']**mag_log)
-        mag_log = mylog((mag_log+torch.tensor(1e-4)).clip(1e-4, 1e20), base = self.param_dic['logarithm_base'])
-        mag_log = mag_log + 4
+        # print(fft_exp[0,0,0,:8,:8])
+        mag_log = special_trim(mylog(fft_exp.abs(), base = self.param_dic['logarithm_base']).cpu(), l = 80, u = 100)
+        phase = fft_exp / fft_exp.abs()
+        print(mylog(fft_exp[0,0,0].abs(), base = self.param_dic['logarithm_base']).min())
+        print(mylog(fft_exp[0,0,0].abs(), base = self.param_dic['logarithm_base']).max())
+        plt.imsave('maglog.jpg', (mag_log[0,0,0,:,:]).cpu())
+        plt.imsave('maglog_gt.jpg', (mag_log[0,0,0,:,:]*gt_masks[0,0,0].cpu()).cpu())
+        print(mag_log[0,0,0].min())
+        print(mag_log[0,0,0].max())
+        asdf
 
         del fft_exp
 
@@ -654,11 +658,19 @@ class convLSTM_Kspace1(nn.Module):
                 assert 0
 
             if prev_outputs2 is not None:
-                prev_outputs2 = [x + 4 for x in prev_outputs2]
+                prev_outputs2 = [(x + 4)/4 for x in prev_outputs2]
                 prev_outputs1 = [x + 4 for x in prev_outputs1]
             prev_states2, prev_states1, prev_outputs2, prev_outputs1 = self.kspace_m(hist_mag, hist_phase, gt_masks[:,ti,:,:,:], prev_states2, prev_outputs2, prev_states1, prev_outputs1)
-            prev_outputs2 = [x - 4 for x in prev_outputs2]
+            
+            print(hist_mag.min(3)[0].min(2)[0])
+            print(hist_mag.max(3)[0].max(2)[0])
+            print(prev_outputs2[-1].min(3)[0].min(2)[0])
+            print(prev_outputs2[-1].max(3)[0].max(2)[0])
+            print('\n\n')
+
+            prev_outputs2 = [(4*x) - 4 for x in prev_outputs2]
             prev_outputs1 = [x - 4 for x in prev_outputs1]
+
 
             del hist_mag
             del hist_phase
@@ -678,9 +690,13 @@ class convLSTM_Kspace1(nn.Module):
                 # lstm_predicted_fft.real = lstm_predicted_fft.real - lstm_predicted_fft.real.reshape(*lstm_predicted_fft.shape[:2], -1).mean(2).unsqueeze(-1).unsqueeze(-1).detach()
                 # lstm_predicted_fft.imag = lstm_predicted_fft.imag - lstm_predicted_fft.imag.reshape(*lstm_predicted_fft.shape[:2], -1).mean(2).unsqueeze(-1).unsqueeze(-1).detach()
                 predr_ti = torch.fft.ifft2(torch.fft.ifftshift(lstm_predicted_fft, dim = (-2,-1)))
-                predr_ti = predr_ti.abs()
+                predr_ti = predr_ti.abs().clip(-10,10)
                 # predr_ti = predr_ti - predr_ti.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 # predr_ti = predr_ti / (EPS + predr_ti.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+
+                # with torch.no_grad():
+                #     predr_ti = predr_ti - predr_ti.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                #     predr_ti = predr_ti / (EPS + predr_ti.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
                 if self.param_dic['ispace_lstm']:
                     B,C,numr, numc = predr_ti.shape

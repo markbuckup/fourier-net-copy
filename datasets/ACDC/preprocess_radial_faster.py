@@ -110,7 +110,7 @@ transform = torch.nn.Sequential(
     transforms.CenterCrop(RES),
 )
 
-metapath = 'radial_faster/{}_resolution_{}_spokes/metadic.pth'.format(RES, NUM_SPOKES)
+metapath = 'radial_faster/{}_resolution_{}_spokes/metadata.pth'.format(RES, NUM_SPOKES)
 if os.path.isfile(metapath):
     metadic = torch.load(metapath)
     print("Meta Data Loaded")
