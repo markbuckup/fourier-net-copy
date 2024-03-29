@@ -83,12 +83,11 @@ class ACDC_radial(Dataset):
         metadic = torch.load(os.path.join(self.data_path, 'metadata.pth'))
         
         self.num_patients = metadic['num_patients']
-        self.omegas = metadic['omegas']
         self.num_vids_per_patient = np.array(metadic['num_vids_per_patient'])
         self.coil_masks = metadic['coil_masks']
-        self.coils_per_patient_per_video = metadic['coils_per_patient_per_video']
+        self.coil_variant_per_patient_per_video = metadic['coil_variant_per_patient_per_video']
         self.GAs_per_patient_per_video = metadic['GAs_per_patient_per_video']
-        self.masks = metadic['masks']
+        self.masks = metadic['spoke_masks']
 
         self.actual_frames_per_vid_per_patient = np.array(metadic['frames_per_vid_per_patient'])
         self.frames_per_vid_per_patient = np.array(metadic['frames_per_vid_per_patient'])
@@ -109,7 +108,7 @@ class ACDC_radial(Dataset):
         self.frames_per_vid_per_patient = self.frames_per_vid_per_patient[self.offset:self.offset+self.num_patients]
         self.actual_frames_per_vid_per_patient = self.actual_frames_per_vid_per_patient[self.offset:self.offset+self.num_patients]
         self.GAs_per_patient_per_video = self.GAs_per_patient_per_video[self.offset:self.offset+self.num_patients]
-        self.coils_per_patient_per_video = self.coils_per_patient_per_video[self.offset:self.offset+self.num_patients]
+        self.coil_variant_per_patient_per_video = self.coil_variant_per_patient_per_video[self.offset:self.offset+self.num_patients]
 
         if self.loop_videos != -1:
             self.frames_per_vid_per_patient *=0
@@ -157,11 +156,11 @@ class ACDC_radial(Dataset):
         # start = time.time()
         p_num, v_num = self.index_to_location(i)
         actual_pnum = self.offset + p_num
-        index_coils_used = self.coils_per_patient_per_video[p_num][v_num]
+        index_coils_used = self.coil_variant_per_patient_per_video[p_num][v_num]
         coils_used = self.coil_masks[index_coils_used].unsqueeze(0)
         GAs_used = self.GAs_per_patient_per_video[p_num][v_num][:self.loop_videos,:]
         masks_applicable = (self.masks[GAs_used.reshape(-1),:,:]).reshape(self.loop_videos,-1,self.final_resolution,self.final_resolution)
-        masks_applicable = torch.from_numpy(masks_applicable.any(1)).unsqueeze(1).type(torch.int32)
+        masks_applicable = masks_applicable.any(1).unsqueeze(1).type(torch.int32)
 
 
 
@@ -177,10 +176,6 @@ class ACDC_radial(Dataset):
 
         # grid_data, masks_applicable, og_coiled_fft, og_video_coils, og_video = grid_data.cpu(), masks_applicable.cpu(), og_coiled_fft.cpu(), og_video_coils.cpu(), og_video.cpu()
         
-        plt.imsave('masks.jpg', masks_applicable[0,0])
-        plt.imsave('fft_mag.jpg', torch.log(torch.fft.fftshift(torch.fft.fft2(coilwise_input), dim = (-2,-1)).abs())[0,0])
-        print(masks_applicable.shape)
-        asdf
 
         # print('Time = ', time.time() - start)
         # del dic
