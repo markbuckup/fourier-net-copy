@@ -42,13 +42,13 @@ parameters['SHM_looping'] = False
 parameters['FT_radial_sampling'] = 10
 parameters['num_coils'] = 8
 parameters['scale_input_fft'] = False
-parameters['dataloader_num_workers'] = 0
+parameters['dataloader_num_workers'] = 2
 parameters['optimizer'] = 'Adam'
 parameters['scheduler'] = 'CyclicLR'
 parameters['optimizer_params'] = (0.9, 0.999)
 parameters['scheduler_params'] = {
-    'base_lr': 4e-3,
-    'max_lr': 1e-2,
+    'base_lr': 1e-5,
+    'max_lr': 4e-4,
     'step_size_up': 10,
     'mode': 'triangular',
     'step_size': parameters['num_epochs_kspace']//3,
@@ -73,7 +73,7 @@ parameters['memoise_RAM'] = False
 
 parameters['kspace_predict_mode'] = 'thetas'
 # parameters['kspace_predict_mode'] = 'thetas' or 'cosine' or 'unit-vector'
-parameters['loss_phase'] = 'Cosine'
+parameters['loss_phase'] = 'raw_L1'
 # parameters['loss_phase'] = 'L1' or 'Cosine' or 'raw_L1'
 parameters['kspace_tanh'] = False
 parameters['ground_truth_weight'] = 1

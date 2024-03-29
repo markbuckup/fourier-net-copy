@@ -127,7 +127,7 @@ class concatConv(nn.Module):
 
 
         input = torch.cat((curr_output, to_cat), 1)
-        return self.layerlist[-1](input)
+        return self.relu_func(self.layerlist[-1](input))
 
 
 
@@ -571,15 +571,16 @@ class convLSTM_Kspace1(nn.Module):
     def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
 
         # print(fft_exp[0,0,0,:8,:8])
-        mag_log = special_trim(mylog(fft_exp.abs(), base = self.param_dic['logarithm_base']).cpu(), l = 80, u = 100)
-        phase = fft_exp / fft_exp.abs()
-        print(mylog(fft_exp[0,0,0].abs(), base = self.param_dic['logarithm_base']).min())
-        print(mylog(fft_exp[0,0,0].abs(), base = self.param_dic['logarithm_base']).max())
-        plt.imsave('maglog.jpg', (mag_log[0,0,0,:,:]).cpu())
-        plt.imsave('maglog_gt.jpg', (mag_log[0,0,0,:,:]*gt_masks[0,0,0].cpu()).cpu())
-        print(mag_log[0,0,0].min())
-        print(mag_log[0,0,0].max())
-        asdf
+        mag_log = ((mylog(fft_exp.abs().clip(1e-4,1e10), base = self.param_dic['logarithm_base']) + 5) * gt_masks)/4
+
+        # print('\n')
+        # print(mag_log.min(), mag_log.max())
+        # print((mag_log.cpu()[1,0,0,:,:]*gt_masks[1,0,0].cpu()).cpu().min(), (mag_log.cpu()[1,0,0,:,:]*gt_masks[1,0,0].cpu()).cpu().max())
+        # print('\n')
+        # plt.imsave('maglog.jpg', (mag_log[1,0,0,:,:]).cpu(), cmap = 'gray')
+        # plt.imsave('maglog_gt.jpg', (mag_log.cpu()[1,0,0,:,:]*gt_masks[1,0,0].cpu()).cpu(), cmap = 'gray')
+
+        phase = fft_exp / (EPS + fft_exp.abs())
 
         del fft_exp
 
@@ -649,7 +650,7 @@ class convLSTM_Kspace1(nn.Module):
                 # hist_mask = gt_masks.reshape(-1, *gt_masks.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *gt_masks.shape[3:])
 
             if self.param_dic['kspace_predict_mode'] == 'thetas':
-                hist_phase = torch.atan2(hist_phase[:,:,:,:,1],hist_phase[:,:,:,:,0]) + 4
+                hist_phase = (torch.atan2(hist_phase[:,:,:,:,1],hist_phase[:,:,:,:,0]) + 4)/2
             elif self.param_dic['kspace_predict_mode'] == 'cosine':
                 hist_phase = hist_phase[:,:,:,:,0]
             elif self.param_dic['kspace_predict_mode'] == 'unit-vector':
@@ -657,19 +658,23 @@ class convLSTM_Kspace1(nn.Module):
             else:
                 assert 0
 
-            if prev_outputs2 is not None:
-                prev_outputs2 = [(x + 4)/4 for x in prev_outputs2]
-                prev_outputs1 = [x + 4 for x in prev_outputs1]
-            prev_states2, prev_states1, prev_outputs2, prev_outputs1 = self.kspace_m(hist_mag, hist_phase, gt_masks[:,ti,:,:,:], prev_states2, prev_outputs2, prev_states1, prev_outputs1)
             
-            print(hist_mag.min(3)[0].min(2)[0])
-            print(hist_mag.max(3)[0].max(2)[0])
-            print(prev_outputs2[-1].min(3)[0].min(2)[0])
-            print(prev_outputs2[-1].max(3)[0].max(2)[0])
-            print('\n\n')
+            hist_phase = hist_phase * gt_masks[:,ti,:,:,:]
 
-            prev_outputs2 = [(4*x) - 4 for x in prev_outputs2]
-            prev_outputs1 = [x - 4 for x in prev_outputs1]
+
+            if prev_outputs2 is not None:
+                prev_outputs2 = [(x + 5)/4 for x in prev_outputs2]
+                prev_outputs1 = [(x + 4)/2 for x in prev_outputs1]
+            prev_states2, prev_states1, prev_outputs2, prev_outputs1 = self.kspace_m(hist_mag, hist_phase, gt_masks[:,ti,:,:,:], prev_states2, prev_outputs2, prev_states1, prev_outputs1)
+            # print(hist_mag.min(), hist_mag.max())
+            # print(hist_phase.min(), hist_phase.max())
+            # print(prev_outputs2[-1].min(), prev_outputs2[-1].max())
+            # print(prev_outputs1[-1].min(), prev_outputs1[-1].max())
+            # print('\n\n')
+            
+            prev_outputs2 = [(x*4) - 5 for x in prev_outputs2]
+            prev_outputs1 = [(x*2) - 4 for x in prev_outputs1]
+
 
 
             del hist_mag
