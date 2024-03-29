@@ -1,2 +1,3 @@
-for i in range(15):
-    os.system('python3 preprocess_radial_faster.py --pat_start {} --pat_end {}'.format(i*10 + 1, i*10+11))
+import os
+for i in range(1,6):
+    os.system('python3 preprocess_radial_faster.py --pat_start {} --pat_end {} --gpu 1 & > {}.log'.format(i, i+1, i))

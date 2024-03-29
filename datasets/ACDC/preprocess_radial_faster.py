@@ -167,7 +167,7 @@ if not args.metadata_only:
         path = num_to_str(p_num+1)
         d, flag, dvid = read_nib_preprocess(path)
         if flag:
-            print("Patient {} flagged, {} video(s) dropped".format(i, dvid))
+            print("Patient {} flagged, {} video(s) dropped".format(p_num, dvid))
         d = torch.permute(torch.FloatTensor(d).unsqueeze(4), (2,3,4,0,1))
         num_vids, num_frames, n_coils, n_row, n_col = d.shape
         d = transform(d.reshape(num_vids*num_frames, 1, n_row, n_col)).reshape(num_vids, num_frames, n_coils, RES, RES)
