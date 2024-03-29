@@ -89,6 +89,7 @@ class Trainer(nn.Module):
         self.kspace_model = kspace_model
         self.ispace_model = ispace_model
         self.trainset = trainset
+        self.dual_training = args.dual_training
         self.testset = testset
         self.parameters = parameters
         self.device = device
@@ -208,7 +209,9 @@ class Trainer(nn.Module):
         avgispace_l2_loss = 0.
         self.trainloader.sampler.set_epoch(epoch)
         if self.ddp_rank == 0:
-            if self.ispace_mode:
+            if self.dual_training:
+                tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | Epoch {}/{}".format(os.getpid(), epoch+1, self.parameters['num_epochs_ispace']), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
+            elif self.ispace_mode:
                 tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | IS Epoch {}/{}".format(os.getpid(), epoch+1, self.parameters['num_epochs_ispace']), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
             else:
                 tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | KS Epoch {}/{}".format(os.getpid(), epoch+1, self.parameters['num_epochs_kspace']), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
@@ -253,7 +256,7 @@ class Trainer(nn.Module):
                         else:
                             # loss = 10*loss_real
                             # print(0.06*loss_mag , 2*loss_phase , 50*loss_real)
-                            loss = 0.06*loss_mag + 2*loss_phase + 50*loss_real
+                            loss = 0.06*loss_mag + loss_phase + 5*loss_real
                             # print(0.06*loss_mag,100*loss_phase,5*loss_real)
 
                         if not self.ispace_mode:
@@ -274,7 +277,7 @@ class Trainer(nn.Module):
                 else:
                     predr = coilwise_input.to(self.device)
 
-            if self.ispace_mode:
+            if self.ispace_mode or self.dual_training:
                 self.ispace_optim.zero_grad(set_to_none=True)
                 if not self.parameters['end-to-end-supervision']:
                     predr = predr.detach()[:,self.parameters['init_skip_frames']:]
@@ -356,7 +359,7 @@ class Trainer(nn.Module):
                         if self.kspace_scheduler is not None:
                             self.kspace_scheduler.step()
 
-                if self.ispace_scheduler is not None and self.ispace_mode:
+                if self.ispace_scheduler is not None and (self.ispace_mode or self.dual_training):
                     self.ispace_scheduler.step()
         
         if not self.parameters['scheduler'] == 'CyclicLR':
@@ -447,7 +450,7 @@ class Trainer(nn.Module):
                     predr = coilwise_input.to(self.device)
 
 
-                if self.ispace_mode:
+                if self.ispace_mode or self.dual_training:
                     predr = predr.detach()[:,self.parameters['init_skip_frames']:]
                     num_frames = num_frames - self.parameters['init_skip_frames']
                     if self.parameters['kspace_combine_coils']:
