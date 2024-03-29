@@ -157,8 +157,8 @@ class ACDC_radial(Dataset):
         # start = time.time()
         p_num, v_num = self.index_to_location(i)
         actual_pnum = self.offset + p_num
-        coils_used = self.coils_per_patient_per_video[p_num][v_num]
-        coils_used = self.coil_masks[coils_used,:,:].unsqueeze(0)
+        index_coils_used = self.coils_per_patient_per_video[p_num][v_num]
+        coils_used = self.coil_masks[index_coils_used].unsqueeze(0)
         GAs_used = self.GAs_per_patient_per_video[p_num][v_num][:self.loop_videos,:]
         masks_applicable = (self.masks[GAs_used.reshape(-1),:,:]).reshape(self.loop_videos,-1,self.final_resolution,self.final_resolution)
         masks_applicable = torch.from_numpy(masks_applicable.any(1)).unsqueeze(1).type(torch.int32)
