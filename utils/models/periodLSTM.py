@@ -571,7 +571,8 @@ class convLSTM_Kspace1(nn.Module):
     def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
 
         # print(fft_exp[0,0,0,:8,:8])
-        mag_log = ((mylog(fft_exp.abs().clip(1e-4,1e10), base = self.param_dic['logarithm_base']) + 5) * gt_masks)/4
+        mag_log = ((mylog(fft_exp.abs().clip(1e-4,1e30), base = self.param_dic['logarithm_base']) + 5) * gt_masks)/4
+
 
         # print('\n')
         # print(mag_log.min(), mag_log.max())
@@ -582,9 +583,14 @@ class convLSTM_Kspace1(nn.Module):
 
         phase = fft_exp / (EPS + fft_exp.abs())
 
-        del fft_exp
-
         phase = torch.stack((phase.real, phase.imag), -1)
+        
+        # targ_mag_log = mylog(fft_exp.abs(), base = self.param_dic['logarithm_base'])
+        # targ_phase = phase
+        # # targ_real = torch.fft.ifft2(torch.fft.ifftshift(fft_exp, dim = (-2,-1))).abs()
+        # print(targ_real.shape)
+        # print(targ_real.min(), targ_real.max())
+        # plt.imsave('targ_real.jpg', targ_real.cpu()[0,0,0,:,:], cmap = 'gray')
 
         prev_states1 = None
         prev_outputs1 = None
@@ -658,7 +664,6 @@ class convLSTM_Kspace1(nn.Module):
             else:
                 assert 0
 
-            
             hist_phase = hist_phase * gt_masks[:,ti,:,:,:]
 
 
@@ -675,6 +680,9 @@ class convLSTM_Kspace1(nn.Module):
             prev_outputs2 = [(x*4) - 5 for x in prev_outputs2]
             prev_outputs1 = [(x*2) - 4 for x in prev_outputs1]
 
+            # prev_outputs2[-1] = (prev_outputs2[-1]*1e-10) + targ_mag_log[:,ti]
+            # targ_angles = torch.atan2((targ_phase[:,ti,:,:,:,1]),(targ_phase[:,ti,:,:,:,0])).to(device)
+            # prev_outputs1[-1] = (prev_outputs1[-1]*1e-10) + targ_angles
 
 
             del hist_mag
@@ -743,8 +751,8 @@ class convLSTM_Kspace1(nn.Module):
                                 assert 0
                             
                             targ_now = targ_real[:,ti,:,:,:].to(device)
-                            targ_now = targ_now - targ_now.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                            targ_now = targ_now / (EPS + targ_now.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                            # targ_now = targ_now - targ_now.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                            # targ_now = targ_now / (EPS + targ_now.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
 
                             loss_real += criterionL1(predr_ti*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])

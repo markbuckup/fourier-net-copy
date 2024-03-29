@@ -188,6 +188,10 @@ class ACDC_radial(Dataset):
 
 
         # return torch.tensor([actual_pnum, v_num]), grid_data, masks_applicable, og_coiled_fft, og_video_coils, og_video, Nf
+        # plt.imsave('{}_{}_og.jpg'.format(actual_pnum, v_num), og_video[0,0,:,:], cmap = 'gray')
+        # plt.imsave('{}_{}_masks.jpg'.format(actual_pnum, v_num), masks_applicable[0,0,:,:], cmap = 'gray')
+        # plt.imsave('{}_{}_undersamp.jpg'.format(actual_pnum, v_num), coilwise_input[0,0,:,:], cmap = 'gray')
+        # plt.imsave('{}_{}_fft.jpg'.format(actual_pnum, v_num), torch.fft.fftshift(torch.fft.fft2(coilwise_input[0,0,:,:])).abs().log(), cmap = 'gray')
         return torch.tensor([actual_pnum, v_num]), masks_applicable, og_video, coilwise_input, coils_used, Nf
 
         

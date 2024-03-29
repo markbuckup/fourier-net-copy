@@ -234,6 +234,8 @@ class Trainer(nn.Module):
                     inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
                 else:
                     og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
+                    og_coiled_vids = og_coiled_vids - og_coiled_vids.min(-1)[0].min(-1)[0].unsqueeze(-1).unsqueeze(-1)
+                    og_coiled_vids = og_coiled_vids / (og_coiled_vids.max(-1)[0].max(-1)[0].unsqueeze(-1).unsqueeze(-1) + EPS)
                     og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
                     inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])
                     inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
@@ -256,7 +258,7 @@ class Trainer(nn.Module):
                         else:
                             # loss = 10*loss_real
                             # print(0.06*loss_mag , 2*loss_phase , 50*loss_real)
-                            loss = 0.06*loss_mag + loss_phase + 5*loss_real
+                            loss = 0.1*loss_mag + loss_phase + 5*loss_real
                             # print(0.06*loss_mag,100*loss_phase,5*loss_real)
 
                         if not self.ispace_mode:
@@ -290,8 +292,8 @@ class Trainer(nn.Module):
                 
                 targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
                 # temp = og_coiled_vids[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,chan, numr, numc).to(self.device)
-                targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                # targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                # targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
                 # mask = torch.FloatTensor(gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution']), sigma = self.parameters['image_resolution']//10))
                 # mask = torch.fft.fftshift(mask)
@@ -300,8 +302,8 @@ class Trainer(nn.Module):
                 # mask = (1-mask).unsqueeze(0).unsqueeze(0).to(self.device)
 
                 # outp = self.ispace_model(predr*mask)
-                predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                # predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                # predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
                 outp = self.ispace_model(predr.detach())
                 # outp = self.ispace_model(temp)
 
@@ -430,6 +432,8 @@ class Trainer(nn.Module):
                     inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
                 else:
                     og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
+                    og_coiled_vids = og_coiled_vids - og_coiled_vids.min(-1)[0].min(-1)[0].unsqueeze(-1).unsqueeze(-1)
+                    og_coiled_vids = og_coiled_vids / (og_coiled_vids.max(-1)[0].max(-1)[0].unsqueeze(-1).unsqueeze(-1) + EPS)
                     og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
                     inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])
                     inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
@@ -459,18 +463,18 @@ class Trainer(nn.Module):
                         ans_coils = self.parameters['num_coils']
                     predr = predr.reshape(batch*num_frames,ans_coils,numr, numc).to(self.device)
                     targ_vid = og_video[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,1, numr, numc).to(self.device)
-                    targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                    targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                    # targ_vid = targ_vid - targ_vid.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                    # targ_vid = targ_vid / (EPS + targ_vid.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
                     # temp = og_coiled_vids[:,self.parameters['init_skip_frames']:].reshape(batch*num_frames,chan, numr, numc).to(self.device)
 
-                    predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                    predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                    # predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                    # predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
                     self.ispace_model.eval()
                     
                     outp = self.ispace_model(predr.detach())
-                    outp = outp - outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                    outp = outp / (EPS + outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                    # outp = outp - outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                    # outp = outp / (EPS + outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
                     loss = self.l1loss(outp, targ_vid)
 
@@ -586,6 +590,8 @@ class Trainer(nn.Module):
                     inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
                 else:
                     og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
+                    og_coiled_vids = og_coiled_vids - og_coiled_vids.min(-1)[0].min(-1)[0].unsqueeze(-1).unsqueeze(-1)
+                    og_coiled_vids = og_coiled_vids / (og_coiled_vids.max(-1)[0].max(-1)[0].unsqueeze(-1).unsqueeze(-1) + EPS)
                     og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
                     inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])
                     inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
@@ -601,7 +607,8 @@ class Trainer(nn.Module):
                 batch = num_vids
                 num_plots = num_vids*num_frames
                 if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
-                    predr, _, _, loss_mag, loss_phase, loss_real, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = og_video)
+                    predr, _, _, loss_mag, loss_phase, loss_real, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
+                    # predr, _, _, loss_mag, loss_phase, loss_real, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = og_video)
                 else:
                     predr = coilwise_input.to(self.device)
 
@@ -620,8 +627,8 @@ class Trainer(nn.Module):
                 # asdf
                 targ_vid = og_video[:num_vids].reshape(batch*num_frames,1, numr, numc).to(self.device)
                 # temp = og_coiled_vids.reshape(batch*num_frames,chan, numr, numc).to(self.device)
-                predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                # predr = predr - predr.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                # predr = predr / (EPS + predr.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
                 # og_video = og_video - og_video.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 # og_video = og_video / (EPS + og_video.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
@@ -634,8 +641,8 @@ class Trainer(nn.Module):
 
                 ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
 
-                ispace_outp = ispace_outp - ispace_outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
-                ispace_outp = ispace_outp / (EPS + ispace_outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
+                # ispace_outp = ispace_outp - ispace_outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
+                # ispace_outp = ispace_outp / (EPS + ispace_outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
                 
                 # # B, 1, 120, X, Y - B, 120, 1, X, Y
                 # B,F,R,C = ispace_outp.shape

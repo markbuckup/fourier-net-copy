@@ -8,7 +8,7 @@ parameters['lr_ispace'] = 1e-5
 parameters['num_epochs_ispace'] = 0
 parameters['num_epochs_kspace'] = 400
 parameters['kspace_architecture'] = 'KLSTM1'
-parameters['crop_loss'] = False
+parameters['crop_loss'] = True
 parameters['double_kspace_proc'] = False
 parameters['kspace_combine_coils'] = False
 parameters['skip_kspace_lstm'] = False
@@ -24,7 +24,7 @@ parameters['n_hidden'] = 16
 parameters['n_lstm_cells'] = 1
 parameters['forget_gate_coupled'] = True
 parameters['forget_gate_same_coils'] = True
-parameters['forget_gate_same_phase_mag'] = False
+parameters['forget_gate_same_phase_mag'] = True
 parameters['logarithm_base'] = 10
 
 
