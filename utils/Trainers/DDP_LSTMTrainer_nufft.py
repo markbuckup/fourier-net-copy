@@ -217,11 +217,9 @@ class Trainer(nn.Module):
                 tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | KS Epoch {}/{}".format(os.getpid(), epoch+1, self.parameters['num_epochs_kspace']), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
         else:
             tqdm_object = enumerate(self.trainloader)
-        for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in tqdm_object:
+        for i, (indices, masks, og_video, undersampled_fts, coils_used, periods) in tqdm_object:
         # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
             with torch.set_grad_enabled(not self.ispace_mode):
-                undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1))
-
                 if not self.ispace_mode:
                     self.kspace_optim.zero_grad(set_to_none=True)
 
@@ -277,7 +275,7 @@ class Trainer(nn.Module):
                     avgkspace_l1_loss += float(loss_l1.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
                     avgkspace_l2_loss += float(loss_l2.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
                 else:
-                    predr = coilwise_input.to(self.device)
+                    predr = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts, dim = (-2,-1))).to(self.device)
 
             if self.ispace_mode or self.dual_training:
                 self.ispace_optim.zero_grad(set_to_none=True)
@@ -415,14 +413,12 @@ class Trainer(nn.Module):
             f.write('\n')
             f.flush()
         if self.ddp_rank == 0:
-            tqdm_object = tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
+            tqdm_object = tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch+1, dstr), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
         else:
             tqdm_object = enumerate(dloader)
         with torch.no_grad():
-            for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in tqdm_object:
+            for i, (indices, masks, og_video, undersampled_fts, coils_used, periods) in tqdm_object:
             # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
-                undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1))
-
                 batch, num_frames, chan, numr, numc = undersampled_fts.shape
                 if self.parameters['kspace_combine_coils']:
                     og_coiled_vids = og_video.to(self.device)
@@ -451,7 +447,7 @@ class Trainer(nn.Module):
                     avgkspace_l1_loss += float(loss_l1.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
                     avgkspace_l2_loss += float(loss_l2.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
                 else:
-                    predr = coilwise_input.to(self.device)
+                    predr = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts, dim = (-2,-1))).to(self.device)
 
 
                 if self.ispace_mode or self.dual_training:
@@ -534,9 +530,8 @@ class Trainer(nn.Module):
         tqdm_object = tqdm(enumerate(self.testloader), total = len(self.testloader))
         times = []
         with torch.no_grad():
-            for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in tqdm_object:
+            for i, (indices, masks, og_video, undersampled_fts, coils_used, periods) in tqdm_object:
             # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
-                undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1)).cpu()
                 self.kspace_model.eval()
                 times += self.kspace_model.module.time_analysis(undersampled_fts, self.device, periods[0:1].clone(), self.ispace_model)
                 # print(time1)
@@ -577,10 +572,8 @@ class Trainer(nn.Module):
         
         print('Saving plots for {} data'.format(dstr), flush = True)
         with torch.no_grad():
-            for i, (indices, masks, og_video, coilwise_input, coils_used, periods) in enumerate(dloader):
+            for i, (indices, masks, og_video, undersampled_fts, coils_used, periods) in enumerate(dloader):
             # for i, (indices, undersampled_fts, masks, og_coiled_fts, og_coiled_vids, og_video, periods) in tqdm_object:
-                undersampled_fts = torch.fft.fftshift(torch.fft.fft2(coilwise_input.to(self.device)), dim = (-2,-1))
-                
                 batch, num_frames, chan, numr, numc = undersampled_fts.shape
                 if self.parameters['kspace_combine_coils']:
                     og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
@@ -610,7 +603,7 @@ class Trainer(nn.Module):
                     predr, _, _, loss_mag, loss_phase, loss_real, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
                     # predr, _, _, loss_mag, loss_phase, loss_real, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = og_video)
                 else:
-                    predr = coilwise_input.to(self.device)
+                    predr = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts, dim = (-2,-1))).to(self.device)
 
                 print('Predr nan',torch.isnan(predr).any())
                 predr[torch.isnan(predr)] = 0

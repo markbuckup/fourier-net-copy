@@ -87,7 +87,6 @@ class ACDC_radial(Dataset):
         self.coil_masks = metadic['coil_masks']
         self.coil_variant_per_patient_per_video = metadic['coil_variant_per_patient_per_video']
         self.GAs_per_patient_per_video = metadic['GAs_per_patient_per_video']
-        self.masks = metadic['spoke_masks']
 
         self.actual_frames_per_vid_per_patient = np.array(metadic['frames_per_vid_per_patient'])
         self.frames_per_vid_per_patient = np.array(metadic['frames_per_vid_per_patient'])
@@ -159,40 +158,19 @@ class ACDC_radial(Dataset):
         index_coils_used = self.coil_variant_per_patient_per_video[p_num][v_num]
         coils_used = self.coil_masks[index_coils_used].unsqueeze(0)
         GAs_used = self.GAs_per_patient_per_video[p_num][v_num][:self.loop_videos,:]
-        masks_applicable = (self.masks[GAs_used.reshape(-1),:,:]).reshape(self.loop_videos,-1,self.final_resolution,self.final_resolution)
-        masks_applicable = masks_applicable.any(1).unsqueeze(1).type(torch.int32)
 
 
 
         dic_path = os.path.join(self.data_path, 'patient_{}/vid_{}.pth'.format(actual_pnum+1, v_num))
 
+
         dic = torch.load(dic_path, map_location = torch.device('cpu'))
+        masks_applicable = dic['spoke_mask']
         og_video = ((dic['targ_video']/255.)[:self.loop_videos,:,:,:])
-        # og_video_coils = og_video*coils_used
+        undersampled_fts = dic['coilwise_input'][:self.loop_videos,:,:,:]
         Nf = self.actual_frames_per_vid_per_patient[p_num]
-        coilwise_input = (dic['coilwise_input']/255.)[:self.loop_videos,:,:,:]
-        # grid_data = torch.fft.fftshift(torch.fft.fft2(coilwise_input), dim = (-2,-1))
-        # og_coiled_fft = torch.fft.fftshift(torch.fft.fft2(og_video_coils), dim = (-2,-1))
 
-        # grid_data, masks_applicable, og_coiled_fft, og_video_coils, og_video = grid_data.cpu(), masks_applicable.cpu(), og_coiled_fft.cpu(), og_video_coils.cpu(), og_video.cpu()
-        
-
-        # print('Time = ', time.time() - start)
-        # del dic
-        # del coilwise_input
-        # del coils_used
-
-        # if self.parameters['memoise_RAM']:
-        #     if self.RAM_memoised[i] is None:
-        #         self.RAM_memoised[i] = [torch.tensor([actual_pnum, v_num]), grid_data, og_coiled_fft, og_video_coils, og_video, Nf]
-
-
-        # return torch.tensor([actual_pnum, v_num]), grid_data, masks_applicable, og_coiled_fft, og_video_coils, og_video, Nf
-        # plt.imsave('{}_{}_og.jpg'.format(actual_pnum, v_num), og_video[0,0,:,:], cmap = 'gray')
-        # plt.imsave('{}_{}_masks.jpg'.format(actual_pnum, v_num), masks_applicable[0,0,:,:], cmap = 'gray')
-        # plt.imsave('{}_{}_undersamp.jpg'.format(actual_pnum, v_num), coilwise_input[0,0,:,:], cmap = 'gray')
-        # plt.imsave('{}_{}_fft.jpg'.format(actual_pnum, v_num), torch.fft.fftshift(torch.fft.fft2(coilwise_input[0,0,:,:])).abs().log(), cmap = 'gray')
-        return torch.tensor([actual_pnum, v_num]), masks_applicable, og_video, coilwise_input, coils_used, Nf
+        return torch.tensor([actual_pnum, v_num]), masks_applicable, og_video, undersampled_fts, coils_used, Nf
 
         
     def __len__(self):
