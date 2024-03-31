@@ -1,19 +1,18 @@
 parameters = {}
 parameters['save_folder'] = '/Data/ContijochLab/projects/cineMRIRecon'
 parameters['image_resolution'] = 256
-parameters['train_batch_size'] = 1
-parameters['test_batch_size'] = 1
+parameters['train_batch_size'] = 3
+parameters['test_batch_size'] = 3
 parameters['lr_kspace'] = 1e-5
 parameters['lr_ispace'] = 1e-5
-parameters['num_epochs_ispace'] = 400
+parameters['num_epochs_ispace'] = 390
 parameters['num_epochs_kspace'] = 400
+parameters['num_epochs_total'] = 400
+assert(parameters['num_epochs_kspace'] <= parameters['num_epochs_total'])
+assert(parameters['num_epochs_ispace'] <= parameters['num_epochs_total'])
 parameters['kspace_architecture'] = 'KLSTM1'
-parameters['crop_loss'] = True
 parameters['double_kspace_proc'] = False
 parameters['kspace_combine_coils'] = False
-parameters['skip_kspace_lstm'] = False
-parameters['coilwise'] = True
-assert( not (parameters['coilwise'] and parameters['kspace_combine_coils']))
 parameters['end-to-end-supervision'] = False
 parameters['kspace_real_loss_only'] = False
 
@@ -21,14 +20,24 @@ parameters['lstm_input_mask'] = True
 parameters['concat'] = True
 parameters['n_layers'] = 2
 parameters['n_hidden'] = 16
-parameters['n_lstm_cells'] = 2
+parameters['n_lstm_cells'] = 1
 parameters['forget_gate_coupled'] = True
 parameters['forget_gate_same_coils'] = True
 parameters['forget_gate_same_phase_mag'] = True
 parameters['logarithm_base'] = 10
 
+parameters['skip_kspace_lstm'] = False
+parameters['coilwise'] = True
+assert( not (parameters['coilwise'] and parameters['kspace_combine_coils']))
+parameters['crop_loss'] = False
+parameters['lstm_input_proc_identity'] = True
+parameters['lstm_gate_loss'] = False
+parameters['coil_combine'] = 'SOS'
+assert(parameters['coil_combine'] in ['SOS', 'UNET'])
 
-parameters['ispace_lstm'] = True
+
+
+parameters['ispace_lstm'] = False
 parameters['ispace_architecture'] = 'ILSTM1'
 parameters['image_space_real'] = True
 parameters['history_length'] = 0
@@ -42,18 +51,18 @@ parameters['SHM_looping'] = False
 parameters['FT_radial_sampling'] = 10
 parameters['num_coils'] = 8
 parameters['scale_input_fft'] = False
-parameters['dataloader_num_workers'] = 4
+parameters['dataloader_num_workers'] = 6
 parameters['optimizer'] = 'Adam'
 parameters['scheduler'] = 'CyclicLR'
 parameters['optimizer_params'] = (0.9, 0.999)
 parameters['scheduler_params'] = {
-    'base_lr': 4e-5,
+    'base_lr': 4e-6,
     'max_lr': 4e-4,
-    'step_size_up': 10,
-    'mode': 'triangular',
+    'step_size_up': 600,
+    'mode': 'exp_range',
     'step_size': parameters['num_epochs_kspace']//3,
-    'gamma': 0.5,
-    'verbose': True
+    'gamma': 0.9999,
+    'verbose': True,
 }
 parameters['Automatic_Mixed_Precision'] = False
 parameters['predicted_frame'] = 'last'

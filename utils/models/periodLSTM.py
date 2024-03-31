@@ -122,17 +122,22 @@ class concatConv(nn.Module):
         curr_output = self.layerlist[0](x)
         
         for i,layer in enumerate(self.layerlist[1:self.n_layers-1]):
-            input = torch.cat((curr_output, to_cat), 1)
+            if self.catmode:
+                input = torch.cat((curr_output, to_cat), 1)
+            else:
+                input = curr_output
             curr_output = self.relu_func(layer(input))
 
-
-        input = torch.cat((curr_output, to_cat), 1)
-        return self.relu_func(self.layerlist[-1](input))
+        if self.catmode:
+            input = torch.cat((curr_output, to_cat), 1)
+        else:
+            input = curr_output
+        return self.layerlist[-1](input)
 
 
 
 class convLSTMcell_kspace(nn.Module):
-    def __init__(self, history_length = 1, num_coils = 8, phase_tanh_mode = False, sigmoid_mode = True, phase_real_mode = False, phase_theta = False, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, lstm_input_mask = False, catmode = False, n_layers = 4, n_hidden = 16, n_lstm_cells = 1, coilwise = False, kspace_combine_coils = False):
+    def __init__(self, history_length = 1, num_coils = 8, phase_tanh_mode = False, sigmoid_mode = True, phase_real_mode = False, phase_theta = False, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, lstm_input_mask = False, catmode = False, n_layers = 4, n_hidden = 16, n_lstm_cells = 1, coilwise = False, kspace_combine_coils = False, input_proc_identity = False):
         super(convLSTMcell_kspace, self).__init__()
         self.phase_tanh_mode = phase_tanh_mode
         self.n_lstm_cells = n_lstm_cells
@@ -149,13 +154,14 @@ class convLSTMcell_kspace(nn.Module):
         self.forget_gate_same_coils = forget_gate_same_coils
         self.forget_gate_same_phase_mag = forget_gate_same_phase_mag
         self.lstm_input_mask = lstm_input_mask
+        self.input_proc_identity = input_proc_identity
         
         mag_cnn_func = nn.Conv2d
-        mag_relu_func = nn.ReLU
+        mag_relu_func = nn.LeakyReLU
         
         if phase_real_mode:
             phase_cnn_func = nn.Conv2d
-            phase_relu_func = nn.ReLU
+            phase_relu_func = nn.LeakyReLU
         else:
             phase_cnn_func = cmplx_conv.ComplexConv2d
             phase_relu_func = cmplx_activation.CReLU
@@ -204,14 +210,16 @@ class convLSTMcell_kspace(nn.Module):
                 self.phase_forgetGates = nn.ModuleList([concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode) for i in range(self.n_lstm_cells)])
             self.mag_outputGates = nn.ModuleList([concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode) for i in range(self.n_lstm_cells)])
             self.phase_outputGates = nn.ModuleList([concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode) for i in range(self.n_lstm_cells)])
-        self.mag_inputProcs = nn.ModuleList([concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode) for i in range(self.n_lstm_cells)])
-        self.phase_inputProcs = nn.ModuleList([concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode) for i in range(self.n_lstm_cells)])
+        if not self.input_proc_identity:
+            self.mag_inputProcs = nn.ModuleList([concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode) for i in range(self.n_lstm_cells)])
+            self.phase_inputProcs = nn.ModuleList([concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode) for i in range(self.n_lstm_cells)])
         
         # self.decoder2 = nn.Linear(64*64*2, 64*64)
 
-    def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_states = None, mag_prev_outputs = None, phase_prev_states = None, phase_prev_outputs = None):
+    def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_states = None, mag_prev_outputs = None, phase_prev_states = None, phase_prev_outputs = None, background = None):
         # x is a batch of video frames at a single time stamp
 
+        foreground = torch.logical_not(background)
         if mag_prev_states is None:
             if self.coilwise:
                 mag_shape1 = (hist_mag.shape[0], self.num_coils, *hist_mag.shape[2:])
@@ -229,6 +237,7 @@ class convLSTMcell_kspace(nn.Module):
         if self.coilwise:
             hist_mag = hist_mag.reshape(og_B*og_C, 1, *hist_mag.shape[2:])
             hist_phase = hist_phase.reshape(og_B*og_C, 1, *hist_phase.shape[2:])
+            foreground = foreground.reshape(og_B*og_C, 1, *hist_phase.shape[2:])
             gt_mask = gt_mask.repeat((1, self.num_coils,1,1)).reshape(og_B*og_C, 1, *hist_phase.shape[2:])
             for i_cell in range(self.n_lstm_cells):
                 mag_prev_states[i_cell] = mag_prev_states[i_cell].reshape(og_B*og_C, 1, *mag_prev_states[i_cell].shape[2:])
@@ -240,16 +249,32 @@ class convLSTMcell_kspace(nn.Module):
         new_phase_outputs = [hist_phase]
         new_mag_states = []
         new_phase_states = []
+        loss_forget_gate = 0
+        loss_input_gate = 0
+        criterionL1 = nn.L1Loss()
         for i_cell in range(self.n_lstm_cells):
             if self.lstm_input_mask:
-                mag_inp_cat = torch.cat((new_mag_outputs[i_cell], mag_prev_outputs[i_cell], ((gt_mask*2.)-1.).type(torch.float)), 1)
-                phase_inp_cat = torch.cat((new_phase_outputs[i_cell], phase_prev_outputs[i_cell], ((gt_mask*2.)-1.).type(torch.float)), 1)
+                mag_inp_cat = torch.cat((new_mag_outputs[i_cell], hist_mag, ((gt_mask*2.)-1.).type(torch.float)), 1)
+                phase_inp_cat = torch.cat((new_phase_outputs[i_cell], hist_phase, ((gt_mask*2.)-1.).type(torch.float)), 1)
             else:
-                mag_inp_cat = torch.cat((new_mag_outputs[i_cell], mag_prev_outputs[i_cell]), 1)
-                phase_inp_cat = torch.cat((new_phase_outputs[i_cell], phase_prev_outputs[i_cell]), 1)
+                mag_inp_cat = torch.cat((new_mag_outputs[i_cell], hist_mag), 1)
+                phase_inp_cat = torch.cat((new_phase_outputs[i_cell], hist_phase), 1)
 
             assert(self.sigmoid_mode)
             mag_it = torch.sigmoid(self.mag_inputGates[i_cell](mag_inp_cat))
+            loss_forget_gate += criterionL1(mag_it[foreground], gt_mask[foreground])
+            # print(gt_mask.shape)
+            # print(gt_mask.min(), gt_mask.max())
+            # plt.imsave('gtmask.jpg', gt_mask.cpu()[0,0,:,:], cmap = 'gray')
+            # plt.imsave('mag_it.jpg', mag_it.cpu().detach()[0,0,:,:], cmap = 'gray')
+            # # print(mag_it[0,0,:8,:8])
+            # # print(mag_it[0,0,:8,:8])
+            # print((self.mag_inputGates[i_cell](mag_inp_cat))[0,0,124:132,124:132])
+            # asdf
+            # mag_it = torch.sigmoid(self.mag_inputGates[i_cell](mag_inp_cat))
+
+            # plt.imsave('mag_it.jpg', mag_it.detach().cpu()[0,0], cmap = 'gray')
+
             if not self.forget_gate_same_phase_mag:
                 phase_it = torch.sigmoid(self.phase_inputGates[i_cell](phase_inp_cat))
             else:
@@ -269,14 +294,24 @@ class convLSTMcell_kspace(nn.Module):
                 mag_ot = torch.ones_like(mag_ft, device = mag_ft.device)
                 phase_ot = torch.ones_like(phase_ft, device = phase_ft.device)
 
+            # plt.imsave('mag_ft.jpg', mag_ft.detach().cpu()[0,0], cmap = 'gray')
             if self.forget_gate_same_coils:
                 mag_ft = mag_ft.repeat(1,self.input_gate_output_size,1,1)
                 phase_ft = phase_ft.repeat(1,self.input_gate_output_size,1,1)
                 mag_it = mag_it.repeat(1,self.input_gate_output_size,1,1)
                 phase_it = phase_it.repeat(1,self.input_gate_output_size,1,1)
 
-            mag_Cthat = self.mag_inputProcs[i_cell](mag_inp_cat)
-            phase_Cthat = self.phase_activation(self.phase_inputProcs[i_cell](phase_inp_cat))
+            ################# DEBUG
+            if self.input_proc_identity:
+                mag_Cthat = hist_mag
+                phase_Cthat = hist_phase
+            else:
+                mag_Cthat = self.mag_inputProcs[i_cell](mag_inp_cat)
+                phase_Cthat = self.phase_activation(self.phase_inputProcs[i_cell](phase_inp_cat))
+                loss_input_gate += criterionL1(mag_Cthat[foreground], hist_mag[foreground])
+                loss_input_gate += criterionL1(phase_Cthat[foreground], hist_phase[foreground])
+
+
 
 
             new_mag_states.append((mag_ft * mag_prev_states[i_cell]) + (mag_it * mag_Cthat))
@@ -293,7 +328,7 @@ class convLSTMcell_kspace(nn.Module):
                 new_mag_outputs[i_cell+1] = new_mag_outputs[i_cell+1].reshape(og_B,og_C,*new_mag_outputs[i_cell+1].shape[2:])
                 new_phase_outputs[i_cell+1] = new_phase_outputs[i_cell+1].reshape(og_B,og_C,*new_phase_outputs[i_cell+1].shape[2:])
 
-        return new_mag_states, new_phase_states, new_mag_outputs[1:], new_phase_outputs[1:]
+        return new_mag_states, new_phase_states, new_mag_outputs[1:], new_phase_outputs[1:], loss_forget_gate, loss_input_gate
 
 class convLSTMcell(nn.Module):
     def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, sigmoid_mode = True, real_mode = False, theta = False, mini = False):
@@ -464,6 +499,7 @@ class convLSTM_Kspace1(nn.Module):
                         n_lstm_cells = self.param_dic['n_lstm_cells'],
                         kspace_combine_coils = self.param_dic['kspace_combine_coils'],
                         coilwise = self.param_dic['coilwise'],
+                        input_proc_identity = self.param_dic['lstm_input_proc_identity'],
                     )
         else:
             self.kspace_m = Identity(n_lstm_cells = self.param_dic['n_lstm_cells'], ispace_lstm = self.param_dic['ispace_lstm'])
@@ -491,7 +527,7 @@ class convLSTM_Kspace1(nn.Module):
         mask = mask - mask.min()
         mask = mask / (mask.max() + EPS)
         mask = (1-mask).unsqueeze(0).unsqueeze(0).unsqueeze(0)
-        self.predr_mask = torch.FloatTensor(mask)
+        self.predr_mask = torch.FloatTensor(mask).to(proc_device)
 
         assert(sigmoid_mode)
 
@@ -571,7 +607,7 @@ class convLSTM_Kspace1(nn.Module):
     def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
 
         # print(fft_exp[0,0,0,:8,:8])
-        mag_log = mylog(fft_exp + CEPS.exp(), base = self.param_dic['logarithm_base']).abs()
+        mag_log = mylog(fft_exp.abs().clip(1e-10,1e20), base = self.param_dic['logarithm_base']) + 5
 
 
         # print('\n')
@@ -588,10 +624,12 @@ class convLSTM_Kspace1(nn.Module):
         
         # targ_mag_log = mylog(fft_exp.abs(), base = self.param_dic['logarithm_base'])
         # targ_phase = phase
-        # # targ_real = torch.fft.ifft2(torch.fft.ifftshift(fft_exp, dim = (-2,-1))).abs()
+        # plt.imsave('targ_real.jpg', targ_real.cpu()[0,0,0,:,:], cmap = 'gray')
+        # input_real = torch.fft.ifft2(torch.fft.ifftshift(fft_exp, dim = (-2,-1))).abs()
+        # plt.imsave('input_real.jpg', input_real.cpu()[0,0,0,:,:], cmap = 'gray')
+        # asdf
         # print(targ_real.shape)
         # print(targ_real.min(), targ_real.max())
-        # plt.imsave('targ_real.jpg', targ_real.cpu()[0,0,0,:,:], cmap = 'gray')
         # asdf
 
         prev_states1 = None
@@ -611,14 +649,23 @@ class convLSTM_Kspace1(nn.Module):
         x_size, y_size = length, length
         x_arr, y_arr = np.mgrid[0:x_size, 0:y_size]
         cell = (length//2, length//2)
-        dists = ((x_arr - cell[0])**2 + (y_arr - cell[1])**2)**0.33
-        dists = torch.FloatTensor(dists+1).to(device)
+        dists = ((x_arr - cell[0])**2 + (y_arr - cell[1])**2)**0.22
+        dists = torch.FloatTensor(dists+1).to(device).unsqueeze(0).unsqueeze(0)
+        if not self.param_dic['crop_loss']:
+            dists = torch.ones_like(dists, device = device).unsqueeze(0).unsqueeze(0)
+        cycle_mask = ((x_arr - cell[0])**2 + (y_arr - cell[1])**2)**2
+        cycle_mask[cycle_mask > cycle_mask[0,x_size//2]] = -1
+        cycle_mask[cycle_mask > -1] = 1
+        cycle_mask[cycle_mask == -1] = 0
+        cycle_mask = torch.FloatTensor(cycle_mask).to(device).unsqueeze(0).unsqueeze(0)
         ans_phase = torch.zeros(*phase.shape[0:2], ans_coils, *phase.shape[3:])
-        predr = torch.zeros(*mag_log.shape[0:2], ans_coils, *mag_log.shape[3:])
+        predr = torch.zeros(*mag_log.shape[0:2], ans_coils, *mag_log.shape[3:]).to(device)
 
         if targ_phase is not None:
             loss_phase = 0
             loss_mag = 0
+            loss_forget_gate = 0
+            loss_input_gate = 0
             loss_real = 0
             loss_l1 = 0
             loss_l2 = 0
@@ -629,6 +676,8 @@ class convLSTM_Kspace1(nn.Module):
             loss_phase = None
             loss_mag = None
             loss_real = None
+            loss_forget_gate = None
+            loss_input_gate = 0
             loss_l1 = 0
             loss_l2 = 0
             loss_ss1 = 0
@@ -658,36 +707,49 @@ class convLSTM_Kspace1(nn.Module):
                 # hist_mask = gt_masks.reshape(-1, *gt_masks.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *gt_masks.shape[3:])
 
             if self.param_dic['kspace_predict_mode'] == 'thetas':
-                hist_phase = torch.atan2(hist_phase[:,:,:,:,1],hist_phase[:,:,:,:,0])
+                background = ((hist_phase[:,:,:,:,1].abs() + hist_phase[:,:,:,:,0].abs()) < 1)
+                hist_phase = torch.atan2(hist_phase[:,:,:,:,1]+EPS,hist_phase[:,:,:,:,0]) + 4
+                hist_phase[background] = 0
+                hist_mag[background] = 0
+
             elif self.param_dic['kspace_predict_mode'] == 'cosine':
                 hist_phase = hist_phase[:,:,:,:,0]
+                assert 0
             elif self.param_dic['kspace_predict_mode'] == 'unit-vector':
                 hist_phase = hist_phase
+                assert 0
             else:
                 assert 0
 
+            # print(hist_mag.min(), hist_mag.max())
+            # print(hist_phase.min(), hist_phase.max())
+            # print(hist_mag[0,0,:8,:8])
             # print(hist_phase[0,0,:8,:8])
-            # plt.imsave('phase.jpg', (hist_phase[0,0,:,:]).cpu(), cmap = 'gray')
+            # plt.imsave('inp_phase.jpg', (hist_phase[0,0,:,:]).cpu(), cmap = 'gray')
+            # plt.imsave('inp_mag.jpg', (hist_mag[0,0,:,:]).cpu(), cmap = 'gray')
             # asdf
 
             # hist_phase = hist_phase * gt_masks[:,ti,:,:,:]
 
 
             # if prev_outputs2 is not None:
-            #     prev_outputs2 = [(x + 5)/4 for x in prev_outputs2]
-            #     prev_outputs1 = [(x + 4)/2 for x in prev_outputs1]
-            prev_states2, prev_states1, prev_outputs2, prev_outputs1 = self.kspace_m(hist_mag, hist_phase, gt_masks[:,ti,:,:,:], prev_states2, prev_outputs2, prev_states1, prev_outputs1)
+                prev_outputs2 = [(x + 5) for x in prev_outputs2]
+                prev_outputs1 = [x + 4 for x in prev_outputs1]
+            prev_states2, prev_states1, prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr = self.kspace_m(hist_mag, hist_phase, gt_masks[:,ti,:,:,:], prev_states2, prev_outputs2, prev_states1, prev_outputs1, background = background)
             # print(hist_mag.min(), hist_mag.max())
             # print(hist_phase.min(), hist_phase.max())
             # print(prev_outputs2[-1].min(), prev_outputs2[-1].max())
             # print(prev_outputs1[-1].min(), prev_outputs1[-1].max())
+            # print(prev_outputs1[-1][:,:,:8,:8])
+            # print(hist_phase[:,:,:8,:8])
             # print('\n\n')
             
-            # prev_outputs2 = [(x*4) - 5 for x in prev_outputs2]
-            # prev_outputs1 = [(x*2) - 4 for x in prev_outputs1]
+            prev_outputs2 = [(x - 5)*cycle_mask for x in prev_outputs2]
+            prev_outputs1 = [(x - 4)*cycle_mask for x in prev_outputs1]
+            # plt.imsave('cycle_mask.jpg', cycle_mask.cpu()[0,0], cmap = 'gray')
 
             # prev_outputs2[-1] = (prev_outputs2[-1]*1e-10) + targ_mag_log[:,ti]
-            # targ_angles = torch.atan2((targ_phase[:,ti,:,:,:,1]),(targ_phase[:,ti,:,:,:,0])).to(device)
+            # targ_angles = torch.atan2((targ_phase[:,ti,:,:,:,1]),(targ_phase[:,ti,:,:,:,0])).to(device) + np.pi
             # prev_outputs1[-1] = (prev_outputs1[-1]*1e-10) + targ_angles
 
 
@@ -709,6 +771,7 @@ class convLSTM_Kspace1(nn.Module):
                 # lstm_predicted_fft.real = lstm_predicted_fft.real - lstm_predicted_fft.real.reshape(*lstm_predicted_fft.shape[:2], -1).mean(2).unsqueeze(-1).unsqueeze(-1).detach()
                 # lstm_predicted_fft.imag = lstm_predicted_fft.imag - lstm_predicted_fft.imag.reshape(*lstm_predicted_fft.shape[:2], -1).mean(2).unsqueeze(-1).unsqueeze(-1).detach()
                 predr_ti = torch.fft.ifft2(torch.fft.ifftshift(lstm_predicted_fft, dim = (-2,-1)))
+                # print(predr_ti.abs().min(), predr_ti.abs().max())
                 predr_ti = predr_ti.abs().clip(-10,10)
                 # predr_ti = predr_ti - predr_ti.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 # predr_ti = predr_ti / (EPS + predr_ti.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
@@ -738,17 +801,44 @@ class convLSTM_Kspace1(nn.Module):
                 if ti >= self.param_dic['init_skip_frames']:
                     if targ_phase is not None:
                         if not self.param_dic['end-to-end-supervision']:
-                            loss_mag += criterionL1((prev_outputs2[i_cell]*dists), (targ_mag_log[:,ti,:,:,:].to(device)*dists))/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+
+                            # print(dists.min(), dists.max())
+                            # print(dists.shape)
+                            # print((prev_outputs2[i_cell]*dists).shape)
+                            # plt.imsave('mag_loss_dists.jpg', dists.cpu()[0,0,:,:], cmap = 'gray')
+                            # asdf
+                            # print(prev_outputs2[i_cell].shape, targ_angles.shape)
+                            # print(targ_mag_log[:,ti,:,:,:].min(), targ_mag_log[:,ti,:,:,:].max())
+                            # print(prev_outputs2[i_cell].min(), prev_outputs2[i_cell].max())
+                            # print('\n')
+
+                            loss_mag += criterionL1((dists*prev_outputs2[i_cell]), dists*cycle_mask*(targ_mag_log[:,ti,:,:,:].to(device)))/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+                            loss_forget_gate += loss_forget_gate_curr/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+                            loss_input_gate += loss_input_gate_curr/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+
+                            # plt.imsave('pred_mag.jpg', prev_outputs2[i_cell][0,0,:,:].cpu().detach(), cmap = 'gray')
+                            # plt.imsave('targ_mag.jpg', targ_mag_log[0,ti,0,:,:].cpu().detach(), cmap = 'gray')
                             if self.param_dic['loss_phase'] == 'L1':
                                 loss_phase += criterionL1(stacked_phase, (targ_phase[:,ti,:,:,:,:].to(device)))/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
                             elif self.param_dic['loss_phase'] == 'Cosine':
                                 loss_phase += (1 - criterionCos(stacked_phase, (targ_phase[:,ti,:,:,:,:]).to(device))).mean()/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
                             elif self.param_dic['loss_phase'] == 'raw_L1':
                                 if self.param_dic['kspace_predict_mode'] == 'cosine':
-                                    loss_phase += criterionL1(prev_outputs1[-1], (targ_phase[:,ti,:,:,:,0]).to(device))/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+                                    loss_phase += criterionL1(prev_outputs1[i_cell], (targ_phase[:,ti,:,:,:,0]).to(device))/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
                                 elif self.param_dic['kspace_predict_mode'] == 'thetas':
-                                    targ_angles = torch.atan2((targ_phase[:,ti,:,:,:,1]),(targ_phase[:,ti,:,:,:,0])).to(device)
-                                    loss_phase += criterionL1(prev_outputs1[-1], targ_angles)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+                                    targ_angles = torch.atan2((targ_phase[:,ti,:,:,:,1])+EPS,(targ_phase[:,ti,:,:,:,0])).to(device)
+                                    loss_phase += criterionL1(prev_outputs1[i_cell], cycle_mask*targ_angles)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+                                    # print(prev_outputs1[-1].shape, targ_angles.shape)
+                                    # print(targ_angles.min(), targ_angles.max())
+                                    # print(prev_outputs1[-1].min(), prev_outputs1[-1].max())
+
+                                    # plt.imsave('pred_phase.jpg', prev_outputs1[i_cell][0,0,:,:].cpu().detach(), cmap = 'gray')
+                                    # print(prev_outputs1[-1][0,0,:8,:8])
+                                    # print(prev_outputs1[-1][0,0,124:132,124:132])
+                                    # print(prev_outputs2[-1][0,0,:8,:8])
+                                    # print(prev_outputs2[-1][0,0,124:132,124:132])
+                                    # print('\n\n')
+                                    # plt.imsave('targ_phase.jpg', targ_angles[0,0,:,:].cpu().detach(), cmap = 'gray')
                                 elif self.param_dic['kspace_predict_mode'] == 'unit-vector':
                                     loss_phase += criterionL1(stacked_phase, (targ_phase[:,ti,:,:,:,:]).to(device))/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
                                 else:
@@ -760,7 +850,12 @@ class convLSTM_Kspace1(nn.Module):
                             # targ_now = targ_now - targ_now.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                             # targ_now = targ_now / (EPS + targ_now.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
-
+                            # print(self.lossmask.min(), self.lossmask.max())
+                            # plt.imsave('lossmask.jpg', self.lossmask.cpu()[0,0,:,:], cmap = 'gray')
+                            # asdf
+                            # print(predr_ti.min(), predr_ti.max())
+                            # print(targ_now.min(), targ_now.max())
+                            # print('\n')
                             loss_real += criterionL1(predr_ti*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
                             if prev_output3 is not None:
                                 loss_real += criterionL1(prev_output3*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
@@ -788,8 +883,7 @@ class convLSTM_Kspace1(nn.Module):
                 predr[:,ti,:,:] = predr_ti.detach()
 
         predr = predr * self.predr_mask
-
-        return predr, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, (loss_l1, loss_l2, loss_ss1)
+        return predr, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, loss_ss1)
 
 
 class CoupledDown(nn.Module):
@@ -960,7 +1054,7 @@ class ImageSpaceModel1(nn.Module):
         self.param_dic = parameters
         self.image_space_real = self.param_dic['image_space_real']
         self.num_coils = self.param_dic['num_coils']
-        if self.param_dic['kspace_combine_coils']:
+        if self.param_dic['kspace_combine_coils'] or self.param_dic['coil_combine'] == 'SOS':
             self.input_size = 1
         else:
             self.input_size = self.param_dic['num_coils']

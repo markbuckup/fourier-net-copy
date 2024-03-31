@@ -36,7 +36,7 @@ seed_torch(0)
 parser = argparse.ArgumentParser()
 parser.add_argument('--resolution', type = int, default = 256)
 parser.add_argument('--gpu', type = int, default = -1)
-parser.add_argument('--pat_start', type = int, default = 0)
+parser.add_argument('--pat_start', type = int, default = 1)
 parser.add_argument('--pat_end', type = int, default = 150)
 parser.add_argument('--metadata_only', action = 'store_true')
 args = parser.parse_args()
@@ -218,13 +218,15 @@ if not args.metadata_only:
 
                 dic['coilwise_input'][fi] = myfft_interp
 
-                # inverse_interp = torch.fft.ifft2(torch.fft.ifftshift(myfft_interp))
 
+                # inverse_interp = torch.fft.ifft2(torch.fft.ifftshift(myfft_interp))
                 # for coil in range(8):
                 #     plt.imsave('coil_{}_inverse_interp.jpg'.format(coil), inverse_interp.abs()[coil], cmap = 'gray')
                 #     plt.imsave('coil_{}_mag_of_log_interp.jpg'.format(coil), (myfft_interp + torch.complex(torch.tensor([1e-10]),torch.tensor([1e-10])).exp()).log().abs()[coil], cmap = 'gray')
                 #     plt.imsave('coil_{}_phase_interp.jpg'.format(coil), torch.atan2(myfft_interp.imag, myfft_interp.real)[coil], cmap = 'gray')
                 #     plt.imsave('coil_{}_mask.jpg'.format(coil), dic['spoke_mask'][fi,0], cmap = 'gray')
+                #     plt.imsave('coil_{}.jpg'.format(coil), curr_coil[coil], cmap = 'gray')
+                # asdf
 
                 # if fi == 1:
                 #     asdf

@@ -98,10 +98,10 @@ class ACDC_radial(Dataset):
             self.offset = int(self.train_split*self.num_patients)
             self.num_patients = self.num_patients - int(self.train_split*self.num_patients)
         
-        # # DEBUG
-        self.num_vids_per_patient *= 0
-        self.num_vids_per_patient += 1
-        # # DEBUG
+        # # # DEBUG
+        # self.num_vids_per_patient *= 0
+        # self.num_vids_per_patient += 1
+        # # # DEBUG
 
         self.num_vids_per_patient = self.num_vids_per_patient[self.offset:self.offset+self.num_patients]
         self.frames_per_vid_per_patient = self.frames_per_vid_per_patient[self.offset:self.offset+self.num_patients]
@@ -110,7 +110,7 @@ class ACDC_radial(Dataset):
         self.coil_variant_per_patient_per_video = self.coil_variant_per_patient_per_video[self.offset:self.offset+self.num_patients]
 
         if self.loop_videos != -1:
-            self.frames_per_vid_per_patient *=0
+            self.frames_per_vid_per_patient *= 0
             self.frames_per_vid_per_patient += self.loop_videos
         self.vid_frame_cumsum = np.cumsum(self.num_vids_per_patient*self.frames_per_vid_per_patient)
         self.vid_cumsum = np.cumsum(self.num_vids_per_patient)
@@ -154,20 +154,30 @@ class ACDC_radial(Dataset):
 
         # start = time.time()
         p_num, v_num = self.index_to_location(i)
+        p_num = 0
+        v_num = 0
         actual_pnum = self.offset + p_num
         index_coils_used = self.coil_variant_per_patient_per_video[p_num][v_num]
-        coils_used = self.coil_masks[index_coils_used].unsqueeze(0)
+        coils_used = torch.flip(self.coil_masks[index_coils_used].unsqueeze(0), dims = (-2,-1))
+
         GAs_used = self.GAs_per_patient_per_video[p_num][v_num][:self.loop_videos,:]
 
 
+        # for i in range(8):
+        #     plt.imsave('{}_{}_coil_{}.jpg'.format(p_num, v_num, i), (coils_used[0,i,:,:]), cmap = 'gray')
 
         dic_path = os.path.join(self.data_path, 'patient_{}/vid_{}.pth'.format(actual_pnum+1, v_num))
 
 
         dic = torch.load(dic_path, map_location = torch.device('cpu'))
-        masks_applicable = dic['spoke_mask']
+        masks_applicable = dic['spoke_mask'].type(torch.float32)
         og_video = ((dic['targ_video']/255.)[:self.loop_videos,:,:,:])
         undersampled_fts = dic['coilwise_input'][:self.loop_videos,:,:,:]
+
+        # for i in range(8):
+        #     plt.imsave('{}_{}_undersampled_fts_{}.jpg'.format(p_num, v_num, i), torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts[0,i,:,:])).abs(), cmap = 'gray')
+        # asdf
+
         Nf = self.actual_frames_per_vid_per_patient[p_num]
 
         return torch.tensor([actual_pnum, v_num]), masks_applicable, og_video, undersampled_fts, coils_used, Nf
