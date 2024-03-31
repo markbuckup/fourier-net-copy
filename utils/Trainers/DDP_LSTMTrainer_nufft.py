@@ -639,15 +639,16 @@ class Trainer(nn.Module):
                     print('Predr nan',torch.isnan(predr).any())
                 predr[torch.isnan(predr)] = 0
 
+                sos_output = (predr**2).sum(2, keepdim = False).cpu() ** 0.5
                 if self.parameters['coil_combine'] == 'SOS':
-                    predr = (predr**2).sum(2, keepdim = True) ** 0.5
+                    ispace_input = (predr**2).sum(2, keepdim = True) ** 0.5
                     chan = 1
                 else:
-                    predr = predr[:,self.parameters['init_skip_frames']:]
+                    ispace_input = predr[:,self.parameters['init_skip_frames']:]
 
                 if self.parameters['kspace_combine_coils']:
                     chan = 1
-                predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
+                ispace_input = ispace_input.reshape(batch*num_frames,chan,numr, numc).to(self.device)
                 # print(predr.shape)
                 # for j in range(10):
                 #     for i in range(8):
@@ -667,7 +668,7 @@ class Trainer(nn.Module):
                 # ispace_outp = self.ispace_model(temp).reshape(batch,num_frames,numr,numc).cpu()
                 
 
-                ispace_outp = self.ispace_model(predr).cpu().reshape(batch,num_frames,numr,numc)
+                ispace_outp = self.ispace_model(ispace_input).cpu().reshape(batch,num_frames,numr,numc)
 
                 # ispace_outp = ispace_outp - ispace_outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 # ispace_outp = ispace_outp / (EPS + ispace_outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
@@ -684,7 +685,7 @@ class Trainer(nn.Module):
                 # asdf
                 
 
-                predr = predr.reshape(batch,num_frames,1,numr, numc).to(self.device)
+                predr = predr.reshape(batch,num_frames,self.parameters['num_coils'],numr, numc).to(self.device)
                 pred_ft = torch.fft.fftshift(torch.fft.fft2(predr), dim = (-2,-1))
                 
                 tot = 0
@@ -699,6 +700,7 @@ class Trainer(nn.Module):
                             fig = plt.figure(figsize = (12,6))
                             og_vidi = og_video.cpu()[bi, f_num,0,:,:]
                             ispace_outpi = ispace_outp[bi, f_num, :,:]
+                            sos_outpi = sos_output[bi, f_num, :,:]
                             
                             plt.subplot(1,3,1)
                             myimshow(og_vidi, cmap = 'gray')
@@ -713,6 +715,43 @@ class Trainer(nn.Module):
                             plt.subplot(1,3,3)
                             diffvals = show_difference_image(ispace_outpi, og_vidi)
                             plt.title('Difference Frame')
+                            spec = ''
+                            if f_num < self.parameters['init_skip_frames']:
+                                spec = 'Loss Skipped'
+                            plt.suptitle("Epoch {}\nPatient {} Video {} Frame {}\n{}".format(epoch,p_num, v_num, f_num, spec))
+                            plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/io_frame_{}.jpg'.format(p_num, v_num, f_num)))
+                            plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/io_location_{}.jpg'.format(p_num, f_num, v_num)))
+
+
+
+
+                            fig = plt.figure(figsize = (12,6))
+                            og_vidi = og_video.cpu()[bi, f_num,0,:,:]
+                            ispace_outpi = ispace_outp[bi, f_num, :,:]
+                            
+                            plt.subplot(1,3,1)
+                            myimshow(og_vidi, cmap = 'gray')
+                            plt.title('Ground Truth Frame')
+                            # print(f_num, 1)
+                            # ispace_outpi = torch.from_numpy(match_histograms(ispace_outpi.numpy(), og_vidi.numpy(), channel_axis=None))
+                            plt.subplot(1,3,2)
+                            myimshow(sos_outpi, cmap = 'gray')
+                            plt.title('convLSTM Prediction')
+                            # print(f_num, 2)
+                            
+                            plt.subplot(1,3,3)
+                            diffvals = show_difference_image(sos_outpi, og_vidi)
+                            plt.title('Difference Frame')
+                            plt.title('Difference Frame')
+                            spec = ''
+                            if f_num < self.parameters['init_skip_frames']:
+                                spec = 'Loss Skipped'
+                            plt.suptitle("Epoch {}\nPatient {} Video {} Frame {}\n{}".format(epoch,p_num, v_num, f_num, spec))
+                            plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/sos_frame_{}.jpg'.format(p_num, v_num, f_num)))
+                            plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/sos_location_{}.jpg'.format(p_num, f_num, v_num)))
+
+
+
                             # print(f_num, 3)
 
                             # plt.subplot(2,2,4)
@@ -720,16 +759,13 @@ class Trainer(nn.Module):
                             # plt.ylabel('Pixel Count')
                             # plt.xlabel('Difference Value')
                             # print(f_num, 4)
-                            if self.parameters['kspace_combine_coils'] or self.parameters['coil_combine'] == 'SOS':
+                            if self.parameters['kspace_combine_coils']:
                                 kspace_out_size = 1
                             else:
                                 kspace_out_size = self.parameters['num_coils']
                             spec = ''
                             if f_num < self.parameters['init_skip_frames']:
                                 spec = 'Loss Skipped'
-                            plt.suptitle("Epoch {}\nPatient {} Video {} Frame {}\n{}".format(epoch,p_num, v_num, f_num, spec))
-                            plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/io_frame_{}.jpg'.format(p_num, v_num, f_num)))
-                            plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/io_location_{}.jpg'.format(p_num, f_num, v_num)))
 
                             if not self.args.ispace_visual_only:
                                 fig = plt.figure(figsize = (22,4*kspace_out_size))
