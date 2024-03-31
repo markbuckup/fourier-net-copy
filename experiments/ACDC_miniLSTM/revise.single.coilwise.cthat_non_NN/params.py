@@ -5,7 +5,7 @@ parameters['train_batch_size'] = 3
 parameters['test_batch_size'] = 3
 parameters['lr_kspace'] = 1e-5
 parameters['lr_ispace'] = 1e-5
-parameters['num_epochs_ispace'] = 30
+parameters['num_epochs_ispace'] = 200
 parameters['num_epochs_kspace'] = 400
 parameters['num_epochs_total'] = 400
 assert(parameters['num_epochs_kspace'] <= parameters['num_epochs_total'])
@@ -18,7 +18,7 @@ parameters['kspace_real_loss_only'] = False
 
 parameters['lstm_input_mask'] = True
 parameters['concat'] = True
-parameters['n_layers'] = 2
+parameters['n_layers'] = 4
 parameters['n_hidden'] = 16
 parameters['n_lstm_cells'] = 1
 parameters['forget_gate_coupled'] = True
@@ -29,9 +29,10 @@ parameters['logarithm_base'] = 10
 parameters['skip_kspace_lstm'] = False
 parameters['coilwise'] = True
 assert( not (parameters['coilwise'] and parameters['kspace_combine_coils']))
-parameters['crop_loss'] = True
-parameters['lstm_input_proc_identity'] = False
-parameters['lstm_gate_loss'] = False
+parameters['crop_loss'] = False
+parameters['lstm_input_proc_identity'] = True
+parameters['lstm_forget_gate_loss'] = False
+parameters['lstm_input_gate_loss'] = False
 parameters['coil_combine'] = 'SOS'
 assert(parameters['coil_combine'] in ['SOS', 'UNET'])
 

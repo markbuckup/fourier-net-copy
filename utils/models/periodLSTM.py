@@ -218,8 +218,8 @@ class convLSTMcell_kspace(nn.Module):
 
     def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_states = None, mag_prev_outputs = None, phase_prev_states = None, phase_prev_outputs = None, background = None):
         # x is a batch of video frames at a single time stamp
-
-        foreground = torch.logical_not(background)
+        del gt_mask
+        foreground = torch.logical_not(background).float().to(hist_mag.device)
         if mag_prev_states is None:
             if self.coilwise:
                 mag_shape1 = (hist_mag.shape[0], self.num_coils, *hist_mag.shape[2:])
@@ -238,7 +238,7 @@ class convLSTMcell_kspace(nn.Module):
             hist_mag = hist_mag.reshape(og_B*og_C, 1, *hist_mag.shape[2:])
             hist_phase = hist_phase.reshape(og_B*og_C, 1, *hist_phase.shape[2:])
             foreground = foreground.reshape(og_B*og_C, 1, *hist_phase.shape[2:])
-            gt_mask = gt_mask.repeat((1, self.num_coils,1,1)).reshape(og_B*og_C, 1, *hist_phase.shape[2:])
+            # gt_mask = gt_mask.repeat((1, self.num_coils,1,1)).reshape(og_B*og_C, 1, *hist_phase.shape[2:])
             for i_cell in range(self.n_lstm_cells):
                 mag_prev_states[i_cell] = mag_prev_states[i_cell].reshape(og_B*og_C, 1, *mag_prev_states[i_cell].shape[2:])
                 phase_prev_states[i_cell] = phase_prev_states[i_cell].reshape(og_B*og_C, 1, *phase_prev_states[i_cell].shape[2:])
@@ -254,15 +254,18 @@ class convLSTMcell_kspace(nn.Module):
         criterionL1 = nn.L1Loss()
         for i_cell in range(self.n_lstm_cells):
             if self.lstm_input_mask:
-                mag_inp_cat = torch.cat((new_mag_outputs[i_cell], hist_mag, ((gt_mask*2.)-1.).type(torch.float)), 1)
-                phase_inp_cat = torch.cat((new_phase_outputs[i_cell], hist_phase, ((gt_mask*2.)-1.).type(torch.float)), 1)
+                mag_inp_cat = torch.cat((new_mag_outputs[i_cell], hist_mag, foreground), 1)
+                phase_inp_cat = torch.cat((new_phase_outputs[i_cell], hist_phase, foreground), 1)
             else:
                 mag_inp_cat = torch.cat((new_mag_outputs[i_cell], hist_mag), 1)
                 phase_inp_cat = torch.cat((new_phase_outputs[i_cell], hist_phase), 1)
 
             assert(self.sigmoid_mode)
             mag_it = torch.sigmoid(self.mag_inputGates[i_cell](mag_inp_cat))
-            loss_forget_gate += criterionL1(mag_it[foreground], gt_mask[foreground])
+            loss_forget_gate += criterionL1(mag_it*foreground, foreground)
+            # plt.imsave('mag_it.jpg', (mag_it == 1).cpu().detach()[0,0,:,:])
+            # plt.imsave('foreground.jpg', foreground.float().cpu()[0,0,:,:])
+
             # print(gt_mask.shape)
             # print(gt_mask.min(), gt_mask.max())
             # plt.imsave('gtmask.jpg', gt_mask.cpu()[0,0,:,:], cmap = 'gray')
@@ -308,8 +311,8 @@ class convLSTMcell_kspace(nn.Module):
             else:
                 mag_Cthat = self.mag_inputProcs[i_cell](mag_inp_cat)
                 phase_Cthat = self.phase_activation(self.phase_inputProcs[i_cell](phase_inp_cat))
-                loss_input_gate += criterionL1(mag_Cthat[foreground], hist_mag[foreground])
-                loss_input_gate += criterionL1(phase_Cthat[foreground], hist_phase[foreground])
+                loss_input_gate += criterionL1(mag_Cthat*foreground, hist_mag*foreground)
+                loss_input_gate += criterionL1(phase_Cthat*foreground, hist_phase*foreground)
 
 
 

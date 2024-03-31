@@ -266,9 +266,10 @@ class Trainer(nn.Module):
                             # loss = 10*loss_real
                             # print(0.06*loss_mag , 2*loss_phase , 50*loss_real)
                             loss = 0.1*loss_mag + 2*loss_phase + 12*loss_real
-                            if self.parameters['lstm_gate_loss']:
-                                loss += loss_forget_gate * 18
-                                loss += loss_input_gate * 45
+                            if self.parameters['lstm_forget_gate_loss']:
+                                loss += loss_forget_gate * 8
+                            if self.parameters['lstm_input_gate_loss']:
+                                loss += loss_input_gate * 18
 
                             # print(0.1*loss_mag , 2*loss_phase ,12*loss_real)
                             # print(0.06*loss_mag,100*loss_phase,5*loss_real)
@@ -315,7 +316,7 @@ class Trainer(nn.Module):
                 avgsos_l2_loss += float(loss_l2_sos.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
 
             if self.parameters['coil_combine'] == 'SOS':
-                predr = predr_sos
+                predr = ((predr**2).sum(2, keepdim = True) ** 0.5)[:,self.parameters['init_skip_frames']:]
                 chan = 1
             else:
                 predr = predr[:,self.parameters['init_skip_frames']:]
@@ -332,7 +333,7 @@ class Trainer(nn.Module):
 
                 outp = self.ispace_model(predr.detach())
 
-                if self.parameters['crop_loss'] and 0:
+                if self.parameters['crop_loss']:
                     mask = gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution'])).reshape(1,1,self.parameters['image_resolution'],self.parameters['image_resolution'])
                 else:
                     mask = np.ones((1,1,self.parameters['image_resolution'],self.parameters['image_resolution']))
