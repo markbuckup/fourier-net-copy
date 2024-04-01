@@ -367,6 +367,8 @@ class Trainer(nn.Module):
                 if self.parameters['end-to-end-supervision']:
                     self.kspace_optim.step()
 
+                outp = outp - outp.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
+                outp = outp / (EPS + outp.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
 
                 loss_l1 = (outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]).abs().mean(1).sum().detach().cpu()
                 loss_l2 = (((outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]) ** 2).mean(1).sum()).detach().cpu()
@@ -532,6 +534,9 @@ class Trainer(nn.Module):
                     motion_mask = (motion_mask - motion_mask_min)/(motion_mask_max+EPS)
                 else:
                     motion_mask = torch.ones(targ_vid.shape).to(self.device)
+
+                outp = outp - outp.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
+                outp = outp / (EPS + outp.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
 
                 loss_l1 = ((outp*motion_mask)- (targ_vid*motion_mask)).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]).abs().detach().cpu().mean(1)
                 loss_l2 = ((((outp*motion_mask)- (targ_vid*motion_mask)).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]) ** 2)).detach().cpu().mean(1)
