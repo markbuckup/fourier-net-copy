@@ -48,6 +48,12 @@ def myimshow(x, cmap = 'gray', trim = False):
     plt.axis('off')
     plt.imshow(x, cmap = cmap)
 
+def special_trim(x, l = 5, u = 95):
+    percentile_95 = np.percentile(x.detach().cpu(), u)
+    percentile_5 = np.percentile(x.detach().cpu(), l)
+    x = x.clip(percentile_5, percentile_95)
+    return x
+
 def torch_trim(x):
     B,C,row,col = x.shape
     
@@ -256,6 +262,13 @@ class Trainer(nn.Module):
 
                 if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
                     predr, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
+
+                    predr_sos = ((predr**2).sum(2, keepdim = True) ** 0.5)[:,self.parameters['init_skip_frames']:]
+                    targ_vid = og_video.to(self.device)[:,self.parameters['init_skip_frames']:]
+                    ss1_sos = self.SSIM(predr_sos.reshape(predr_sos.shape[0]*predr_sos.shape[1]*predr_sos.shape[2],1,*predr_sos.shape[3:]), targ_vid.reshape(predr_sos.shape[0]*predr_sos.shape[1]*predr_sos.shape[2],1,*predr_sos.shape[3:]))
+                    ss1_sos = 1-ss1_sos.reshape(ss1_sos.shape[0],-1)
+                    loss_ss1_sos = ss1_sos.mean(1).sum()
+
                     del masks
                     del inpt_phase
                     del inpt_mag_log
@@ -264,8 +277,8 @@ class Trainer(nn.Module):
                             loss = 10*loss_real
                         else:
                             # loss = 10*loss_real
-                            # print(0.06*loss_mag , 2*loss_phase , 50*loss_real)
-                            loss = 0.1*loss_mag + 2*loss_phase + 12*loss_real
+                            # print(0.06*loss_mag , 2*loss_phase , 12*loss_real, 0.2*loss_ss1_sos)
+                            loss = 0.1*loss_mag + 2*loss_phase + 12*loss_real + 0.2*loss_ss1_sos
                             if self.parameters['lstm_forget_gate_loss']:
                                 loss += loss_forget_gate * 8
                             if self.parameters['lstm_input_gate_loss']:
@@ -296,15 +309,16 @@ class Trainer(nn.Module):
                     loss_l1 = (predr- (og_coiled_vids)).reshape(predr.shape[0]*predr.shape[1]*predr.shape[2], predr.shape[3]*predr.shape[4]).abs().detach().cpu().mean(1).sum()
                     loss_l2 = (((predr- (og_coiled_vids)).reshape(predr.shape[0]*predr.shape[1]*predr.shape[2], predr.shape[3]*predr.shape[4]) ** 2)).detach().cpu().mean(1).sum()
 
-                avgkspacelossreal += float(loss_real.cpu().item()/(len(self.trainloader)))
+                avgkspacelossreal += float(loss_real.cpu().item()/(len(self.trainloader)))/2
                 kspacessim_score += float(ss1.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
                 avgkspace_l1_loss += float(loss_l1.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
                 avgkspace_l2_loss += float(loss_l2.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
                 del loss_real
             
             with torch.no_grad():
-                predr_sos = ((predr**2).sum(2, keepdim = True) ** 0.5)[:,self.parameters['init_skip_frames']:]
-                targ_vid = og_video.to(self.device)[:,self.parameters['init_skip_frames']:]
+                predr_sos = predr_sos - predr_sos.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
+                predr_sos = predr_sos / (EPS + predr_sos.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
+
                 loss_l1_sos = (predr_sos - targ_vid).reshape(predr_sos.shape[0]*predr_sos.shape[1], predr_sos.shape[3]*predr_sos.shape[4]).abs().mean(1).sum().detach().cpu()
                 loss_l2_sos = (((predr_sos - targ_vid).reshape(predr_sos.shape[0]*predr_sos.shape[1], predr_sos.shape[3]*predr_sos.shape[4]) ** 2).mean(1).sum()).detach().cpu()
                 # ss1_sos = self.SSIM(targ_vid.reshape(predr_sos.shape[0]*predr_sos.shape[1],1,*predr_sos.shape[3:]), targ_vid.reshape(predr_sos.shape[0]*predr_sos.shape[1],1,*predr_sos.shape[3:]))
@@ -426,7 +440,7 @@ class Trainer(nn.Module):
             f.write('\n')
             f.flush()
         if self.ddp_rank == 0:
-            tqdm_object = tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch+1, dstr), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
+            tqdm_object = tqdm(enumerate(dloader), total = len(dloader), desc = "Testing after Epoch {} on {}set".format(epoch, dstr), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
         else:
             tqdm_object = enumerate(dloader)
         with torch.no_grad():
@@ -475,6 +489,9 @@ class Trainer(nn.Module):
                 avgkspace_l2_loss += float(loss_l2.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
 
                 predr_sos = ((predr**2).sum(2, keepdim = True) ** 0.5)[:,self.parameters['init_skip_frames']:]
+                predr_sos = predr_sos - predr_sos.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
+                predr_sos = predr_sos / (EPS + predr_sos.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
+
                 targ_vid = og_video.to(self.device)[:,self.parameters['init_skip_frames']:]
                 loss_l1_sos = (predr_sos - targ_vid).reshape(predr_sos.shape[0]*predr_sos.shape[1], predr_sos.shape[3]*predr_sos.shape[4]).abs().mean(1).sum().detach().cpu()
                 loss_l2_sos = (((predr_sos - targ_vid).reshape(predr_sos.shape[0]*predr_sos.shape[1], predr_sos.shape[3]*predr_sos.shape[4]) ** 2).mean(1).sum()).detach().cpu()
