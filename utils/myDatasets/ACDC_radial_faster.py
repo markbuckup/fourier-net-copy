@@ -47,17 +47,20 @@ class ACDC_radial_ispace(Dataset):
     
     @classmethod
     def set_data(cls, input, gt, pat_id, vid_id):
+        # print('setting', pat_id, vid_id)
         cls.mem_inputs[pat_id][vid_id] = (input*255).type(torch.uint8)
         cls.mem_gts[pat_id][vid_id] = (gt*255).type(torch.uint8)
         cls.mem_stored_bool[pat_id][vid_id] = 1
 
     @classmethod
     def get_data(cls, pat_id, vid_id):
+        # print('loading', pat_id, vid_id)
         assert(cls.mem_stored_bool[pat_id][vid_id] == 1)
         return (cls.mem_inputs[pat_id][vid_id]).float()/255., (cls.mem_gts[pat_id][vid_id]).float()/255.
 
     @classmethod
     def check_data(cls, pat_id, vid_id):
+        # print('checking', pat_id, vid_id)
         return cls.mem_stored_bool[pat_id][vid_id] == 1
 
     @classmethod
@@ -98,6 +101,7 @@ class ACDC_radial_ispace(Dataset):
     def __init__(self, path, parameters, device, train = True, visualise_only = False):
         super(ACDC_radial_ispace, self).__init__()
         ACDC_radial_ispace.max_frames = 30
+        self.train = train
         parameters['loop_videos'] = ACDC_radial_ispace.max_frames
         self.orig_dataset = ACDC_radial(path, parameters, device, train = train, visualise_only = visualise_only)
         self.total_unskipped_frames = parameters['num_coils']*((ACDC_radial_ispace.max_frames - parameters['init_skip_frames'])*self.orig_dataset.num_vids_per_patient).sum()
@@ -106,6 +110,9 @@ class ACDC_radial_ispace(Dataset):
 
     def __getitem__(self, i):
         pat_id, vid_id = self.orig_dataset.index_to_location(i)
+        pat_id += self.orig_dataset.offset
+        assert(self.train and pat_id < 120)
+        assert((not self.train) and pat_id > 120)
 
         if ACDC_radial_ispace.check_data(pat_id, vid_id):
             mem = torch.tensor(1)
