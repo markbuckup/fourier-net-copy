@@ -276,7 +276,6 @@ class Trainer(nn.Module):
         else:
             tqdm_object = enumerate(self.trainloader)
         for i, data_instance in tqdm_object:
-            break
             if self.kspace_mode:
                 (indices, masks, og_video, undersampled_fts, coils_used, periods) = data_instance
                 skip_kspace = False

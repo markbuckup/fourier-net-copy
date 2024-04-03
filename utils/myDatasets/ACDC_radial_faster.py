@@ -100,7 +100,7 @@ class ACDC_radial_ispace(Dataset):
 
     def __init__(self, path, parameters, device, train = True, visualise_only = False):
         super(ACDC_radial_ispace, self).__init__()
-        ACDC_radial_ispace.max_frames = 30
+        ACDC_radial_ispace.max_frames = 60
         self.train = train
         parameters['loop_videos'] = ACDC_radial_ispace.max_frames
         self.orig_dataset = ACDC_radial(path, parameters, device, train = train, visualise_only = visualise_only)
@@ -111,8 +111,10 @@ class ACDC_radial_ispace(Dataset):
     def __getitem__(self, i):
         pat_id, vid_id = self.orig_dataset.index_to_location(i)
         pat_id += self.orig_dataset.offset
-        assert(self.train and pat_id < 120)
-        assert((not self.train) and pat_id > 120)
+        if self.train:
+            assert(pat_id < 120)
+        else:
+            assert(pat_id >= 120)
 
         if ACDC_radial_ispace.check_data(pat_id, vid_id):
             mem = torch.tensor(1)
