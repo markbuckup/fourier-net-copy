@@ -44,6 +44,7 @@ def train_paradigm(rank, world_size, args, parameters):
     
     if parameters['dataset'] == 'acdc':
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial as dataset
+        from utils.myDatasets.ACDC_radial_faster import ACDC_radial_ispace as dataset_ispace
     if 'LSTM' in parameters['kspace_architecture']:
         from utils.models.periodLSTM import fetch_lstm_type as rnn_func
     elif 'GRU' in parameters['kspace_architecture']:
@@ -63,6 +64,19 @@ def train_paradigm(rank, world_size, args, parameters):
                         train = True, 
                     )
     testset = dataset(
+                        args.dataset_path, 
+                        parameters,
+                        proc_device,
+                        train = False, 
+                    )
+
+    ispace_trainset = dataset_ispace(
+                        args.dataset_path, 
+                        parameters,
+                        proc_device,
+                        train = True, 
+                    )
+    ispace_testset = dataset_ispace(
                         args.dataset_path, 
                         parameters,
                         proc_device,
@@ -134,10 +148,10 @@ def train_paradigm(rank, world_size, args, parameters):
         dic = torch.load(checkpoint_path + 'checkpoint_{}.pth'.format(model_state),map_location = proc_device)
         pre_e = dic['e']
         kspace_model.load_state_dict(dic['kspace_model'])
-        ispace_model.load_state_dict(dic['ispace_model'])
+        # ispace_model.load_state_dict(dic['ispace_model'])
         if parameters['kspace_architecture'] == 'KLSTM1':
             opt_dict_kspace = dic['kspace_optim']
-        opt_dict_ispace = dic['ispace_optim']
+        # opt_dict_ispace = dic['ispace_optim']
         # scaler_dict = dic['scaler']
         if parameters['scheduler'] != 'None':
             scheduler_dict_ispace = dic['ispace_scheduler']
@@ -164,7 +178,7 @@ def train_paradigm(rank, world_size, args, parameters):
     # kspace_model = DDP(kspace_model, device_ids = None, output_device = None, find_unused_parameters = False)
     kspace_model = DDP(kspace_model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
     ispace_model = DDP(ispace_model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
-    trainer = Trainer(kspace_model, ispace_model, trainset, testset, parameters, proc_device, rank, world_size, args)
+    trainer = Trainer(kspace_model, ispace_model, ispace_trainset, ispace_testset, trainset, testset, parameters, proc_device, rank, world_size, args)
 
     if args.time_analysis:
         if rank == 0:
@@ -172,12 +186,14 @@ def train_paradigm(rank, world_size, args, parameters):
         return
 
     if args.resume or args.resume_kspace:
-        trainer.ispace_optim.load_state_dict(opt_dict_ispace)
+        if not args.resume_kspace:
+            trainer.ispace_optim.load_state_dict(opt_dict_ispace)
         if parameters['kspace_architecture'] == 'KLSTM1':
             trainer.kspace_optim.load_state_dict(opt_dict_kspace)
         # trainer.scaler.load_state_dict(scaler_dict)
         if parameters['scheduler'] != 'None':
-            trainer.ispace_scheduler.load_state_dict(scheduler_dict_ispace)
+            if not args.resume_kspace:
+                trainer.ispace_scheduler.load_state_dict(scheduler_dict_ispace)
             if parameters['kspace_architecture'] == 'KLSTM1':
                 trainer.kspace_scheduler.load_state_dict(scheduler_dict_kspace)
 
@@ -342,6 +358,7 @@ def test_paradigm(rank, world_size, args, parameters):
     proc_device = torch.device('cuda:{}'.format(args.gpu[rank]))
     if parameters['dataset'] == 'acdc':
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial as dataset
+        from utils.myDatasets.ACDC_radial_faster import ACDC_radial_ispace as dataset_ispace
     if 'LSTM' in parameters['kspace_architecture']:
         from utils.models.periodLSTM import fetch_lstm_type as rnn_func
     elif 'GRU' in parameters['kspace_architecture']:
@@ -368,6 +385,9 @@ def test_paradigm(rank, world_size, args, parameters):
                         train = False,
                         visualise_only = args.visualise_only or args.numbers_only 
                     )
+
+    ispace_trainset = None
+    ispace_testset = None
 
 
 
@@ -429,7 +449,7 @@ def test_paradigm(rank, world_size, args, parameters):
         dic = torch.load(checkpoint_path + 'checkpoint_{}.pth'.format(model_state),map_location = proc_device)
         pre_e = dic['e']
         kspace_model.load_state_dict(dic['kspace_model'])
-        ispace_model.load_state_dict(dic['ispace_model'])
+        # ispace_model.load_state_dict(dic['ispace_model'])
         # scaler_dict = dic['scaler']
         if rank == 0:
             print('Loading kspace model after {} epochs'.format(dic['e']), flush = True)
@@ -451,7 +471,7 @@ def test_paradigm(rank, world_size, args, parameters):
     # kspace_model = DDP(kspace_model, device_ids = None, output_device = None, find_unused_parameters = False)
     kspace_model = DDP(kspace_model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
     ispace_model = DDP(ispace_model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
-    trainer = Trainer(kspace_model, ispace_model, trainset, testset, parameters, proc_device, rank, world_size, args)
+    trainer = Trainer(kspace_model, ispace_model, ispace_trainset, ispace_testset, trainset, testset, parameters, proc_device, rank, world_size, args)
 
     if args.time_analysis:
         if rank == 0:
@@ -501,93 +521,96 @@ def test_paradigm(rank, world_size, args, parameters):
                     # test_ispace_l2_score
         os.makedirs(os.path.join(save_path, 'images'), exist_ok=True)
 
+        kspace_x = range(min(parameters['num_epochs_kspace'], len(losses)))
+        ispace_x = range(max(parameters['num_epochs_total'] - parameters['num_epochs_ispace']+1, 0), min(parameters['num_epochs_total'], len(losses)))
+        
         plt.figure()
         plt.title('Train Kspace Mag Loss after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[0] for x in losses], color = 'b')
+        plt.plot(kspace_x, [x[0] for i,x in enumerate(losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_kspace_mag_loss.png'))
         plt.figure()
         plt.title('Train Kspace Phase Loss after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[1] for x in losses], color = 'b')
+        plt.plot(kspace_x, [x[1] for i,x in enumerate(losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_kspace_phase_loss.png'))
         plt.figure()
         plt.title('Train Kspace Real Loss after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[2] for x in losses], color = 'b')
+        plt.plot(kspace_x, [x[2] for i,x in enumerate(losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_kspace_real_loss.png'))
         plt.figure()
         plt.title('Train Kspace Forget gate Loss after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[3] for x in losses], color = 'b')
+        plt.plot(kspace_x, [x[3] for i,x in enumerate(losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_kspace_forget_gate_loss.png'))
         plt.figure()
         plt.title('Train Kspace Input gate Loss after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[4] for x in losses], color = 'b')
+        plt.plot(kspace_x, [x[4] for i,x in enumerate(losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_kspace_input_gate_loss.png'))
         plt.figure()
         plt.title('Train Kspace SSIM score after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[5] for x in losses], color = 'b')
+        plt.plot(kspace_x, [x[5] for i,x in enumerate(losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_kspace_ssim_score.png'))
         plt.figure()
         plt.title('Train Kspace L1 score after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[6] for x in losses], color = 'b')
+        plt.plot(kspace_x, [x[6] for i,x in enumerate(losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_kspace_l1_score.png'))
         plt.figure()
         plt.title('Train Kspace L2 score after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[7] for x in losses], color = 'b')
+        plt.plot(kspace_x, [x[7] for i,x in enumerate(losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_kspace_l2_score.png'))
         plt.figure()
         plt.title('Train SOS ssim score after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[8] for x in losses], color = 'b')
+        plt.plot(kspace_x, [x[8] for i,x in enumerate(losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_sos_ssim_score.png'))
         plt.figure()
         plt.title('Train SOS L1 score after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[9] for x in losses], color = 'b')
+        plt.plot(kspace_x, [x[9] for i,x in enumerate(losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_sos_l1_score.png'))
         plt.figure()
         plt.title('Train SOS L2 score after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[10] for x in losses], color = 'b')
+        plt.plot(kspace_x, [x[10] for i,x in enumerate(losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_sos_l2_score.png'))
         plt.figure()
         plt.title('Train Ispace Real Loss after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[11] for x in losses], color = 'b')
+        plt.plot(ispace_x, [x[11] for i,x in enumerate(losses) if i > (parameters['num_epochs_total'] - parameters['num_epochs_ispace'])], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_ispace_real_loss.png'))
         plt.figure()
         plt.title('Train Ispace SSIM score after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[12] for x in losses], color = 'b')
+        plt.plot(ispace_x, [x[12] for i,x in enumerate(losses) if i > (parameters['num_epochs_total'] - parameters['num_epochs_ispace'])], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_ispace_ssim_score.png'))
         plt.figure()
         plt.title('Train Ispace L1 score after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[13] for x in losses], color = 'b')
+        plt.plot(ispace_x, [x[13] for i,x in enumerate(losses) if i > (parameters['num_epochs_total'] - parameters['num_epochs_ispace'])], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_ispace_l1_score.png'))
         plt.figure()
         plt.title('Train Ispace L2 score after {} epochs'.format(pre_e))
-        plt.plot(range(len(losses)), [x[14] for x in losses], color = 'b')
+        plt.plot(ispace_x, [x[14] for i,x in enumerate(losses) if i > (parameters['num_epochs_total'] - parameters['num_epochs_ispace'])], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/train_ispace_l2_score.png'))
@@ -596,91 +619,91 @@ def test_paradigm(rank, world_size, args, parameters):
 
         plt.figure()
         plt.title('Test Kspace Mag Loss after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[0] for x in test_losses], color = 'b')
+        plt.plot(kspace_x, [x[0] for i,x in enumerate(test_losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_kspace_mag_loss.png'))
         plt.figure()
         plt.title('Test Kspace Phase Loss after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[1] for x in test_losses], color = 'b')
+        plt.plot(kspace_x, [x[1] for i,x in enumerate(test_losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_kspace_phase_loss.png'))
         plt.figure()
         plt.title('Test Kspace Real Loss after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[2] for x in test_losses], color = 'b')
+        plt.plot(kspace_x, [x[2] for i,x in enumerate(test_losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_kspace_real_loss.png'))
         plt.figure()
         plt.title('Test Kspace Forget gate Loss after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[3] for x in test_losses], color = 'b')
+        plt.plot(kspace_x, [x[3] for i,x in enumerate(test_losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_kspace_forget_gate_loss.png'))
         plt.figure()
         plt.title('Test Kspace Input gate Loss after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[4] for x in test_losses], color = 'b')
+        plt.plot(kspace_x, [x[4] for i,x in enumerate(test_losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_kspace_input_gate_loss.png'))
         plt.figure()
         plt.title('Test Kspace SSIM score after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[5] for x in test_losses], color = 'b')
+        plt.plot(kspace_x, [x[5] for i,x in enumerate(test_losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_kspace_ssim_score.png'))
         plt.figure()
         plt.title('Test Kspace L1 score after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[6] for x in test_losses], color = 'b')
+        plt.plot(kspace_x, [x[6] for i,x in enumerate(test_losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_kspace_l1_score.png'))
         plt.figure()
         plt.title('Test Kspace L2 score after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[7] for x in test_losses], color = 'b')
+        plt.plot(kspace_x, [x[7] for i,x in enumerate(test_losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_kspace_l2_score.png'))
         plt.figure()
         plt.title('Test SOS ssim score after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[8] for x in test_losses], color = 'b')
+        plt.plot(kspace_x, [x[8] for i,x in enumerate(test_losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_sos_ssim_score.png'))
         plt.figure()
         plt.title('Test SOS L1 score after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[9] for x in test_losses], color = 'b')
+        plt.plot(kspace_x, [x[9] for i,x in enumerate(test_losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_sos_l1_score.png'))
         plt.figure()
         plt.title('Test SOS L2 score after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[10] for x in test_losses], color = 'b')
+        plt.plot(kspace_x, [x[10] for i,x in enumerate(test_losses) if i < parameters['num_epochs_kspace']], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_sos_l2_score.png'))
         plt.figure()
         plt.title('Test Ispace Real Loss after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[11] for x in test_losses], color = 'b')
+        plt.plot(ispace_x, [x[11] for i,x in enumerate(test_losses) if i > (parameters['num_epochs_total'] - parameters['num_epochs_ispace'])], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_ispace_real_loss.png'))
         plt.figure()
         plt.title('Test Ispace SSIM score after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[12] for x in test_losses], color = 'b')
+        plt.plot(ispace_x, [x[12] for i,x in enumerate(test_losses) if i > (parameters['num_epochs_total'] - parameters['num_epochs_ispace'])], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_ispace_ssim_score.png'))
         plt.figure()
         plt.title('Test Ispace L1 score after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[13] for x in test_losses], color = 'b')
+        plt.plot(ispace_x, [x[13] for i,x in enumerate(test_losses) if i > (parameters['num_epochs_total'] - parameters['num_epochs_ispace'])], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_ispace_l1_score.png'))
         plt.figure()
         plt.title('Test Ispace L2 score after {} epochs'.format(pre_e))
-        plt.plot(range(len(test_losses)), [x[14] for x in test_losses], color = 'b')
+        plt.plot(ispace_x, [x[14] for i,x in enumerate(test_losses) if i > (parameters['num_epochs_total'] - parameters['num_epochs_ispace'])], color = 'b')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.savefig(os.path.join(save_path, 'images/test_ispace_l2_score.png'))

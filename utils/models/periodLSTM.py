@@ -949,6 +949,11 @@ class CoupledDownReal(nn.Module):
             prev = i
         self.model = nn.Sequential(*ls)
         self.final = nn.Conv2d(prev, prev, (2,2), stride = (2,2), padding = (0,0))
+        # self.final = nn.Sequential(
+        #                                     nn.Conv2d(prev, prev, (2,2), stride = (2,2), padding = (0,0)),
+        #                                     nn.ReLU(),
+        #                                     nn.BatchNorm2d(prev)
+        #                             )
         self.train_mode = True
 
     def forward(self, x):
@@ -1063,14 +1068,14 @@ class ImageSpaceModel1(nn.Module):
             self.input_size = self.param_dic['num_coils']
         if self.image_space_real:
             self.block1 = nn.Sequential(
-                    nn.Conv2d(self.input_size, 2*self.input_size, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    nn.Conv2d(self.input_size, 16, (3,3), stride = (1,1), padding = (1,1), bias = False),
                     nn.ReLU(),
-                    nn.BatchNorm2d(2*self.input_size),
-                    nn.Conv2d(2*self.input_size, self.num_coils, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    nn.BatchNorm2d(16),
+                    nn.Conv2d(16, self.input_size, (3,3), stride = (1,1), padding = (1,1), bias = False),
                     nn.ReLU(),
-                    nn.BatchNorm2d(self.num_coils),
+                    nn.BatchNorm2d(self.input_size),
                 )
-            self.down1 = CoupledDownReal(self.num_coils, [32,32])
+            self.down1 = CoupledDownReal(self.input_size, [32,32])
             self.down2 = CoupledDownReal(32, [64,64])
             self.down3 = CoupledDownReal(64, [128,128])
             self.up1 = CoupledUpReal(128, [256,128])
@@ -1142,20 +1147,32 @@ class ImageSpaceModel1(nn.Module):
         return time.time() - start
 
     def forward(self, x):
+        # print('x', x.min(), x.max(), x.shape)
         if self.train_mode:
             x1 = self.block1(x)
             # x1 = self.block1(x).view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4])
         else:
             x1 = no_bn_forward(self.block1, x)
+        # print('x1', x1.min(), x1.max(), x1.shape)
             # x1 = no_bn_forward(self.block1, x).view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4])
         x2hat, x2 = self.down1(x1)
+        # print('x2', x2.min(), x2.max(), x2.shape)
+        # print('x2hat', x2hat.min(), x2hat.max(), x2hat.shape)
         x3hat, x3 = self.down2(x2)
+        # print('x3', x3.min(), x3.max(), x3.shape)
+        # print('x3hat', x3hat.min(), x3hat.max(), x3hat.shape)
         x4hat, x4 = self.down3(x3)
+        # print('x4', x4.min(), x4.max(), x4.shape)
+        # print('x4hat', x4hat.min(), x4hat.max(), x4hat.shape)
         x5 = self.up1(x4)
+        # print('x5', x5.min(), x5.max(), x5.shape)
         x6 = self.up2(torch.cat((x5,x4hat),1))
+        # print('x6', x6.min(), x6.max(), x6.shape)
         x7 = self.up3(torch.cat((x6,x3hat),1))
+        # print('x7', x7.min(), x7.max(), x7.shape)
         if self.train_mode:
             x8 = self.finalblock(torch.cat((x7,x2hat),1))
         else:
             x8 = no_bn_forward(self.finalblock, torch.cat((x7,x2hat),1))
+        # print('x8', x8.min(), x8.max(), x8.shape)
         return x8

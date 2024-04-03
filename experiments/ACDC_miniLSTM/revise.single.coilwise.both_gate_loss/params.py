@@ -52,7 +52,7 @@ parameters['SHM_looping'] = False
 parameters['FT_radial_sampling'] = 10
 parameters['num_coils'] = 8
 parameters['scale_input_fft'] = False
-parameters['dataloader_num_workers'] = 6
+parameters['dataloader_num_workers'] = 0
 parameters['optimizer'] = 'Adam'
 parameters['scheduler'] = 'CyclicLR'
 parameters['optimizer_params'] = (0.9, 0.999)
@@ -64,6 +64,18 @@ parameters['scheduler_params'] = {
     'step_size': parameters['num_epochs_kspace']//3,
     'gamma': 0.9999,
     'verbose': True,
+    'cycle_momentum': False,
+}
+
+parameters['ispace_scheduler_params'] = {
+    'base_lr': 4e-6,
+    'max_lr': 4e-4,
+    'step_size_up': 400,
+    'mode': 'exp_range',
+    'step_size': parameters['num_epochs_kspace']//3,
+    'gamma': 0.9999,
+    'verbose': True,
+    'cycle_momentum': False,
 }
 parameters['Automatic_Mixed_Precision'] = False
 parameters['predicted_frame'] = 'last'
