@@ -64,8 +64,9 @@ parameters['scheduler_params'] = {
     'step_size': parameters['num_epochs_kspace']//3,
     'gamma': 0.9999,
     'verbose': True,
+    'cycle_momentum':False,
 }
-parameters['scheduler_params'] = {
+parameters['ispace_scheduler_params'] = {
     'base_lr': 4e-6,
     'max_lr': 4e-4,
     'step_size_up': 600,
@@ -73,6 +74,7 @@ parameters['scheduler_params'] = {
     'step_size': parameters['num_epochs_kspace']//3,
     'gamma': 0.9999,
     'verbose': True,
+    'cycle_momentum':False,
 }
 parameters['Automatic_Mixed_Precision'] = False
 parameters['predicted_frame'] = 'last'

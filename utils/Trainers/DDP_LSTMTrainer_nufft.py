@@ -159,7 +159,7 @@ class Trainer(nn.Module):
                                 self.ispace_trainset,
                                 batch_size=self.parameters['train_batch_size'],
                                 shuffle = False,
-                                num_workers = self.parameters['dataloader_num_workers'],
+                                num_workers = 0,
                                 pin_memory = False,
                                 drop_last = False,
                                 sampler = self.ispace_train_sampler
@@ -168,7 +168,7 @@ class Trainer(nn.Module):
                                 self.ispace_testset,
                                 batch_size=self.parameters['test_batch_size'],
                                 shuffle = False,
-                                num_workers = self.parameters['dataloader_num_workers'],
+                                num_workers = 0,
                                 pin_memory = False,
                                 drop_last = False,
                                 sampler = self.ispace_test_sampler
