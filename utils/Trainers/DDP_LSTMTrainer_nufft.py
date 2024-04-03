@@ -261,10 +261,14 @@ class Trainer(nn.Module):
         ispacessim_score = 0.
         avgispace_l1_loss = 0.
         avgispace_l2_loss = 0.
-        if self.ispace_mode:
+        if self.ispace_mode and not self.args.eval:
             self.ispacetrainloader.sampler.set_epoch(epoch)
+            dset = self.ispace_trainset
+            dloader = self.ispacetrainloader
         else:
             self.trainloader.sampler.set_epoch(epoch)
+            dset = self.trainset
+            dloader = self.trainloader
         if self.ddp_rank == 0:
             if self.ispace_mode and self.kspace_mode:
                 tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | KS+IS Epoch {}/{}".format(os.getpid(), epoch+1, self.parameters['num_epochs_ispace']), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
@@ -352,11 +356,11 @@ class Trainer(nn.Module):
                                 self.kspace_optim.step()
 
                             del loss
-                        avgkspacelossphase += float(loss_phase.cpu().item()/(len(self.trainloader)))
-                        avgkspacelossmag += float(loss_mag.cpu().item()/(len(self.trainloader)))
-                        avgkspacelossforget_gate += float(loss_forget_gate.cpu().item()/(len(self.trainloader)))
+                        avgkspacelossphase += float(loss_phase.cpu().item()/(len(dloader)))
+                        avgkspacelossmag += float(loss_mag.cpu().item()/(len(dloader)))
+                        avgkspacelossforget_gate += float(loss_forget_gate.cpu().item()/(len(dloader)))
                         if not self.parameters['lstm_input_proc_identity']:
-                            avgkspacelossinput_gate += float(loss_input_gate.cpu().item()/(len(self.trainloader)))
+                            avgkspacelossinput_gate += float(loss_input_gate.cpu().item()/(len(dloader)))
                         del loss_phase
                         del loss_mag
                     else:
@@ -368,15 +372,16 @@ class Trainer(nn.Module):
 
                         loss_l1 = (predr- (og_coiled_vids)).reshape(predr.shape[0]*predr.shape[1]*predr.shape[2], predr.shape[3]*predr.shape[4]).abs().detach().cpu().mean(1).sum()
                         loss_l2 = (((predr- (og_coiled_vids)).reshape(predr.shape[0]*predr.shape[1]*predr.shape[2], predr.shape[3]*predr.shape[4]) ** 2)).detach().cpu().mean(1).sum()
-                    avgkspacelossreal += float(loss_real.cpu().item()/(len(self.trainloader)))/2
-                    kspacessim_score += float(ss1.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
-                    avgkspace_l1_loss += float(loss_l1.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
-                    avgkspace_l2_loss += float(loss_l2.cpu()/self.trainset.total_unskipped_frames)*len(self.args.gpu)
+                    avgkspacelossreal += float(loss_real.cpu().item()/(len(dloader)))/2
+                    kspacessim_score += float(ss1.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
+                    avgkspace_l1_loss += float(loss_l1.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
+                    avgkspace_l2_loss += float(loss_l2.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
                     del loss_real
                 
                 with torch.no_grad():
-                    predr_sos = predr_sos - predr_sos.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
-                    predr_sos = predr_sos / (EPS + predr_sos.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
+                    predr_sos = predr_sos.clip(0,1)
+                    # predr_sos = predr_sos - predr_sos.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
+                    # predr_sos = predr_sos / (EPS + predr_sos.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
 
                     loss_l1_sos = (predr_sos - targ_vid).reshape(predr_sos.shape[0]*predr_sos.shape[1], predr_sos.shape[3]*predr_sos.shape[4]).abs().mean(1).sum().detach().cpu()
                     loss_l2_sos = (((predr_sos - targ_vid).reshape(predr_sos.shape[0]*predr_sos.shape[1], predr_sos.shape[3]*predr_sos.shape[4]) ** 2).mean(1).sum()).detach().cpu()
@@ -384,14 +389,15 @@ class Trainer(nn.Module):
                     ss1_sos = self.SSIM(predr_sos.reshape(predr_sos.shape[0]*predr_sos.shape[1]*predr_sos.shape[2],1,*predr_sos.shape[3:]), targ_vid.reshape(predr_sos.shape[0]*predr_sos.shape[1]*predr_sos.shape[2],1,*predr_sos.shape[3:]))
                     ss1_sos = ss1_sos.reshape(ss1_sos.shape[0],-1)
                     loss_ss1_sos = ss1_sos.mean(1).sum().detach().cpu()
-                    sosssim_score += float(loss_ss1_sos.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
-                    avgsos_l1_loss += float(loss_l1_sos.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
-                    avgsos_l2_loss += float(loss_l2_sos.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
+                    sosssim_score += float(loss_ss1_sos.cpu().item()/dset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
+                    avgsos_l1_loss += float(loss_l1_sos.cpu().item()/dset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
+                    avgsos_l2_loss += float(loss_l2_sos.cpu().item()/dset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
 
                 if self.parameters['coil_combine'] == 'SOS':
                     predr = ((predr**2).sum(2, keepdim = True) ** 0.5)[:,self.parameters['init_skip_frames']:]
-                    predr = predr - predr.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
-                    predr = predr / (EPS + predr.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
+                    predr = predr.clip(0,1)
+                    # predr = predr - predr.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
+                    # predr = predr / (EPS + predr.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
                     chan = 1
 
                 # print('setting indices ')
@@ -448,14 +454,15 @@ class Trainer(nn.Module):
                     # loss = ss1.mean(1).sum()
                     loss.backward()
                     self.ispace_optim.step()
-                    avgispacelossreal += float(loss.cpu().item()/(len(self.trainloader)))
+                    avgispacelossreal += float(loss.cpu().item()/(len(dloader)))
 
 
                 if self.parameters['end-to-end-supervision']:
                     self.kspace_optim.step()
 
-                outp = outp - outp.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
-                outp = outp / (EPS + outp.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
+                outp = outp.clip(0,1)
+                # outp = outp - outp.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
+                # outp = outp / (EPS + outp.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
 
                 loss_l1 = (outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]).abs().mean(1).sum().detach().cpu()
                 loss_l2 = (((outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]) ** 2).mean(1).sum()).detach().cpu()
@@ -464,9 +471,9 @@ class Trainer(nn.Module):
                 # ss1 = ss1.reshape(ss1.shape[0],-1)
                 ss1 = self.SSIM(outp.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
                 loss_ss1 = ss1.reshape(ss1.shape[0],-1).mean(1).sum().detach().cpu()
-                ispacessim_score += float(loss_ss1.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
-                avgispace_l1_loss += float(loss_l1.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
-                avgispace_l2_loss += float(loss_l2.cpu().item()/self.trainset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
+                ispacessim_score += float(loss_ss1.cpu().item()/dset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
+                avgispace_l1_loss += float(loss_l1.cpu().item()/dset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
+                avgispace_l2_loss += float(loss_l2.cpu().item()/dset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
 
 
             if self.parameters['scheduler'] == 'CyclicLR':
@@ -600,8 +607,9 @@ class Trainer(nn.Module):
                     avgkspace_l2_loss += float(loss_l2.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
 
                     predr_sos = ((predr**2).sum(2, keepdim = True) ** 0.5)[:,self.parameters['init_skip_frames']:]
-                    predr_sos = predr_sos - predr_sos.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
-                    predr_sos = predr_sos / (EPS + predr_sos.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
+                    predr_sos = predr_sos.clip(0,1)
+                    # predr_sos = predr_sos - predr_sos.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
+                    # predr_sos = predr_sos / (EPS + predr_sos.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
 
                     targ_vid = og_video.to(self.device)[:,self.parameters['init_skip_frames']:]
                     
@@ -617,13 +625,14 @@ class Trainer(nn.Module):
 
                     if self.parameters['coil_combine'] == 'SOS':
                         predr = predr_sos
-                        predr = predr - predr.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
-                        predr = predr / (EPS + predr.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
+                        predr = predr.clip(0,1)
+                        # predr = predr - predr.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
+                        # predr = predr / (EPS + predr.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
                         chan = 1
                     else:
                         predr = predr[:,self.parameters['init_skip_frames']:]
 
-                    if self.ispace_mode:
+                    if self.ispace_mode and not self.args.eval:
                         self.ispace_testset.bulk_set_data(indices[:,0], indices[:,1], predr, targ_vid)
 
                 batch, num_frames, chan, numr, numc = predr.shape
@@ -640,8 +649,9 @@ class Trainer(nn.Module):
                 loss = self.l1loss(outp, targ_vid)
 
 
-                outp = outp - outp.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
-                outp = outp / (EPS + outp.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
+                outp = outp.clip(0,1)
+                # outp = outp - outp.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
+                # outp = outp / (EPS + outp.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
 
                 loss_l1 = ((outp)- (targ_vid)).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]).abs().detach().cpu().mean(1)
                 loss_l2 = ((((outp)- (targ_vid)).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]) ** 2)).detach().cpu().mean(1)
@@ -743,13 +753,15 @@ class Trainer(nn.Module):
                 predr[torch.isnan(predr)] = 0
 
                 sos_output = (predr**2).sum(2, keepdim = False).cpu() ** 0.5
-                sos_output = sos_output - sos_output.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
-                sos_output = sos_output / (EPS + sos_output.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
+                sos_output = sos_output.clip(0,1)
+                # sos_output = sos_output - sos_output.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
+                # sos_output = sos_output / (EPS + sos_output.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
 
                 if self.parameters['coil_combine'] == 'SOS':
                     ispace_input = (predr**2).sum(2, keepdim = True) ** 0.5
-                    ispace_input = ispace_input - ispace_input.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
-                    ispace_input = ispace_input / (EPS + ispace_input.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
+                    ispace_input = ispace_input.clip(0,1)
+                    # ispace_input = ispace_input - ispace_input.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
+                    # ispace_input = ispace_input / (EPS + ispace_input.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
                     chan = 1
                 else:
                     ispace_input = predr
@@ -779,8 +791,9 @@ class Trainer(nn.Module):
                 
                 ispace_outp = self.ispace_model(ispace_input).cpu().reshape(batch,num_frames,numr,numc)
                 
-                ispace_outp = ispace_outp - ispace_outp.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
-                ispace_outp = ispace_outp / (EPS + ispace_outp.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
+                ispace_outp = ispace_outp.clip(0,1)
+                # ispace_outp = ispace_outp - ispace_outp.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
+                # ispace_outp = ispace_outp / (EPS + ispace_outp.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
 
                 # ispace_outp = ispace_outp - ispace_outp.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 # ispace_outp = ispace_outp / (EPS + ispace_outp.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
