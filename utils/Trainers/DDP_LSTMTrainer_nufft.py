@@ -274,7 +274,10 @@ class Trainer(nn.Module):
             else:
                 tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | KS Epoch {}/{}".format(os.getpid(), epoch+1, self.parameters['num_epochs_kspace']), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
         else:
-            tqdm_object = enumerate(self.trainloader)
+            if self.ispace_mode:
+                tqdm_object = enumerate(self.ispacetrainloader)
+            else:
+                tqdm_object = enumerate(self.trainloader)
         for i, data_instance in tqdm_object:
             if self.kspace_mode:
                 (indices, masks, og_video, undersampled_fts, coils_used, periods) = data_instance
