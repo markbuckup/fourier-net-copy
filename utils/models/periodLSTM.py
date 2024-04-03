@@ -1149,10 +1149,10 @@ class ImageSpaceModel1(nn.Module):
     def forward(self, x):
         # print('x', x.min(), x.max(), x.shape)
         if self.train_mode:
-            x1 = self.block1(x)
+            x1 = self.block1(x)+x
             # x1 = self.block1(x).view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4])
         else:
-            x1 = no_bn_forward(self.block1, x)
+            x1 = no_bn_forward(self.block1, x)+x
         # print('x1', x1.min(), x1.max(), x1.shape)
             # x1 = no_bn_forward(self.block1, x).view(x.shape[0], x.shape[1]*x.shape[2], x.shape[3], x.shape[4])
         x2hat, x2 = self.down1(x1)
