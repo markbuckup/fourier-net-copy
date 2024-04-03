@@ -100,7 +100,7 @@ class ACDC_radial_ispace(Dataset):
 
     def __init__(self, path, parameters, device, train = True, visualise_only = False):
         super(ACDC_radial_ispace, self).__init__()
-        ACDC_radial_ispace.max_frames = 120
+        ACDC_radial_ispace.max_frames = 60
         self.train = train
         parameters['loop_videos'] = ACDC_radial_ispace.max_frames
         self.orig_dataset = ACDC_radial(path, parameters, device, train = train, visualise_only = visualise_only)
