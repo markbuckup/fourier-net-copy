@@ -65,6 +65,15 @@ parameters['scheduler_params'] = {
     'gamma': 0.9999,
     'verbose': True,
 }
+parameters['scheduler_params'] = {
+    'base_lr': 4e-6,
+    'max_lr': 4e-4,
+    'step_size_up': 600,
+    'mode': 'exp_range',
+    'step_size': parameters['num_epochs_kspace']//3,
+    'gamma': 0.9999,
+    'verbose': True,
+}
 parameters['Automatic_Mixed_Precision'] = False
 parameters['predicted_frame'] = 'last'
 parameters['loss_params'] = {
