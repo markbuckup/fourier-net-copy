@@ -41,6 +41,8 @@ def seed_torch(seed=0):
 class ACDC_radial_ispace(Dataset):
     
     mem_inputs = []
+    mem_inputs_min = []
+    mem_inputs_max = []
     mem_gts = []
     mem_stored_bool = []
     data_init_done = False
@@ -48,15 +50,30 @@ class ACDC_radial_ispace(Dataset):
     @classmethod
     def set_data(cls, input, gt, pat_id, vid_id):
         # print('setting', pat_id, vid_id)
-        cls.mem_inputs[pat_id][vid_id] = (input*255).type(torch.uint8)
+        
+        cls.mem_inputs_max[pat_id][vid_id] = input.max(-1)[0].max(-1)[0]
+        cls.mem_inputs_min[pat_id][vid_id] = input.min(-1)[0].min(-1)[0]
+
+        input_scaled = input - input.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
+        input_scaled = input / (1e-10 + input.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
+
+        cls.mem_inputs[pat_id][vid_id] = (input_scaled*255).type(torch.uint8)
         cls.mem_gts[pat_id][vid_id] = (gt*255).type(torch.uint8)
         cls.mem_stored_bool[pat_id][vid_id] = 1
 
     @classmethod
     def get_data(cls, pat_id, vid_id):
         # print('loading', pat_id, vid_id)
+
+        maxs = (cls.mem_inputs_max[pat_id][vid_id]).unsqueeze(-1).unsqueeze(-1)
+        mins = (cls.mem_inputs_min[pat_id][vid_id]).unsqueeze(-1).unsqueeze(-1)
+
         assert(cls.mem_stored_bool[pat_id][vid_id] == 1)
-        return (cls.mem_inputs[pat_id][vid_id]).float()/255., (cls.mem_gts[pat_id][vid_id]).float()/255.
+        ret_inp = (cls.mem_inputs[pat_id][vid_id]).float()/255. 
+        ret_inp = ret_inp * (maxs-mins)
+        ret_inp = ret_inp + mins
+        ret_gt = (cls.mem_gts[pat_id][vid_id]).float()/255.
+        return ret_inp, ret_gt
 
     @classmethod
     def check_data(cls, pat_id, vid_id):
@@ -78,16 +95,21 @@ class ACDC_radial_ispace(Dataset):
             return
         for n_vids in whole_num_vids_per_patient:
             cls.mem_inputs.append([])
+            cls.mem_inputs_max.append([])
+            cls.mem_inputs_min.append([])
             cls.mem_gts.append([])
             cls.mem_stored_bool.append([])
             for vi in range(n_vids):
-                if parameters['coil_combine'] == 'SOS':
-                    cls.mem_inputs[-1].append(torch.zeros(cls.max_frames - parameters['init_skip_frames'],1,parameters['image_resolution'],parameters['image_resolution']).type(torch.uint8))
-                else:
-                    assert(0)
-                    ### Scalining to uint8
-                    cls.mem_inputs[-1].append(torch.zeros(cls.max_frames - parameters['init_skip_frames'],parameters['num_coils'],parameters['image_resolution'],parameters['image_resolution']).type(torch.uint8))
-                cls.mem_gts[-1].append(torch.zeros(cls.max_frames - parameters['init_skip_frames'],1,parameters['image_resolution'],parameters['image_resolution']))
+                if parameters['memoise_ispace']:
+                    if parameters['coil_combine'] == 'SOS':
+                        cls.mem_inputs[-1].append(torch.zeros(cls.max_frames - parameters['init_skip_frames'],1,parameters['image_resolution'],parameters['image_resolution']).type(torch.uint8))
+                        cls.mem_inputs_max[-1].append(torch.zeros(cls.max_frames - parameters['init_skip_frames'],1))
+                        cls.mem_inputs_min[-1].append(torch.zeros(cls.max_frames - parameters['init_skip_frames'],1))
+                    else:
+                        cls.mem_inputs[-1].append(torch.zeros(cls.max_frames - parameters['init_skip_frames'],parameters['num_coils'],parameters['image_resolution'],parameters['image_resolution']).type(torch.uint8))
+                        cls.mem_inputs_max[-1].append(torch.zeros(cls.max_frames - parameters['init_skip_frames'],parameters['num_coils']))
+                        cls.mem_inputs_min[-1].append(torch.zeros(cls.max_frames - parameters['init_skip_frames'],parameters['num_coils']))
+                    cls.mem_gts[-1].append(torch.zeros(cls.max_frames - parameters['init_skip_frames'],1,parameters['image_resolution'],parameters['image_resolution']))
                 cls.mem_stored_bool[-1].append(torch.zeros(1))
 
             [x.share_memory_() for x in cls.mem_inputs[-1]]
@@ -100,7 +122,7 @@ class ACDC_radial_ispace(Dataset):
 
     def __init__(self, path, parameters, device, train = True, visualise_only = False):
         super(ACDC_radial_ispace, self).__init__()
-        ACDC_radial_ispace.max_frames = 60
+        ACDC_radial_ispace.max_frames = parameters['ispace_num_frames']
         self.train = train
         parameters['loop_videos'] = ACDC_radial_ispace.max_frames
         self.orig_dataset = ACDC_radial(path, parameters, device, train = train, visualise_only = visualise_only)

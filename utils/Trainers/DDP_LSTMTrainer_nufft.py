@@ -399,11 +399,13 @@ class Trainer(nn.Module):
                     # predr = predr - predr.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
                     # predr = predr / (EPS + predr.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
                     chan = 1
+                else:
+                    predr = predr[:,self.parameters['init_skip_frames']:]
 
                 # print('setting indices ')
                 # print(indices[:,0], indices[:,1])
                 # print('\n')
-                if self.ispace_mode:
+                if self.ispace_mode and self.parameters['memoise_ispace'] and not self.args.eval:
                     self.ispace_trainset.bulk_set_data(indices[:,0], indices[:,1], predr, targ_vid)
 
             
@@ -632,7 +634,7 @@ class Trainer(nn.Module):
                     else:
                         predr = predr[:,self.parameters['init_skip_frames']:]
 
-                    if self.ispace_mode and not self.args.eval:
+                    if self.ispace_mode and not self.args.eval and self.parameters['memoise_ispace']:
                         self.ispace_testset.bulk_set_data(indices[:,0], indices[:,1], predr, targ_vid)
 
                 batch, num_frames, chan, numr, numc = predr.shape
