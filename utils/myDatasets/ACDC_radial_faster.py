@@ -122,9 +122,10 @@ class ACDC_radial_ispace(Dataset):
 
     def __init__(self, path, parameters, device, train = True, visualise_only = False):
         super(ACDC_radial_ispace, self).__init__()
-        ACDC_radial_ispace.max_frames = parameters['ispace_num_frames']
+        ACDC_radial_ispace.max_frames = 120
         self.train = train
         parameters['loop_videos'] = ACDC_radial_ispace.max_frames
+        parameters['init_skip_frames'] = 90
         self.orig_dataset = ACDC_radial(path, parameters, device, train = train, visualise_only = visualise_only)
         self.total_unskipped_frames = parameters['num_coils']*((ACDC_radial_ispace.max_frames - parameters['init_skip_frames'])*self.orig_dataset.num_vids_per_patient).sum()
         ACDC_radial_ispace.data_init(self.orig_dataset.whole_num_vids_per_patient, parameters)

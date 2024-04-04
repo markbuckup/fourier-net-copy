@@ -31,11 +31,11 @@ parameters['memoise_ispace'] = True
 parameters['skip_kspace_lstm'] = False
 parameters['coilwise'] = True
 assert( not (parameters['coilwise'] and parameters['kspace_combine_coils']))
-parameters['crop_loss'] = False
+parameters['crop_loss'] = True
 parameters['lstm_input_proc_identity'] = False
 parameters['lstm_forget_gate_loss'] = True
 parameters['lstm_input_gate_loss'] = True
-parameters['coil_combine'] = 'SOS'
+parameters['coil_combine'] = 'UNET'
 assert(parameters['coil_combine'] in ['SOS', 'UNET'])
 
 
