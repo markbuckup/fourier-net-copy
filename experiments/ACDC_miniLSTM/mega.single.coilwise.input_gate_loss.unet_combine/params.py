@@ -18,7 +18,7 @@ parameters['kspace_real_loss_only'] = False
 
 parameters['lstm_input_mask'] = True
 parameters['concat'] = True
-parameters['n_layers'] = 4
+parameters['n_layers'] = 3
 parameters['n_hidden'] = 16
 parameters['n_lstm_cells'] = 1
 parameters['forget_gate_coupled'] = True
@@ -44,7 +44,7 @@ parameters['ispace_lstm'] = False
 parameters['ispace_architecture'] = 'ILSTM1'
 parameters['image_space_real'] = True
 parameters['history_length'] = 0
-parameters['loop_videos'] = 30
+parameters['loop_videos'] = 40
 parameters['dataset'] = 'acdc'
 parameters['train_test_split'] = 0.8
 parameters['normalisation'] = False
@@ -61,7 +61,7 @@ parameters['optimizer_params'] = (0.9, 0.999)
 parameters['scheduler_params'] = {
     'base_lr': 4e-6,
     'max_lr': 4e-4,
-    'step_size_up': 600,
+    'step_size_up': 3000,
     'mode': 'exp_range',
     'step_size': parameters['num_epochs_kspace']//3,
     'gamma': 0.9999,
