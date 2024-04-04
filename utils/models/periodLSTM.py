@@ -304,7 +304,6 @@ class convLSTMcell_kspace(nn.Module):
                 mag_it = mag_it.repeat(1,self.input_gate_output_size,1,1)
                 phase_it = phase_it.repeat(1,self.input_gate_output_size,1,1)
 
-            ################# DEBUG
             if self.input_proc_identity:
                 mag_Cthat = hist_mag
                 phase_Cthat = hist_phase
@@ -743,8 +742,8 @@ class convLSTM_Kspace1(nn.Module):
             # print(hist_phase.min(), hist_phase.max())
             # print(prev_outputs2[-1].min(), prev_outputs2[-1].max())
             # print(prev_outputs1[-1].min(), prev_outputs1[-1].max())
-            # print(prev_outputs1[-1][:,:,:8,:8])
-            # print(hist_phase[:,:,:8,:8])
+            # # print(prev_outputs1[-1][:,:,:8,:8])
+            # # print(hist_phase[:,:,:8,:8])
             # print('\n\n')
             
             prev_outputs2 = [(x - 5)*cycle_mask for x in prev_outputs2]

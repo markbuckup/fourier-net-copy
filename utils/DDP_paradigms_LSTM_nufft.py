@@ -59,29 +59,32 @@ def train_paradigm(rank, world_size, args, parameters):
 
     trainset = dataset(
                         args.dataset_path, 
-                        parameters,
+                        parameters.copy(),
                         proc_device,
                         train = True, 
                     )
     testset = dataset(
                         args.dataset_path, 
-                        parameters,
+                        parameters.copy(),
                         proc_device,
                         train = False, 
                     )
-
-    ispace_trainset = dataset_ispace(
-                        args.dataset_path, 
-                        parameters,
-                        proc_device,
-                        train = True, 
-                    )
-    ispace_testset = dataset_ispace(
-                        args.dataset_path, 
-                        parameters,
-                        proc_device,
-                        train = False, 
-                    )
+    if parameters['num_epochs_ispace'] == 0:
+        ispace_trainset = None
+        ispace_testset = None
+    else:
+        ispace_trainset = dataset_ispace(
+                            args.dataset_path, 
+                            parameters.copy(),
+                            proc_device,
+                            train = True, 
+                        )
+        ispace_testset = dataset_ispace(
+                            args.dataset_path, 
+                            parameters.copy(),
+                            proc_device,
+                            train = False, 
+                        )
 
     kspace_model = Model_Kspace(parameters, proc_device).to(proc_device)
     ispace_model = Model_Ispace(parameters, proc_device).to(proc_device)
