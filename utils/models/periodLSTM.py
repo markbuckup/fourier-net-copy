@@ -39,6 +39,15 @@ class Identity(nn.Module):
 
         return new_mag_states, new_phase_states, new_mag_outputs, new_phase_outputs
 
+class Identity_param(nn.Module):
+    def __init__(self, parameters, proc_device):
+        super(Identity_param, self).__init__()
+        self.m = nn.Linear(3,3)
+        
+    def forward(self, x):
+
+        return x
+
 
 def mylog(x,base = 10):
     return x.log10()/torch.tensor(base).log10()
@@ -84,11 +93,14 @@ def fetch_lstm_type(parameters):
         im = ImageSpaceModel2
     elif ispace_name == 'ILSTM3':
         im = convLSTM_Ispace1
+    elif ispace_name == 'Identity':
+        im = Identity_param
 
     if kspace_name == 'KLSTM1':
         km = convLSTM_Kspace1
-    if kspace_name == 'KLSTM2':
-        km = convLSTM_Kspace2
+    if kspace_name == 'MDCNN':
+        from utils.models.MDCNN import MDCNN
+        km = MDCNN
     return km, im
 
 class concatConv(nn.Module):

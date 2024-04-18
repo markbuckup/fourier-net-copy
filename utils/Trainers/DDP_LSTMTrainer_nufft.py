@@ -197,11 +197,10 @@ class Trainer(nn.Module):
                         )
 
         if self.parameters['optimizer'] == 'Adam':
-            if self.parameters['kspace_architecture'] == 'KLSTM1':
-                if self.parameters['ispace_lstm']:
-                    self.kspace_optim = optim.Adam(list(self.kspace_model.module.kspace_m.parameters())+list(self.kspace_model.module.ispacem.parameters()), lr=self.parameters['lr_kspace'], betas=self.parameters['optimizer_params'])
-                else:
-                    self.kspace_optim = optim.Adam(self.kspace_model.module.kspace_m.parameters(), lr=self.parameters['lr_kspace'], betas=self.parameters['optimizer_params'])
+            if self.parameters['ispace_lstm']:
+                self.kspace_optim = optim.Adam(list(self.kspace_model.module.kspace_m.parameters())+list(self.kspace_model.module.ispacem.parameters()), lr=self.parameters['lr_kspace'], betas=self.parameters['optimizer_params'])
+            else:
+                self.kspace_optim = optim.Adam(self.kspace_model.module.kspace_m.parameters(), lr=self.parameters['lr_kspace'], betas=self.parameters['optimizer_params'])
             self.ispace_optim = optim.Adam(self.ispace_model.parameters(), lr=self.parameters['lr_ispace'], betas=self.parameters['optimizer_params'])
             self.parameters['scheduler_params']['cycle_momentum'] = False
             
@@ -211,23 +210,19 @@ class Trainer(nn.Module):
         if self.parameters['scheduler'] == 'StepLR':
             mydic = self.parameters['scheduler_params']
             if self.ddp_rank == 0:
-                if self.parameters['kspace_architecture'] == 'KLSTM1':
-                    self.kspace_scheduler = optim.lr_scheduler.StepLR(self.kspace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
+                self.kspace_scheduler = optim.lr_scheduler.StepLR(self.kspace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
                 self.ispace_scheduler = optim.lr_scheduler.StepLR(self.ispace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
             else:
-                if self.parameters['kspace_architecture'] == 'KLSTM1':
-                    self.kspace_scheduler = optim.lr_scheduler.StepLR(self.kspace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
+                self.kspace_scheduler = optim.lr_scheduler.StepLR(self.kspace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
                 self.ispace_scheduler = optim.lr_scheduler.StepLR(self.ispace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
         if self.parameters['scheduler'] == 'CyclicLR':
             mydic = self.parameters['scheduler_params']
             ispace_mydic = self.parameters['ispace_scheduler_params']
             if self.ddp_rank == 0:
-                if self.parameters['kspace_architecture'] == 'KLSTM1':
-                    self.kspace_scheduler = optim.lr_scheduler.CyclicLR(self.kspace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=False)
+                self.kspace_scheduler = optim.lr_scheduler.CyclicLR(self.kspace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=False)
                 self.ispace_scheduler = optim.lr_scheduler.CyclicLR(self.ispace_optim, ispace_mydic['base_lr'], ispace_mydic['max_lr'], step_size_up=ispace_mydic['step_size_up'], mode=ispace_mydic['mode'], cycle_momentum = ispace_mydic['cycle_momentum'],  verbose=False)
             else:
-                if self.parameters['kspace_architecture'] == 'KLSTM1':
-                    self.kspace_scheduler = optim.lr_scheduler.CyclicLR(self.kspace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
+                self.kspace_scheduler = optim.lr_scheduler.CyclicLR(self.kspace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
                 self.ispace_scheduler = optim.lr_scheduler.CyclicLR(self.ispace_optim, ispace_mydic['base_lr'], ispace_mydic['max_lr'], step_size_up=ispace_mydic['step_size_up'], mode=ispace_mydic['mode'], cycle_momentum = ispace_mydic['cycle_momentum'])
 
         self.l1loss = fetch_loss_function('L1',self.device, self.parameters['loss_params'])
@@ -293,6 +288,12 @@ class Trainer(nn.Module):
         for i, data_instance in tqdm_object:
             if self.kspace_mode:
                 (indices, masks, og_video, undersampled_fts, coils_used, periods) = data_instance
+                # if self.parameters['kspace_architecture'] == 'MDCNN':
+                #     num_frames = undersampled_fts.shape[1]
+                #     rand_start = np.random.randint(num_frames - self.parameters['window_size'])
+                #     masks = masks[:,rand_start:rand_start+self.parameters['window_size'] + 1]
+                #     og_video = og_video[:,rand_start:rand_start+self.parameters['window_size'] + 1]
+                #     undersampled_fts = undersampled_fts[:,rand_start:rand_start+self.parameters['window_size'] + 1]
                 skip_kspace = False
             else:
                 mem = data_instance[0]
@@ -492,9 +493,8 @@ class Trainer(nn.Module):
             if self.parameters['scheduler'] == 'CyclicLR':
                 if self.kspace_mode:
                     if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
-                        if self.parameters['kspace_architecture'] == 'KLSTM1':
-                            if self.kspace_scheduler is not None:
-                                self.kspace_scheduler.step()
+                        if self.kspace_scheduler is not None:
+                            self.kspace_scheduler.step()
 
                 if self.ispace_mode:
                     if self.ispace_scheduler is not None and (self.ispace_mode):
@@ -503,9 +503,8 @@ class Trainer(nn.Module):
         if not self.parameters['scheduler'] == 'CyclicLR':
             if self.kspace_mode:
                 if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
-                    if self.parameters['kspace_architecture'] == 'KLSTM1':
-                        if self.kspace_scheduler is not None:
-                            self.kspace_scheduler.step()
+                    if self.kspace_scheduler is not None:
+                        self.kspace_scheduler.step()
             if self.ispace_mode:
                 if self.ispace_scheduler is not None:
                     self.ispace_scheduler.step()
@@ -598,7 +597,8 @@ class Trainer(nn.Module):
 
                     
                     if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
-                        self.kspace_model.eval()
+                        if not self.parameters['kspace_architecture'] == 'MDCNN':
+                            self.kspace_model.eval()
                         predr, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
                         avgkspacelossphase += float(loss_phase.item()/(len(dloader)))
                         avgkspacelossmag += float(loss_mag.item()/(len(dloader)))
@@ -659,8 +659,9 @@ class Trainer(nn.Module):
 
                 predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
                 targ_vid = targ_vid.reshape(batch*num_frames,1, numr, numc).to(self.device)
-                    
-                self.ispace_model.eval()
+                
+                if not self.parameters['kspace_architecture'] == 'MDCNN':
+                    self.ispace_model.eval()
                 outp = self.ispace_model(predr.detach())
 
                 loss = self.l1loss(outp, targ_vid)
@@ -761,8 +762,9 @@ class Trainer(nn.Module):
                     inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
                     inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
 
-                self.kspace_model.eval()
-                self.ispace_model.eval()
+                if not self.parameters['kspace_architecture'] == 'MDCNN':
+                    self.kspace_model.eval()
+                    self.ispace_model.eval()
 
                 batch, num_frames, chan, numr, numc = undersampled_fts.shape
                 
@@ -775,6 +777,12 @@ class Trainer(nn.Module):
                     predr, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
                 else:
                     predr = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts, dim = (-2,-1))).abs().to(self.device)
+
+                # plt.imsave('targ_now.jpg', targ_now.cpu().detach()[0,0], cmap = 'gray')
+                # print(predr.shape)
+                # print(predr.cpu().detach()[0,20,0].min(), predr.cpu().detach()[0,20,0].max())
+                # plt.imsave('ans.jpg', predr.cpu().detach()[0,20,0], cmap = 'gray')
+                # asdf
 
                 if torch.isnan(predr).any():
                     print('Predr nan',torch.isnan(predr).any())
@@ -794,7 +802,7 @@ class Trainer(nn.Module):
                 else:
                     ispace_input = predr
 
-                if self.parameters['kspace_combine_coils']:
+                if self.parameters['kspace_combine_coils'] or self.parameters['kspace_architecture'] == 'MDCNN':
                     chan = 1
                 
                 ispace_input = ispace_input.reshape(batch*num_frames,chan,numr, numc).to(self.device)
@@ -838,7 +846,7 @@ class Trainer(nn.Module):
                 # asdf
                 
 
-                predr = predr.reshape(batch,num_frames,self.parameters['num_coils'],numr, numc).to(self.device)
+                predr = predr.reshape(batch,num_frames,chan,numr, numc).to(self.device)
                 pred_ft = torch.fft.fftshift(torch.fft.fft2(predr), dim = (-2,-1))
                 
                 tot = 0

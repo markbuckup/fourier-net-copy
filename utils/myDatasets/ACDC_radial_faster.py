@@ -284,7 +284,7 @@ class ACDC_radial(Dataset):
 
 
         dic = torch.load(dic_path, map_location = torch.device('cpu'))
-        masks_applicable = dic['spoke_mask'].type(torch.float32)
+        masks_applicable = dic['spoke_mask'].type(torch.float32)[:self.loop_videos,:,:,:]
         og_video = ((dic['targ_video']/255.)[:self.loop_videos,:,:,:])
         undersampled_fts = dic['coilwise_input'][:self.loop_videos,:,:,:]
 

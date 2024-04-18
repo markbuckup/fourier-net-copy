@@ -5,7 +5,6 @@ from torch import nn, optim
 from torchvision import transforms
 import numpy as np
 import os
-import kornia
 import sys
 sys.path.append('../')
 sys.path.append('../../')
@@ -17,7 +16,6 @@ import utils.models.complexCNNs.cmplx_activation as cmplx_activation
 import utils.models.complexCNNs.radial_bn as radial_bn
 
 EPS = 1e-10
-CEPS = torch.complex(torch.tensor(EPS),torch.tensor(EPS)).exp()
 
 def no_bn_forward(model, x):
     ans = None
@@ -332,64 +330,34 @@ class ImageSpaceEncoder(nn.Module):
         return [x4, x2hat, x3hat, x4hat]
 
 class MDCNN(nn.Module):
-    def __init__(self, parameters, proc_device):
+    def __init__(self, parameters):
         super(MDCNN, self).__init__()
-        self.param_dic = parameters
-        self.proc_device = proc_device
+        self.t_parameters = parameters
         self.num_window = parameters['window_size']
-        assert(self.num_window == 7)
         self.num_coils = parameters['num_coils']
         self.image_space_real = parameters['image_space_real']
-        self.kspace_m = KspaceModel(num_coils = self.num_coils)
-        self.ispacem = ImageSpaceModel(num_coils = self.num_coils, num_window = self.num_window, image_space_real = self.image_space_real)
+        self.kspacem = KspaceModel(num_coils = self.num_coils)
+        self.imspacem = ImageSpaceModel(num_coils = self.num_coils, num_window = self.num_window, image_space_real = self.image_space_real)
         self.train_mode = True
-        self.criterionL1 = nn.L1Loss().to(proc_device)
-        self.SSIM = kornia.metrics.SSIM(11)
 
-    def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
-        fft_log = (fft_exp+CEPS).log()
-        fft_log = torch.stack((fft_log.real, fft_log.imag), -1)
+    def forward(self, x):
         # FT data - b_num, num_coils, num_windows, 256, 256
         # Returns - kspace_data, image_space_data
+        x1 = self.kspacem(x)
+        # print(x1.abs().min(), x1.abs().max())
+        real, imag = torch.unbind(x1, -1)
+        fftshifted = torch.complex(real, imag)
+        x2 = torch.fft.ifft2(torch.fft.ifftshift(fftshifted.exp(), dim = (-2, -1)))
+        if self.image_space_real:
+            x3 = x2.real
+            ans = self.imspacem(x3)
+        else:
+            x3 = torch.stack([x2.real, x2.imag], dim=-1)
+            ans = (self.imspacem(x3).pow(2).sum(-1)+EPS).pow(0.5)
+        return x1, ans
+        # return x1, self.imspacem(x3)
 
-        predr = torch.zeros(*fft_exp.shape[0:2], 1, *fft_exp.shape[3:]).to(device)
-
-        zero_tensor = torch.tensor(0.).to(device)
-        loss_real = zero_tensor
-        loss_l1 = zero_tensor
-        loss_l2 = zero_tensor
-        loss_ss1 = zero_tensor
-
-        for ti in range(self.num_window - 1, fft_log.shape[1]):
-
-            x1 = self.kspace_m(torch.swapaxes(fft_log[:,ti-self.num_window+1:ti+1], 1,2))
-            # print(x1.abs().min(), x1.abs().max())
-            real, imag = torch.unbind(x1, -1)
-            fftshifted = torch.complex(real, imag)
-            x2 = torch.fft.ifft2(torch.fft.ifftshift(fftshifted.exp(), dim = (-2, -1)))
-            if self.image_space_real:
-                x3 = x2.abs()
-                ans = self.ispacem(x3)
-            else:
-                x3 = torch.stack([x2.real, x2.imag], dim=-1)
-                ans = (self.ispacem(x3).pow(2).sum(-1)+EPS).pow(0.5)
-                assert(0)
-            # print(ans.cpu().detach()[0,0].min(), ans.cpu().detach()[0,0].max())
-            if og_video is not None:
-                targ_now = og_video[:,ti,:,:]
-
-                # plt.imsave('targ_now.jpg', targ_now.cpu().detach()[0,0], cmap = 'gray')
-                # plt.imsave('ans.jpg', ans.cpu().detach()[0,0], cmap = 'gray')
-
-
-                loss_real += self.criterionL1(ans, targ_now.to(device))
-                loss_l1 += (ans - targ_now).reshape(ans .shape[0]*ans .shape[1], -1).abs().mean(1).sum().detach().cpu()/self.param_dic['n_lstm_cells']
-                loss_l2 += (((ans - targ_now).reshape(ans .shape[0]*ans .shape[1], -1) ** 2).mean(1).sum()).detach().cpu()/self.param_dic['n_lstm_cells']
-                ss1 = self.SSIM(ans .reshape(ans .shape[0]*ans .shape[1],1,self.param_dic['image_resolution'],self.param_dic['image_resolution']), targ_now.reshape(ans .shape[0]*ans .shape[1],1,self.param_dic['image_resolution'],self.param_dic['image_resolution']))
-                ss1 = ss1.reshape(ss1.shape[0],-1)
-                loss_ss1 += ss1.mean(1).sum().detach().cpu() / (self.param_dic['n_lstm_cells'])
-
-            predr[:,ti] = ans.detach()
-
-        # return predr, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, loss_ss1)
-        return predr, None, None, zero_tensor, zero_tensor, loss_real, zero_tensor, zero_tensor, (loss_l1, loss_l2, loss_ss1)
+    def train_mode_set(self, bool = True):
+        self.train_mode = bool
+        self.kspacem.train_mode_set(bool)
+        self.imspacem.train_mode_set(bool)

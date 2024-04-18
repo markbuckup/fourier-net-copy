@@ -45,10 +45,7 @@ def train_paradigm(rank, world_size, args, parameters):
     if parameters['dataset'] == 'acdc':
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial as dataset
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial_ispace as dataset_ispace
-    if 'LSTM' in parameters['kspace_architecture']:
-        from utils.models.periodLSTM import fetch_lstm_type as rnn_func
-    elif 'GRU' in parameters['kspace_architecture']:
-        from utils.models.periodGRU import fetch_gru_type as rnn_func
+    from utils.models.periodLSTM import fetch_lstm_type as rnn_func
     Model_Kspace, Model_Ispace = rnn_func(parameters)
     from utils.Trainers.DDP_LSTMTrainer_nufft import Trainer
 
@@ -131,14 +128,12 @@ def train_paradigm(rank, world_size, args, parameters):
         pre_e = dic['e']
         kspace_model.load_state_dict(dic['kspace_model'])
         ispace_model.load_state_dict(dic['ispace_model'])
-        if parameters['kspace_architecture'] == 'KLSTM1':
-            opt_dict_kspace = dic['kspace_optim']
+        opt_dict_kspace = dic['kspace_optim']
         opt_dict_ispace = dic['ispace_optim']
         # scaler_dict = dic['scaler']
         if parameters['scheduler'] != 'None':
             scheduler_dict_ispace = dic['ispace_scheduler']
-            if parameters['kspace_architecture'] == 'KLSTM1':
-                scheduler_dict_kspace = dic['kspace_scheduler']
+            scheduler_dict_kspace = dic['kspace_scheduler']
         losses = dic['losses']
         test_losses = dic['test_losses']
         if rank == 0:
@@ -152,14 +147,12 @@ def train_paradigm(rank, world_size, args, parameters):
         pre_e = dic['e']
         kspace_model.load_state_dict(dic['kspace_model'])
         # ispace_model.load_state_dict(dic['ispace_model'])
-        if parameters['kspace_architecture'] == 'KLSTM1':
-            opt_dict_kspace = dic['kspace_optim']
+        opt_dict_kspace = dic['kspace_optim']
         # opt_dict_ispace = dic['ispace_optim']
         # scaler_dict = dic['scaler']
         if parameters['scheduler'] != 'None':
             scheduler_dict_ispace = dic['ispace_scheduler']
-            if parameters['kspace_architecture'] == 'KLSTM1':
-                scheduler_dict_kspace = dic['kspace_scheduler']
+            scheduler_dict_kspace = dic['kspace_scheduler']
         losses = dic['losses']
         test_losses = dic['test_losses']
         if rank == 0:
@@ -191,14 +184,12 @@ def train_paradigm(rank, world_size, args, parameters):
     if args.resume or args.resume_kspace:
         if not args.resume_kspace:
             trainer.ispace_optim.load_state_dict(opt_dict_ispace)
-        if parameters['kspace_architecture'] == 'KLSTM1':
-            trainer.kspace_optim.load_state_dict(opt_dict_kspace)
+        trainer.kspace_optim.load_state_dict(opt_dict_kspace)
         # trainer.scaler.load_state_dict(scaler_dict)
         if parameters['scheduler'] != 'None':
             if not args.resume_kspace:
                 trainer.ispace_scheduler.load_state_dict(scheduler_dict_ispace)
-            if parameters['kspace_architecture'] == 'KLSTM1':
-                trainer.kspace_scheduler.load_state_dict(scheduler_dict_kspace)
+            trainer.kspace_scheduler.load_state_dict(scheduler_dict_kspace)
 
     for e in range(parameters['num_epochs_total']):
         if pre_e > 0:
@@ -323,14 +314,12 @@ def train_paradigm(rank, world_size, args, parameters):
             dic['e'] = e+1
             dic['kspace_model'] = trainer.kspace_model.module.state_dict()
             dic['ispace_model'] = trainer.ispace_model.module.state_dict()
-            if parameters['kspace_architecture'] == 'KLSTM1':
-                dic['kspace_optim'] = trainer.kspace_optim.state_dict()
+            dic['kspace_optim'] = trainer.kspace_optim.state_dict()
 
             dic['ispace_optim'] = trainer.ispace_optim.state_dict()
             if parameters['scheduler'] != 'None':
                 dic['ispace_scheduler'] = trainer.ispace_scheduler.state_dict()
-                if parameters['kspace_architecture'] == 'KLSTM1':
-                    dic['kspace_scheduler'] = trainer.kspace_scheduler.state_dict()
+                dic['kspace_scheduler'] = trainer.kspace_scheduler.state_dict()
             dic['losses'] = losses
             dic['test_losses'] = test_losses
             # dic['scaler'] = trainer.scaler.state_dict()
@@ -362,10 +351,7 @@ def test_paradigm(rank, world_size, args, parameters):
     if parameters['dataset'] == 'acdc':
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial as dataset
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial_ispace as dataset_ispace
-    if 'LSTM' in parameters['kspace_architecture']:
-        from utils.models.periodLSTM import fetch_lstm_type as rnn_func
-    elif 'GRU' in parameters['kspace_architecture']:
-        from utils.models.periodGRU import fetch_gru_type as rnn_func
+    from utils.models.periodLSTM import fetch_lstm_type as rnn_func
     Model_Kspace, Model_Ispace = rnn_func(parameters)
     from utils.Trainers.DDP_LSTMTrainer_nufft import Trainer
 
