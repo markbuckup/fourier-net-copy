@@ -73,6 +73,8 @@ def get_omega2d(thetas, diameter = 128):
     for itheta, theta_rad in enumerate(thetas):
 
         rads = np.arange(-(diameter//2),-(diameter//2)+ diameter) # ex) - 256 to 256, this is the grid in the k-space i think ?
+        # rads = np.arange(diameter) - ((diameter-1)/2)
+        print(rads)
         xs = rads*np.cos(theta_rad) # ? - ex) xs = [-256,-255,...255,256]
         # and multiple with the grid size (=rads)
         ys = rads*np.sin(theta_rad) # ? - ex) ys = [0,0,...,0,0]
@@ -93,7 +95,7 @@ def gridder(kspace_data):
 	plt.savefig('omegas.jpg')
 
 	dcomp_full = tkbn.calc_density_compensation_function(ktraj=omegas.reshape(2,-1), im_size=(256,256), grid_size = (1024,1024), numpoints = 4, kbwidth = 2.34, n_shift = (0,0)).to(device)
-	kbinterp2 = tkbn.KbInterpAdjoint(im_size=(256,256), grid_size = (1024,1024), numpoints = 8, kbwidth = 0.84, device = device)
+	kbinterp2 = tkbn.KbInterpAdjoint(im_size=(256,256), grid_size = (1024,1024), numpoints = 8, kbwidth = 2.34, device = device)
 
 	myfft_interp = torch.fft.fftshift(kbinterp2(dcomp_full*kspace_data.reshape(kspace_data.shape[0],1,-1), omegas.reshape(2,-1))[0,:].cpu())
 	myfft_interp = myfft_interp[:,::4,::4]
