@@ -749,7 +749,11 @@ class convLSTM_Kspace1(nn.Module):
             # if prev_outputs2 is not None:
                 prev_outputs2 = [(x + 5) for x in prev_outputs2]
                 prev_outputs1 = [x + 4 for x in prev_outputs1]
-            prev_states2, prev_states1, prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr = self.kspace_m(hist_mag, hist_phase, gt_masks[:,ti,:,:,:], prev_states2, prev_outputs2, prev_states1, prev_outputs1, background = background)
+            if gt_masks is None:
+                curr_mask = None
+            else:
+                curr_mask = gt_masks[:,ti,:,:,:]
+            prev_states2, prev_states1, prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr = self.kspace_m(hist_mag, hist_phase, curr_mask, prev_states2, prev_outputs2, prev_states1, prev_outputs1, background = background)
             # print(hist_mag.min(), hist_mag.max())
             # print(hist_phase.min(), hist_phase.max())
             # print(prev_outputs2[-1].min(), prev_outputs2[-1].max())

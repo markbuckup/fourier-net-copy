@@ -32,6 +32,7 @@ parser.add_argument('--resume', action = 'store_true')
 parser.add_argument('--time_analysis', action = 'store_true')
 parser.add_argument('--resume_kspace', action = 'store_true')
 parser.add_argument('--eval', action = 'store_true')
+parser.add_argument('--eval_on_real', action = 'store_true')
 parser.add_argument('--write_csv', action = 'store_true')
 parser.add_argument('--test_only', action = 'store_true')
 parser.add_argument('--visualise_only', action = 'store_true')
@@ -47,6 +48,7 @@ parser.add_argument('--run_id', type = str, required = True)
 parser.add_argument('--state', type = int, default = -1)
 parser.add_argument('--gpu', nargs='+', type = int, default = [-1])
 parser.add_argument('--neptune_log', action = 'store_true')
+parser.add_argument('--actual_data_path', default = '../../datasets/actual_data/data1.pth')
 # parser.add_argument('--gpu', type = int, default = '-1')
 args = parser.parse_args()
 
@@ -56,6 +58,7 @@ from params import parameters
 if parameters['dataset'] == 'acdc':
     from utils.myDatasets.ACDC_radial import ACDC_radial as dataset
     args.dataset_path = '../../datasets/ACDC'
+    
 if args.numbers_only or args.visualise_only:
     parameters['init_skip_frames'] = 90
 
@@ -97,7 +100,7 @@ torch.autograd.profiler.emit_nvtx(False)
 
 if __name__ == '__main__':
     world_size = len(args.gpu) 
-    if args.eval:
+    if args.eval or args.eval_on_real:
         mp.spawn(
             test_paradigm,
             args=[world_size, args, parameters],

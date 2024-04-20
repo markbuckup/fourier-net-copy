@@ -467,6 +467,13 @@ def test_paradigm(rank, world_size, args, parameters):
             trainer.time_analysis()
         return
     
+    if args.eval_on_real:
+        if rank == 0:
+            if not args.numbers_only:
+                trainer.visualise_on_real(pre_e)
+        cleanup()
+        return
+
     if rank == 0:
         # if args.neptune_log and rank == 0:
         #     for x in sorted(os.listdir(os.path.join(args.run_id, 'images/train'))):
