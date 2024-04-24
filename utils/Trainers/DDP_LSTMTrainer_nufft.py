@@ -244,7 +244,6 @@ class Trainer(nn.Module):
             self.kspace_mode = False
         if epoch >= (self.parameters['num_epochs_total'] - self.parameters['num_epochs_ispace']):
             self.ispace_mode = True
-            assert(not self.kspace_mode)
         else:
             self.ispace_mode = False
         avgkspacelossphase = 0.
@@ -262,7 +261,7 @@ class Trainer(nn.Module):
         ispacessim_score = 0.
         avgispace_l1_loss = 0.
         avgispace_l2_loss = 0.
-        if self.ispace_mode and not self.args.eval and not self.args.eval_on_real:
+        if self.ispace_mode and not self.args.eval and not self.args.eval_on_real and not self.kspace_mode:
             self.ispacetrainloader.sampler.set_epoch(epoch)
             dset = self.ispace_trainset
             dloader = self.ispacetrainloader
@@ -414,7 +413,7 @@ class Trainer(nn.Module):
                 # print('setting indices ')
                 # print(indices[:,0], indices[:,1])
                 # print('\n')
-                if self.ispace_mode and self.parameters['memoise_ispace'] and not self.args.eval and not self.args.eval_on_real:
+                if self.ispace_mode and self.parameters['memoise_ispace'] and not self.args.eval and not self.args.eval_on_real and not self.kspace_mode:
                     self.ispace_trainset.bulk_set_data(indices[:,0], indices[:,1], predr, targ_vid)
 
             
@@ -544,7 +543,7 @@ class Trainer(nn.Module):
             kspace_skip_frames_loss = self.parameters['init_skip_frames']
         else:
             dstr = 'Test'
-            if self.ispace_mode and (not self.args.eval) and (not self.args.eval_on_real):
+            if self.ispace_mode and (not self.args.eval) and (not self.args.eval_on_real) and not self.kspace_mode:
                 self.ispacetestloader.sampler.set_epoch(epoch)
                 dloader = self.ispacetestloader
                 dset = self.ispace_testset
@@ -649,7 +648,7 @@ class Trainer(nn.Module):
                     else:
                         predr = predr[:,kspace_skip_frames_loss:]
 
-                    if self.ispace_mode and (not self.args.eval) and (not self.args.eval_on_real) and self.parameters['memoise_ispace']:
+                    if self.ispace_mode and (not self.args.eval) and (not self.args.eval_on_real) and self.parameters['memoise_ispace'] and not self.kspace_mode:
                         self.ispace_testset.bulk_set_data(indices[:,0], indices[:,1], predr, targ_vid)
 
                 batch, num_frames, chan, numr, numc = predr.shape
