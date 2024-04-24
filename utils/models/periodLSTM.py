@@ -228,7 +228,7 @@ class convLSTMcell_kspace(nn.Module):
         
         # self.decoder2 = nn.Linear(64*64*2, 64*64)
 
-    def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_states = None, mag_prev_outputs = None, phase_prev_states = None, phase_prev_outputs = None, background = None):
+    def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_states = None, mag_prev_outputs = None, phase_prev_states = None, phase_prev_outputs = None, background = None, window_size = np.inf, mag_gates_remember = None, phase_gates_remember = None):
         # x is a batch of video frames at a single time stamp
         del gt_mask
         foreground = torch.logical_not(background).float().to(hist_mag.device)
@@ -264,6 +264,11 @@ class convLSTMcell_kspace(nn.Module):
         loss_forget_gate = 0
         loss_input_gate = 0
         criterionL1 = nn.L1Loss()
+        if mag_gates_remember is None:
+            mag_gates_remember = [[] for i in range(self.n_lstm_cells)]
+            if not self.forget_gate_same_phase_mag:
+                phase_gates_remember = [[] for i in range(self.n_lstm_cells)]
+
         for i_cell in range(self.n_lstm_cells):
             if self.lstm_input_mask:
                 mag_inp_cat = torch.cat((new_mag_outputs[i_cell], hist_mag, foreground), 1)
@@ -274,7 +279,6 @@ class convLSTMcell_kspace(nn.Module):
 
             assert(self.sigmoid_mode)
             mag_it = torch.sigmoid(self.mag_inputGates[i_cell](mag_inp_cat))
-            loss_forget_gate += criterionL1(mag_it*foreground, foreground)
             # plt.imsave('mag_it.jpg', (mag_it == 1).cpu().detach()[0,0,:,:])
             # plt.imsave('foreground.jpg', foreground.float().cpu()[0,0,:,:])
 
@@ -309,12 +313,34 @@ class convLSTMcell_kspace(nn.Module):
                 mag_ot = torch.ones_like(mag_ft, device = mag_ft.device)
                 phase_ot = torch.ones_like(phase_ft, device = phase_ft.device)
 
+            loss_forget_gate += criterionL1(mag_it*foreground, foreground)
             # plt.imsave('mag_ft.jpg', mag_ft.detach().cpu()[0,0], cmap = 'gray')
             if self.forget_gate_same_coils:
                 mag_ft = mag_ft.repeat(1,self.input_gate_output_size,1,1)
                 phase_ft = phase_ft.repeat(1,self.input_gate_output_size,1,1)
                 mag_it = mag_it.repeat(1,self.input_gate_output_size,1,1)
                 phase_it = phase_it.repeat(1,self.input_gate_output_size,1,1)
+
+            mag_gates_remember[i_cell].append(mag_it.detach().cpu())
+            if not self.forget_gate_same_phase_mag:
+                phase_gates_remember[i_cell].append(phase_it.detach().cpu())
+
+            if len(mag_gates_remember[i_cell]) > window_size:
+                mag_ft = mag_ft - (mag_gates_remember[i_cell][-window_size-1]).to(mag_ft.device)
+                mag_ft = mag_ft.clip(0,1)
+                if not self.forget_gate_same_phase_mag:
+                    phase_ft = phase_ft - (phase_gates_remember[i_cell][-window_size-1]).to(mag_ft.device)
+                else:
+                    phase_ft = phase_ft - (mag_gates_remember[i_cell][-window_size-1]).to(mag_ft.device)
+                phase_ft = phase_ft.clip(0,1)
+
+                mag_it = 1 - mag_ft
+                phase_it = 1 - phase_ft
+
+            # plt.imsave('mag_ft_{}.jpg'.format(len(mag_gates_remember[i_cell])), mag_ft[0,0,:,:].cpu().detach())
+            # plt.imsave('mag_it_{}.jpg'.format(len(mag_gates_remember[i_cell])), mag_it[0,0,:,:].cpu().detach())
+
+            assert(self.forget_gate_coupled) # mag it is reassigned
 
             if self.input_proc_identity:
                 mag_Cthat = hist_mag
@@ -342,7 +368,7 @@ class convLSTMcell_kspace(nn.Module):
                 new_mag_outputs[i_cell+1] = new_mag_outputs[i_cell+1].reshape(og_B,og_C,*new_mag_outputs[i_cell+1].shape[2:])
                 new_phase_outputs[i_cell+1] = new_phase_outputs[i_cell+1].reshape(og_B,og_C,*new_phase_outputs[i_cell+1].shape[2:])
 
-        return new_mag_states, new_phase_states, new_mag_outputs[1:], new_phase_outputs[1:], loss_forget_gate, loss_input_gate
+        return new_mag_states, new_phase_states, new_mag_outputs[1:], new_phase_outputs[1:], loss_forget_gate, loss_input_gate, mag_gates_remember, phase_gates_remember
 
 class convLSTMcell(nn.Module):
     def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, sigmoid_mode = True, real_mode = False, theta = False, mini = False):
@@ -652,6 +678,8 @@ class convLSTM_Kspace1(nn.Module):
         prev_outputs2 = None
         prev_state3 = None
         prev_output3 = None
+        mag_gates_remember = None
+        phase_gates_remember = None
 
         if self.param_dic['kspace_combine_coils']:
             ans_coils = 1
@@ -753,7 +781,7 @@ class convLSTM_Kspace1(nn.Module):
                 curr_mask = None
             else:
                 curr_mask = gt_masks[:,ti,:,:,:]
-            prev_states2, prev_states1, prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr = self.kspace_m(hist_mag, hist_phase, curr_mask, prev_states2, prev_outputs2, prev_states1, prev_outputs1, background = background)
+            prev_states2, prev_states1, prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(hist_mag, hist_phase, curr_mask, prev_states2, prev_outputs2, prev_states1, prev_outputs1, background = background, window_size = self.param_dic['window_size'], mag_gates_remember = mag_gates_remember, phase_gates_remember = phase_gates_remember)
             # print(hist_mag.min(), hist_mag.max())
             # print(hist_phase.min(), hist_phase.max())
             # print(prev_outputs2[-1].min(), prev_outputs2[-1].max())

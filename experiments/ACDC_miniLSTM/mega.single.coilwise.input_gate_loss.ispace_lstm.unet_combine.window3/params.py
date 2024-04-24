@@ -7,7 +7,7 @@ parameters['lr_kspace'] = 1e-5
 parameters['lr_ispace'] = 1e-5
 parameters['num_epochs_ispace'] = 200
 parameters['num_epochs_kspace'] = 200
-parameters['num_epochs_total'] = 400
+parameters['num_epochs_total'] = 200
 assert(parameters['num_epochs_kspace'] <= parameters['num_epochs_total'])
 assert(parameters['num_epochs_ispace'] <= parameters['num_epochs_total'])
 parameters['kspace_architecture'] = 'KLSTM1'
@@ -25,7 +25,7 @@ parameters['forget_gate_coupled'] = True
 parameters['forget_gate_same_coils'] = True
 parameters['forget_gate_same_phase_mag'] = True
 parameters['logarithm_base'] = 10
-parameters['memoise_ispace'] = True
+parameters['memoise_ispace'] = False
 
 
 parameters['skip_kspace_lstm'] = False
@@ -48,7 +48,7 @@ parameters['loop_videos'] = 40
 parameters['dataset'] = 'acdc'
 parameters['train_test_split'] = 0.8
 parameters['normalisation'] = False
-parameters['window_size'] = np.inf
+parameters['window_size'] = 3
 parameters['init_skip_frames'] = 10
 parameters['SHM_looping'] = False
 parameters['FT_radial_sampling'] = 10
@@ -64,7 +64,7 @@ parameters['scheduler_params'] = {
     'step_size_up': 3000,
     'mode': 'exp_range',
     'step_size': parameters['num_epochs_kspace']//3,
-    'gamma': 0.9999,
+    'gamma': 0.999,
     'verbose': True,
     'cycle_momentum': False,
 }
@@ -74,7 +74,7 @@ parameters['ispace_scheduler_params'] = {
     'step_size_up': 400,
     'mode': 'exp_range',
     'step_size': parameters['num_epochs_kspace']//3,
-    'gamma': 0.9999,
+    'gamma': 0.999,
     'verbose': True,
     'cycle_momentum': False,
 }
