@@ -1008,9 +1008,11 @@ class Trainer(nn.Module):
                                 ispace_outpi = ispace_outp[bi, f_num, :,:]
                                 sos_outpi = sos_output[bi, f_num, :,:]
 
-                                plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_ground_truth.jpg'.format(p_num, v_num, f_num)), og_vidi, cmap = 'gray')
-                                plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_kspace_sos.jpg'.format(p_num, v_num, f_num)), sos_outpi, cmap = 'gray')
-                                plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_ispace_pred.jpg'.format(p_num, v_num, f_num)), ispace_outpi, cmap = 'gray')
+                                os.makedirs(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}'.format(p_num, v_num, f_num)), exist_ok=True)
+                                
+                                plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/ground_truth.jpg'.format(p_num, v_num, f_num)), og_vidi, cmap = 'gray')
+                                plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/kspace_sos.jpg'.format(p_num, v_num, f_num)), sos_outpi, cmap = 'gray')
+                                plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/ispace_pred.jpg'.format(p_num, v_num, f_num)), ispace_outpi, cmap = 'gray')
                             else:
                                 fig = plt.figure(figsize = (20,6))
                                 og_vidi = og_video.cpu()[bi, f_num,0,:,:]
@@ -1082,13 +1084,13 @@ class Trainer(nn.Module):
                                         pred_ilstmi = predr_ispace_lstm.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
 
 
-                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_coiled_gt_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), og_vidi, cmap = 'gray')
-                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_coiled_gt_ft_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), orig_fti, cmap = 'gray')
-                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_undersampled_ft_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), mask_fti, cmap = 'gray')
-                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_undersampled_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), ifft_of_undersamp, cmap = 'gray')
-                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_pred_kspace_ft_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), pred_fti, cmap = 'gray')
-                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_pred_kspace_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), predi, cmap = 'gray')
-                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_pred_ispace_lstm_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), pred_ilstmi, cmap = 'gray')
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/coiled_gt_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), og_vidi, cmap = 'gray')
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/coiled_gt_ft_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), orig_fti, cmap = 'gray')
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/undersampled_ft_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), mask_fti, cmap = 'gray')
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/undersampled_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), ifft_of_undersamp, cmap = 'gray')
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/pred_kspace_ft_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), pred_fti, cmap = 'gray')
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/pred_kspace_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), predi, cmap = 'gray')
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/pred_ispace_lstm_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), pred_ilstmi, cmap = 'gray')
 
                                 else:
                                     fig = plt.figure(figsize = (22,4*kspace_out_size))
