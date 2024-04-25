@@ -54,7 +54,6 @@ parser.add_argument('--actual_data_path', default = '../../datasets/actual_data/
 args = parser.parse_args()
 
 
-assert(not (args.raw_visual_only and args.visualise_only))
 assert(not (args.raw_visual_only and args.ispace_visual_only))
 
 sys.path.append('/root/Cardiac-MRI-Reconstrucion/experiments/ACDC_miniLSTM/{}/'.format(args.run_id))
