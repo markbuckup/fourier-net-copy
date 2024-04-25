@@ -1079,6 +1079,7 @@ class Trainer(nn.Module):
                                         ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts.cpu()[bi,f_num,c_num], dim = (-2,-1))).abs().squeeze()
                                         pred_fti = mylog((pred_ft.cpu()[bi,f_num,c_num].abs()+1), base = self.parameters['logarithm_base'])
                                         predi = predr.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
+                                        pred_ilstmi = predr_ispace_lstm.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
 
 
                                         plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_coiled_gt_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), og_vidi, cmap = 'gray')
