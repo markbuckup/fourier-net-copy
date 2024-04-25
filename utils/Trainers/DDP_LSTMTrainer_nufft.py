@@ -1084,7 +1084,7 @@ class Trainer(nn.Module):
                                         pred_ilstmi = predr_ispace_lstm.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
 
 
-                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/coiled_gt_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), og_vidi, cmap = 'gray')
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/coiled_gt_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), targi, cmap = 'gray')
                                         plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/coiled_gt_ft_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), orig_fti, cmap = 'gray')
                                         plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/undersampled_ft_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), mask_fti, cmap = 'gray')
                                         plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/undersampled_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), ifft_of_undersamp, cmap = 'gray')
