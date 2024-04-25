@@ -1004,8 +1004,13 @@ class Trainer(nn.Module):
                             
 
                             if self.args.raw_visual_only:
+                                og_vidi = og_video.cpu()[bi, f_num,0,:,:]
+                                ispace_outpi = ispace_outp[bi, f_num, :,:]
+                                sos_outpi = sos_output[bi, f_num, :,:]
+
                                 plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_ground_truth.jpg'.format(p_num, v_num, f_num)), og_vidi, cmap = 'gray')
                                 plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_kspace_sos.jpg'.format(p_num, v_num, f_num)), sos_outpi, cmap = 'gray')
+                                plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_ispace_pred.jpg'.format(p_num, v_num, f_num)), ispace_outpio, cmap = 'gray')
                             else:
                                 fig = plt.figure(figsize = (20,6))
                                 og_vidi = og_video.cpu()[bi, f_num,0,:,:]
@@ -1177,8 +1182,8 @@ class Trainer(nn.Module):
                                     plt.suptitle("Epoch {}\nPatient {} Video {} Frame {}\n{}".format(epoch,p_num, v_num, f_num, spec))
                                     plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}.jpg'.format(p_num, v_num, f_num)))
                                     # plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/location_{}.jpg'.format(p_num, f_num, v_num)))
-                                plt.close('all')
+                            plt.close('all')
 
-                                tot += 1
-                                pbar.update(1)
+                            tot += 1
+                            pbar.update(1)
                 break
