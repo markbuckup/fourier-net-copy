@@ -703,9 +703,9 @@ class convLSTM_Kspace1(nn.Module):
         ans_phase = torch.zeros(*phase.shape[0:2], ans_coils, *phase.shape[3:])
         predr = torch.zeros(*mag_log.shape[0:2], ans_coils, *mag_log.shape[3:]).to(device)
         if self.param_dic['ispace_lstm']:
-            predr_ispace = torch.zeros(*mag_log.shape[0:2], ans_coils, *mag_log.shape[3:])
+            predr_kspace = torch.zeros(*mag_log.shape[0:2], ans_coils, *mag_log.shape[3:])
         else:
-            predr_ispace = None
+            predr_kspace = None
 
         if targ_phase is not None:
             loss_phase = 0
@@ -928,11 +928,11 @@ class convLSTM_Kspace1(nn.Module):
             ans_mag_log[:,ti,:,:] = prev_outputs2[-1].detach()
             ans_phase[:,ti,:,:,:,:] = stacked_phase.detach()
             if self.param_dic['ispace_lstm']:
-                predr_ispace[:,ti,:,:] = prev_output3.detach().cpu()
-            predr[:,ti,:,:] = predr_ti.detach()
+                predr_kspace[:,ti,:,:] = predr_ti.detach().cpu()
+            predr[:,ti,:,:] = prev_output3.detach()
 
         predr = predr * self.predr_mask
-        return predr, predr_ispace, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, loss_ss1)
+        return predr, predr_kspace, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, loss_ss1)
 
 
 class CoupledDown(nn.Module):

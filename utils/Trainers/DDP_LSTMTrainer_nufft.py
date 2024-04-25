@@ -740,10 +740,10 @@ class Trainer(nn.Module):
 
             if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
                 # predr, _, _, loss_mag, loss_phase, loss_real,loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
-                predr, predr_ispace_lstm, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(actual_data, None, self.device, None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
+                predr, predr_kspace, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(actual_data, None, self.device, None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
             else:
                 predr = torch.fft.ifft2(torch.fft.ifftshift(actual_data, dim = (-2,-1))).abs().to(self.device)
-                predr_ispace_lstm = predr
+                predr_kspace = predr
 
             if torch.isnan(predr).any():
                 print('Predr nan',torch.isnan(predr).any())
@@ -827,8 +827,8 @@ class Trainer(nn.Module):
                             mask_fti = mylog((1+actual_data.cpu()[0,f_num,c_num].abs()), base = self.parameters['logarithm_base'])
                             ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(actual_data.cpu()[0,f_num,c_num], dim = (-2,-1))).abs().squeeze()
                             pred_fti = mylog((pred_ft.cpu()[0,f_num,c_num].abs()+1), base = self.parameters['logarithm_base'])
-                            predi = predr.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
-                            pred_ilstmi = predr_ispace_lstm.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
+                            predi = predr_kspace.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
+                            pred_ilstmi = predr.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
 
                             plt.subplot(kspace_out_size,5,5*c_num+1)
                             myimshow(mask_fti, cmap = 'gray')
@@ -917,10 +917,10 @@ class Trainer(nn.Module):
                 num_plots = num_vids*num_frames
                 if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
                     # predr, _, _, loss_mag, loss_phase, loss_real,loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
-                    predr, predr_ispace_lstm, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
+                    predr, predr_kspace, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
                 else:
                     predr = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts, dim = (-2,-1))).abs().to(self.device)
-                    predr_ispace_lstm = predr
+                    predr_kspace = predr
 
                 # plt.imsave('targ_now.jpg', targ_now.cpu().detach()[0,0], cmap = 'gray')
                 # print(predr.shape)
@@ -1080,8 +1080,8 @@ class Trainer(nn.Module):
                                         mask_fti = mylog((1+undersampled_fts.cpu()[bi,f_num,c_num].abs()), base = self.parameters['logarithm_base'])
                                         ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts.cpu()[bi,f_num,c_num], dim = (-2,-1))).abs().squeeze()
                                         pred_fti = mylog((pred_ft.cpu()[bi,f_num,c_num].abs()+1), base = self.parameters['logarithm_base'])
-                                        predi = predr.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
-                                        pred_ilstmi = predr_ispace_lstm.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
+                                        predi = predr_kspace.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
+                                        pred_ilstmi = predr.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
 
 
                                         plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/coiled_gt_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), targi, cmap = 'gray')
@@ -1122,8 +1122,8 @@ class Trainer(nn.Module):
                                         mask_fti = mylog((EPS+undersampled_fts.cpu()[bi,f_num,c_num].abs()), base = self.parameters['logarithm_base'])
                                         ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts.cpu()[bi,f_num,c_num], dim = (-2,-1))).abs().squeeze()
                                         pred_fti = mylog((pred_ft.cpu()[bi,f_num,c_num].abs()+1), base = self.parameters['logarithm_base'])
-                                        predi = predr.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
-                                        pred_ilstmi = predr_ispace_lstm.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
+                                        predi = predr_kspace.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
+                                        pred_ilstmi = predr.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
 
                                         plt.subplot(kspace_out_size,9,9*c_num+1)
                                         myimshow(targi, cmap = 'gray')
