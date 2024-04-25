@@ -1,3 +1,4 @@
+import numpy as np
 parameters = {}
 parameters['save_folder'] = '/Data/ContijochLab/projects/cineMRIRecon'
 parameters['image_resolution'] = 256
