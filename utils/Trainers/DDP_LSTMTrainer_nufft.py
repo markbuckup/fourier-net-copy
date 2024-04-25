@@ -1093,7 +1093,7 @@ class Trainer(nn.Module):
                                         plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}/pred_ispace_lstm_coil_{}.jpg'.format(p_num, v_num, f_num, c_num)), pred_ilstmi, cmap = 'gray')
 
                                 else:
-                                    fig = plt.figure(figsize = (22,4*kspace_out_size))
+                                    fig = plt.figure(figsize = (36,4*kspace_out_size))
                                     
                                     # plt.subplot(kspace_out_size,7,(((kspace_out_size//2))*7)+1)
                                     # myimshow(og_vidi, cmap = 'gray')
@@ -1167,8 +1167,8 @@ class Trainer(nn.Module):
                                             plt.title('Difference Image')
                                         # print(c_num,6)
 
-                                        plt.subplot(pred_ilstmi,9,9*c_num+8)
-                                        myimshow(predi, cmap = 'gray')
+                                        plt.subplot(kspace_out_size,9,9*c_num+8)
+                                        myimshow(pred_ilstmi, cmap = 'gray')
                                         if c_num == 0:
                                             plt.title('ISpace LSTM Prediction')
                                         # print(c_num,6)
