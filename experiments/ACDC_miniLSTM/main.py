@@ -40,6 +40,7 @@ parser.add_argument('--motion_mask', action = 'store_true')
 parser.add_argument('--numbers_only', action = 'store_true')
 parser.add_argument('--numbers_crop', action = 'store_true')
 parser.add_argument('--ispace_visual_only', action = 'store_true')
+parser.add_argument('--raw_visual_only', action = 'store_true')
 parser.add_argument('--train_ispace', action = 'store_true')
 parser.add_argument('--dual_training', action = 'store_true')
 parser.add_argument('--seed', type = int, default = 0)
@@ -51,6 +52,10 @@ parser.add_argument('--neptune_log', action = 'store_true')
 parser.add_argument('--actual_data_path', default = '../../datasets/actual_data/data1.pth')
 # parser.add_argument('--gpu', type = int, default = '-1')
 args = parser.parse_args()
+
+
+assert(not (args.raw_visual_only and args.visualise_only))
+assert(not (args.raw_visual_only and args.ispace_visual_only))
 
 sys.path.append('/root/Cardiac-MRI-Reconstrucion/experiments/ACDC_miniLSTM/{}/'.format(args.run_id))
 

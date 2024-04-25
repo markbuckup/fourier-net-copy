@@ -335,7 +335,7 @@ class Trainer(nn.Module):
                             self.kspace_model.eval()
 
                     if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
-                        predr, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
+                        predr, _, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
 
                         predr_sos = ((predr**2).sum(2, keepdim = True) ** 0.5)[:,kspace_skip_frames_loss:]
                         targ_vid = og_video.to(self.device)[:,kspace_skip_frames_loss:]
@@ -598,7 +598,7 @@ class Trainer(nn.Module):
                     if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
                         if not self.parameters['kspace_architecture'] == 'MDCNN':
                             self.kspace_model.eval()
-                        predr, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
+                        predr, _, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
                         avgkspacelossphase += float(loss_phase.item()/(len(dloader)))
                         avgkspacelossmag += float(loss_mag.item()/(len(dloader)))
                         avgkspacelossforget_gate += float(loss_forget_gate.item()/(len(dloader)))
@@ -740,9 +740,10 @@ class Trainer(nn.Module):
 
             if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
                 # predr, _, _, loss_mag, loss_phase, loss_real,loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
-                predr, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(actual_data, None, self.device, None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
+                predr, predr_ispace_lstm, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(actual_data, None, self.device, None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
             else:
                 predr = torch.fft.ifft2(torch.fft.ifftshift(actual_data, dim = (-2,-1))).abs().to(self.device)
+                predr_ispace_lstm = predr
 
             if torch.isnan(predr).any():
                 print('Predr nan',torch.isnan(predr).any())
@@ -827,28 +828,34 @@ class Trainer(nn.Module):
                             ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(actual_data.cpu()[0,f_num,c_num], dim = (-2,-1))).abs().squeeze()
                             pred_fti = mylog((pred_ft.cpu()[0,f_num,c_num].abs()+1), base = self.parameters['logarithm_base'])
                             predi = predr.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
+                            pred_ilstmi = predr_ispace_lstm.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
 
-                            plt.subplot(kspace_out_size,4,4*c_num+1)
+                            plt.subplot(kspace_out_size,5,5*c_num+1)
                             myimshow(mask_fti, cmap = 'gray')
                             if c_num == 0:
                                 plt.title('Undersampled FT')
                             # print(c_num,3)
                             
-                            plt.subplot(kspace_out_size,4,4*c_num+2)
+                            plt.subplot(kspace_out_size,5,5*c_num+2)
                             myimshow(ifft_of_undersamp, cmap = 'gray')
                             if c_num == 0:
                                 plt.title('IFFT of Undersampled FT')
-                            # print(c_num,4)
+                            # print(c_num,5)
                             
-                            plt.subplot(kspace_out_size,4,4*c_num+3)
+                            plt.subplot(kspace_out_size,5,5*c_num+3)
                             myimshow(pred_fti, cmap = 'gray')
                             if c_num == 0:
                                 plt.title('FT predicted by Kspace Model')
                             
-                            plt.subplot(kspace_out_size,4,4*c_num+4)
+                            plt.subplot(kspace_out_size,5,5*c_num+4)
                             myimshow(predi, cmap = 'gray')
                             if c_num == 0:
                                 plt.title('IFFT of Kspace Prediction')
+
+                            plt.subplot(kspace_out_size,5,5*c_num+5)
+                            myimshow(pred_ilstmi, cmap = 'gray')
+                            if c_num == 0:
+                                plt.title('Image Space LSTM Prediction')
                             # print(c_num,6)
                             
                             
@@ -865,12 +872,18 @@ class Trainer(nn.Module):
             dloader = self.traintestloader
             dset = self.trainset
             dstr = 'Train'
-            path = os.path.join(self.save_path, './images/train')
+            if self.args.raw_visual_only:
+                path = os.path.join(self.save_path, './images/raw/train')
+            else:
+                path = os.path.join(self.save_path, './images/train')
         else:
             dloader = self.testloader
             dset = self.testset
             dstr = 'Test'
-            path = os.path.join(self.save_path, './images/test')
+            if self.args.raw_visual_only:
+                path = os.path.join(self.save_path, './images/raw/test')
+            else:
+                path = os.path.join(self.save_path, './images/test')
         
         print('Saving plots for {} data'.format(dstr), flush = True)
         with torch.no_grad():
@@ -904,9 +917,10 @@ class Trainer(nn.Module):
                 num_plots = num_vids*num_frames
                 if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
                     # predr, _, _, loss_mag, loss_phase, loss_real,loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
-                    predr, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
+                    predr, predr_ispace_lstm, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
                 else:
                     predr = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts, dim = (-2,-1))).abs().to(self.device)
+                    predr_ispace_lstm = predr
 
                 # plt.imsave('targ_now.jpg', targ_now.cpu().detach()[0,0], cmap = 'gray')
                 # print(predr.shape)
@@ -986,45 +1000,50 @@ class Trainer(nn.Module):
                         for f_num in range(undersampled_fts.shape[1]):
 
                             os.makedirs(os.path.join(path, './patient_{}/by_location_number/location_{}'.format(p_num, v_num)), exist_ok=True)
-                            os.makedirs(os.path.join(path, './patient_{}/by_frame_number/frame_{}'.format(p_num, f_num)), exist_ok=True)
-                            
-                            fig = plt.figure(figsize = (20,6))
-                            og_vidi = og_video.cpu()[bi, f_num,0,:,:]
-                            ispace_outpi = ispace_outp[bi, f_num, :,:]
-                            sos_outpi = sos_output[bi, f_num, :,:]
+                            # os.makedirs(os.path.join(path, './patient_{}/by_frame_number/frame_{}'.format(p_num, f_num)), exist_ok=True)
                             
 
+                            if self.args.raw_visual_only:
+                                plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_ground_truth.jpg'.format(p_num, v_num, f_num)), og_vidi, cmap = 'gray')
+                                plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_kspace_sos.jpg'.format(p_num, v_num, f_num)), sos_outpi, cmap = 'gray')
+                            else:
+                                fig = plt.figure(figsize = (20,6))
+                                og_vidi = og_video.cpu()[bi, f_num,0,:,:]
+                                ispace_outpi = ispace_outp[bi, f_num, :,:]
+                                sos_outpi = sos_output[bi, f_num, :,:]
+                                
 
-                            plt.subplot(1,5,1)
-                            myimshow(og_vidi, cmap = 'gray')
-                            plt.title('Ground Truth Frame')
+
+                                plt.subplot(1,5,1)
+                                myimshow(og_vidi, cmap = 'gray')
+                                plt.title('Ground Truth Frame')
 
 
-                            plt.subplot(1,5,2)
-                            myimshow(sos_outpi, cmap = 'gray')
-                            plt.title('Kspace Prediction + SOS')
-                            # print(f_num, 2)
-                            
-                            plt.subplot(1,5,3)
-                            diffvals = show_difference_image(sos_outpi, og_vidi)
-                            plt.title('Difference Frame SOS')
+                                plt.subplot(1,5,2)
+                                myimshow(sos_outpi, cmap = 'gray')
+                                plt.title('Kspace Prediction + SOS')
+                                # print(f_num, 2)
+                                
+                                plt.subplot(1,5,3)
+                                diffvals = show_difference_image(sos_outpi, og_vidi)
+                                plt.title('Difference Frame SOS')
 
-                            # print(f_num, 1)
-                            # ispace_outpi = torch.from_numpy(match_histograms(ispace_outpi.numpy(), og_vidi.numpy(), channel_axis=None))
-                            plt.subplot(1,5,4)
-                            myimshow(ispace_outpi, cmap = 'gray')
-                            plt.title('Ispace Prediction')
-                            # print(f_num, 2)
-                            
-                            plt.subplot(1,5,5)
-                            diffvals = show_difference_image(ispace_outpi, og_vidi)
-                            plt.title('Difference Frame ISpace')
-                            spec = ''
-                            if f_num < self.parameters['init_skip_frames']:
-                                spec = 'Loss Skipped'
-                            plt.suptitle("Epoch {}\nPatient {} Video {} Frame {}\n{}".format(epoch,p_num, v_num, f_num, spec))
-                            plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/io_frame_{}.jpg'.format(p_num, v_num, f_num)))
-                            plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/io_location_{}.jpg'.format(p_num, f_num, v_num)))
+                                # print(f_num, 1)
+                                # ispace_outpi = torch.from_numpy(match_histograms(ispace_outpi.numpy(), og_vidi.numpy(), channel_axis=None))
+                                plt.subplot(1,5,4)
+                                myimshow(ispace_outpi, cmap = 'gray')
+                                plt.title('Ispace Prediction')
+                                # print(f_num, 2)
+                                
+                                plt.subplot(1,5,5)
+                                diffvals = show_difference_image(ispace_outpi, og_vidi)
+                                plt.title('Difference Frame ISpace')
+                                spec = ''
+                                if f_num < self.parameters['init_skip_frames']:
+                                    spec = 'Loss Skipped'
+                                plt.suptitle("Epoch {}\nPatient {} Video {} Frame {}\n{}".format(epoch,p_num, v_num, f_num, spec))
+                                plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/io_frame_{}.jpg'.format(p_num, v_num, f_num)))
+                                # plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/io_location_{}.jpg'.format(p_num, f_num, v_num)))
 
 
 
@@ -1046,87 +1065,120 @@ class Trainer(nn.Module):
                                 spec = 'Loss Skipped'
 
                             if not self.args.ispace_visual_only:
-                                fig = plt.figure(figsize = (22,4*kspace_out_size))
-                                
-                                # plt.subplot(kspace_out_size,7,(((kspace_out_size//2))*7)+1)
-                                # myimshow(og_vidi, cmap = 'gray')
-                                # plt.title('Input Video')
-                                # print(f_num, 1)
 
-                                
-                                # plt.subplot(kspace_out_size,7,(((kspace_out_size//2)+1)*7))
-                                # diffvals = show_difference_image(ispace_outpi, og_vidi.numpy())
-                                # plt.title('Difference Frame')
-                                # print(f_num, 3)
+                                if self.args.raw_visual_only:
+                                    for c_num in range(kspace_out_size):
+                                        targi = og_coiled_vids.cpu()[bi,f_num, c_num].squeeze().cpu().numpy()
+                                        orig_fti = mylog((og_coiled_fts.cpu()[bi,f_num,c_num].abs()+1), base = self.parameters['logarithm_base'])
+                                        mask_fti = mylog((1+undersampled_fts.cpu()[bi,f_num,c_num].abs()), base = self.parameters['logarithm_base'])
+                                        ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts.cpu()[bi,f_num,c_num], dim = (-2,-1))).abs().squeeze()
+                                        pred_fti = mylog((pred_ft.cpu()[bi,f_num,c_num].abs()+1), base = self.parameters['logarithm_base'])
+                                        predi = predr.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
 
-                                # plt.subplot(8,8,(((kspace_out_size//2)+2)*8))
-                                # plt.hist(diffvals, range = [0,0.25], density = False, bins = 30)
-                                # plt.ylabel('Pixel Count')
-                                # plt.xlabel('Difference Value')
-                                # print(f_num, 4)
 
-                                num_plots -= 1
-                                for c_num in range(kspace_out_size):
-                                    if num_plots == 0:
-                                        return
-                                    
-                                    targi = og_coiled_vids.cpu()[bi,f_num, c_num].squeeze().cpu().numpy()
-                                    orig_fti = mylog((og_coiled_fts.cpu()[bi,f_num,c_num].abs()+1), base = self.parameters['logarithm_base'])
-                                    mask_fti = mylog((1+undersampled_fts.cpu()[bi,f_num,c_num].abs()), base = self.parameters['logarithm_base'])
-                                    ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts.cpu()[bi,f_num,c_num], dim = (-2,-1))).abs().squeeze()
-                                    pred_fti = mylog((pred_ft.cpu()[bi,f_num,c_num].abs()+1), base = self.parameters['logarithm_base'])
-                                    predi = predr.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_coiled_gt_coil_{}.jpg'.format(p_num, v_num, f_num)), og_vidi, cmap = 'gray')
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_coiled_gt_ft_coil_{}.jpg'.format(p_num, v_num, f_num)), orig_fti, cmap = 'gray')
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_undersampled_ft_coil_{}.jpg'.format(p_num, v_num, f_num)), mask_fti, cmap = 'gray')
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_undersampled_coil_{}.jpg'.format(p_num, v_num, f_num)), ifft_of_undersamp, cmap = 'gray')
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_pred_kspace_ft_coil_{}.jpg'.format(p_num, v_num, f_num)), pred_fti, cmap = 'gray')
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_pred_kspace_coil_{}.jpg'.format(p_num, v_num, f_num)), predi, cmap = 'gray')
+                                        plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_pred_ispace_lstm_coil_{}.jpg'.format(p_num, v_num, f_num)), pred_ilstmi, cmap = 'gray')
 
-                                    plt.subplot(kspace_out_size,7,7*c_num+1)
-                                    myimshow(targi, cmap = 'gray')
-                                    if c_num == 0:
-                                        plt.title('Coiled Input')
-                                    # print(c_num,1)
+                                else:
+                                    fig = plt.figure(figsize = (22,4*kspace_out_size))
                                     
-                                    plt.subplot(kspace_out_size,7,7*c_num+2)
-                                    myimshow((orig_fti).squeeze(), cmap = 'gray')
-                                    if c_num == 0:
-                                        plt.title('FT of Coiled Input')
-                                    # print(c_num,2)
-                                    
-                                    plt.subplot(kspace_out_size,7,7*c_num+3)
-                                    myimshow(mask_fti, cmap = 'gray')
-                                    if c_num == 0:
-                                        plt.title('Undersampled FT')
-                                    # print(c_num,3)
-                                    
-                                    # plt.subplot(kspace_out_size,7,7*c_num+5)
-                                    # myimshow(ifft_of_undersamp, cmap = 'gray')
-                                    # if c_num == 0:
-                                    #     plt.title('IFFT of Undersampled FT')
-                                    # # print(c_num,4)
-                                    
-                                    plt.subplot(kspace_out_size,7,7*c_num+4)
-                                    myimshow(pred_fti, cmap = 'gray')
-                                    if c_num == 0:
-                                        plt.title('FT predicted by Kspace Model')
-                                    # print(c_num,5)
-                                    
-                                    plt.subplot(kspace_out_size,7,7*c_num+5)
-                                    myimshow(predi, cmap = 'gray')
-                                    if c_num == 0:
-                                        plt.title('IFFT of Kspace Prediction')
-                                    # print(c_num,6)
-                                    
-                                    plt.subplot(kspace_out_size,7,7*c_num+6)
-                                    diffvals = show_difference_image(predi, targi)
-                                    if c_num == 0:
-                                        plt.title('Difference Image')
-                                    # print(c_num,6)
-                                    
-                                spec = ''
-                                if f_num < self.parameters['init_skip_frames']:
-                                    spec = 'Loss Skipped'
-                                plt.suptitle("Epoch {}\nPatient {} Video {} Frame {}\n{}".format(epoch,p_num, v_num, f_num, spec))
-                                plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}.jpg'.format(p_num, v_num, f_num)))
-                                plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/location_{}.jpg'.format(p_num, f_num, v_num)))
-                            plt.close('all')
+                                    # plt.subplot(kspace_out_size,7,(((kspace_out_size//2))*7)+1)
+                                    # myimshow(og_vidi, cmap = 'gray')
+                                    # plt.title('Input Video')
+                                    # print(f_num, 1)
 
-                            tot += 1
-                            pbar.update(1)
+                                    
+                                    # plt.subplot(kspace_out_size,7,(((kspace_out_size//2)+1)*7))
+                                    # diffvals = show_difference_image(ispace_outpi, og_vidi.numpy())
+                                    # plt.title('Difference Frame')
+                                    # print(f_num, 3)
+
+                                    # plt.subplot(8,8,(((kspace_out_size//2)+2)*8))
+                                    # plt.hist(diffvals, range = [0,0.25], density = False, bins = 30)
+                                    # plt.ylabel('Pixel Count')
+                                    # plt.xlabel('Difference Value')
+                                    # print(f_num, 4)
+
+                                    num_plots -= 1
+                                    for c_num in range(kspace_out_size):
+                                        if num_plots == 0:
+                                            return
+                                        
+                                        targi = og_coiled_vids.cpu()[bi,f_num, c_num].squeeze().cpu().numpy()
+                                        orig_fti = mylog((og_coiled_fts.cpu()[bi,f_num,c_num].abs()+EPS), base = self.parameters['logarithm_base'])
+                                        mask_fti = mylog((EPS+undersampled_fts.cpu()[bi,f_num,c_num].abs()), base = self.parameters['logarithm_base'])
+                                        ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts.cpu()[bi,f_num,c_num], dim = (-2,-1))).abs().squeeze()
+                                        pred_fti = mylog((pred_ft.cpu()[bi,f_num,c_num].abs()+1), base = self.parameters['logarithm_base'])
+                                        predi = predr.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
+                                        pred_ilstmi = predr_ispace_lstm.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
+
+                                        plt.subplot(kspace_out_size,9,9*c_num+1)
+                                        myimshow(targi, cmap = 'gray')
+                                        if c_num == 0:
+                                            plt.title('Coiled Ground Truth')
+                                        # print(c_num,1)
+                                        
+                                        plt.subplot(kspace_out_size,9,9*c_num+2)
+                                        myimshow((orig_fti).squeeze(), cmap = 'gray')
+                                        if c_num == 0:
+                                            plt.title('FT of Coiled Ground Truth')
+                                        # print(c_num,2)
+                                        
+                                        plt.subplot(kspace_out_size,9,9*c_num+3)
+                                        myimshow(mask_fti, cmap = 'gray')
+                                        if c_num == 0:
+                                            plt.title('Undersampled FT')
+                                        # print(c_num,3)
+                                        
+                                        plt.subplot(kspace_out_size,9,9*c_num+4)
+                                        myimshow(ifft_of_undersamp, cmap = 'gray')
+                                        if c_num == 0:
+                                            plt.title('IFFT of Undersampled FT')
+                                        # print(c_num,4)
+                                        
+                                        plt.subplot(kspace_out_size,9,9*c_num+5)
+                                        myimshow(pred_fti, cmap = 'gray')
+                                        if c_num == 0:
+                                            plt.title('FT predicted by Kspace Model')
+                                        # print(c_num,5)
+                                        
+                                        plt.subplot(kspace_out_size,9,9*c_num+6)
+                                        myimshow(predi, cmap = 'gray')
+                                        if c_num == 0:
+                                            plt.title('IFFT of Kspace Prediction')
+                                        # print(c_num,6)
+                                        
+                                        plt.subplot(kspace_out_size,9,9*c_num+7)
+                                        diffvals = show_difference_image(predi, targi)
+                                        if c_num == 0:
+                                            plt.title('Difference Image')
+                                        # print(c_num,6)
+
+                                        plt.subplot(pred_ilstmi,9,9*c_num+8)
+                                        myimshow(predi, cmap = 'gray')
+                                        if c_num == 0:
+                                            plt.title('ISpace LSTM Prediction')
+                                        # print(c_num,6)
+                                        
+                                        plt.subplot(kspace_out_size,9,9*c_num+9)
+                                        diffvals = show_difference_image(pred_ilstmi, targi)
+                                        if c_num == 0:
+                                            plt.title('Difference Image')
+                                        # print(c_num,6)
+                                        
+                                    spec = ''
+                                    if f_num < self.parameters['init_skip_frames']:
+                                        spec = 'Loss Skipped'
+                                    plt.suptitle("Epoch {}\nPatient {} Video {} Frame {}\n{}".format(epoch,p_num, v_num, f_num, spec))
+                                    plt.savefig(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}.jpg'.format(p_num, v_num, f_num)))
+                                    # plt.savefig(os.path.join(path, './patient_{}/by_frame_number/frame_{}/location_{}.jpg'.format(p_num, f_num, v_num)))
+                                plt.close('all')
+
+                                tot += 1
+                                pbar.update(1)
                 break
