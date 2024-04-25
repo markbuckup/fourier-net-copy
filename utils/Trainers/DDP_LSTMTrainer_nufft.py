@@ -1010,7 +1010,7 @@ class Trainer(nn.Module):
 
                                 plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_ground_truth.jpg'.format(p_num, v_num, f_num)), og_vidi, cmap = 'gray')
                                 plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_kspace_sos.jpg'.format(p_num, v_num, f_num)), sos_outpi, cmap = 'gray')
-                                plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_ispace_pred.jpg'.format(p_num, v_num, f_num)), ispace_outpio, cmap = 'gray')
+                                plt.imsave(os.path.join(path, './patient_{}/by_location_number/location_{}/frame_{}_ispace_pred.jpg'.format(p_num, v_num, f_num)), ispace_outpi, cmap = 'gray')
                             else:
                                 fig = plt.figure(figsize = (20,6))
                                 og_vidi = og_video.cpu()[bi, f_num,0,:,:]
