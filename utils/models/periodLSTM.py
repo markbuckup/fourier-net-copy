@@ -149,7 +149,7 @@ class concatConv(nn.Module):
 
 
 class convLSTMcell_kspace(nn.Module):
-    def __init__(self, history_length = 1, num_coils = 8, phase_tanh_mode = False, sigmoid_mode = True, phase_real_mode = False, phase_theta = False, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, lstm_input_mask = False, catmode = False, n_layers = 4, n_hidden = 16, n_lstm_cells = 1, coilwise = False, kspace_combine_coils = False, input_proc_identity = False):
+    def __init__(self, history_length = 1, num_coils = 8, phase_tanh_mode = False, sigmoid_mode = True, phase_real_mode = False, phase_theta = False, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, lstm_input_mask = False, catmode = False, n_layers = 4, n_hidden = 16, n_lstm_cells = 1, coilwise = False, kspace_combine_coils = False, input_proc_identity = False, gate_cat_prev_output = True):
         super(convLSTMcell_kspace, self).__init__()
         self.phase_tanh_mode = phase_tanh_mode
         self.n_lstm_cells = n_lstm_cells
@@ -167,6 +167,7 @@ class convLSTMcell_kspace(nn.Module):
         self.forget_gate_same_phase_mag = forget_gate_same_phase_mag
         self.lstm_input_mask = lstm_input_mask
         self.input_proc_identity = input_proc_identity
+        self.gate_cat_prev_output = gate_cat_prev_output
         
         mag_cnn_func = nn.Conv2d
         mag_relu_func = nn.LeakyReLU
@@ -195,10 +196,14 @@ class convLSTMcell_kspace(nn.Module):
             self.input_gate_output_size = self.num_coils
 
         if self.coilwise:
-            gate_input_size = 1 + ((1 + self.history_length))
             self.input_gate_output_size = 1
+            gate_input_size = 1 + ((self.history_length))
+            if self.gate_cat_prev_output:
+                gate_input_size += 1
         else:
-            gate_input_size = self.input_gate_output_size + ((1 + self.history_length)*self.num_coils)
+            gate_input_size = ((self.history_length)*self.num_coils)
+            if self.gate_cat_prev_output:
+                gate_input_size += self.num_coils
 
         if self.lstm_input_mask:
             gate_input_size += 1
@@ -271,11 +276,20 @@ class convLSTMcell_kspace(nn.Module):
 
         for i_cell in range(self.n_lstm_cells):
             if self.lstm_input_mask:
-                mag_inp_cat = torch.cat((new_mag_outputs[i_cell], hist_mag, foreground), 1)
-                phase_inp_cat = torch.cat((new_phase_outputs[i_cell], hist_phase, foreground), 1)
+                if self.gate_cat_prev_output:
+                    mag_inp_cat = torch.cat((new_mag_outputs[i_cell], hist_mag, foreground), 1)
+                    phase_inp_cat = torch.cat((new_phase_outputs[i_cell], hist_phase, foreground), 1)
+                else:
+                    mag_inp_cat = torch.cat((hist_mag, foreground), 1)
+                    phase_inp_cat = torch.cat((hist_phase, foreground), 1)
             else:
-                mag_inp_cat = torch.cat((new_mag_outputs[i_cell], hist_mag), 1)
-                phase_inp_cat = torch.cat((new_phase_outputs[i_cell], hist_phase), 1)
+                if self.gate_cat_prev_output:
+                    mag_inp_cat = torch.cat((new_mag_outputs[i_cell], hist_mag), 1)
+                    phase_inp_cat = torch.cat((new_phase_outputs[i_cell], hist_phase), 1)
+                else:
+                    mag_inp_cat = hist_mag
+                    phase_inp_cat = hist_phase
+
 
             assert(self.sigmoid_mode)
             mag_it = torch.sigmoid(self.mag_inputGates[i_cell](mag_inp_cat))
@@ -308,16 +322,16 @@ class convLSTMcell_kspace(nn.Module):
                 mag_ot = torch.sigmoid(self.mag_outputGates[i_cell](mag_inp_cat))
                 phase_ot = torch.sigmoid(self.phase_outputGates[i_cell](phase_inp_cat))
             else:
-                mag_ft = 1 - mag_it
-                phase_ft = 1 - phase_it
-                mag_ot = torch.ones_like(mag_ft, device = mag_ft.device)
-                phase_ot = torch.ones_like(phase_ft, device = phase_ft.device)
+                # mag_ft = 1 - mag_it
+                # phase_ft = 1 - phase_it
+                mag_ot = torch.ones_like(mag_it, device = mag_it.device)
+                phase_ot = torch.ones_like(phase_it, device = phase_it.device)
 
             loss_forget_gate += criterionL1(mag_it*foreground, foreground)
             # plt.imsave('mag_ft.jpg', mag_ft.detach().cpu()[0,0], cmap = 'gray')
             if self.forget_gate_same_coils:
-                mag_ft = mag_ft.repeat(1,self.input_gate_output_size,1,1)
-                phase_ft = phase_ft.repeat(1,self.input_gate_output_size,1,1)
+                # mag_ft = mag_ft.repeat(1,self.input_gate_output_size,1,1)
+                # phase_ft = phase_ft.repeat(1,self.input_gate_output_size,1,1)
                 mag_it = mag_it.repeat(1,self.input_gate_output_size,1,1)
                 phase_it = phase_it.repeat(1,self.input_gate_output_size,1,1)
 
@@ -325,17 +339,36 @@ class convLSTMcell_kspace(nn.Module):
             if not self.forget_gate_same_phase_mag:
                 phase_gates_remember[i_cell].append(phase_it.detach().cpu())
 
-            if len(mag_gates_remember[i_cell]) > window_size:
-                mag_ft = mag_ft - (mag_gates_remember[i_cell][-window_size-1]).to(mag_ft.device)
+            ##################################################################################################################
+            # OLD
+            ##################################################################################################################
+            # if len(mag_gates_remember[i_cell]) > window_size:
+            #     mag_ft = mag_ft - (mag_gates_remember[i_cell][-window_size-1]).to(mag_ft.device)
+            #     mag_ft = mag_ft.clip(0,1)
+            #     if not self.forget_gate_same_phase_mag:
+            #         phase_ft = phase_ft - (phase_gates_remember[i_cell][-window_size-1]).to(mag_ft.device)
+            #     else:
+            #         phase_ft = phase_ft - (mag_gates_remember[i_cell][-window_size-1]).to(mag_ft.device)
+            #     phase_ft = phase_ft.clip(0,1)
+
+            #     mag_it = 1 - mag_ft
+            #     phase_it = 1 - phase_ft
+            ##################################################################################################################
+            # New
+            ##################################################################################################################
+            if len(mag_gates_remember[i_cell][-window_size:-1]) >= 1:
+                mag_ft = torch.stack(mag_gates_remember[i_cell][-window_size:-1], -1).max(-1)[0].to(mag_it.device) - 5*mag_it
                 mag_ft = mag_ft.clip(0,1)
                 if not self.forget_gate_same_phase_mag:
-                    phase_ft = phase_ft - (phase_gates_remember[i_cell][-window_size-1]).to(mag_ft.device)
+                    phase_ft = torch.stack(phase_gates_remember[i_cell][-window_size:-1], -1).max(-1)[0].to(phase_it.device) - 5*phase_it
+                    phase_ft = phase_ft.clip(0,1)
                 else:
-                    phase_ft = phase_ft - (mag_gates_remember[i_cell][-window_size-1]).to(mag_ft.device)
-                phase_ft = phase_ft.clip(0,1)
+                    phase_ft = mag_ft
+            else:
+                mag_ft = torch.zeros_like(mag_it, device = mag_it.device)
+                phase_ft = torch.zeros_like(phase_it, device = phase_it.device)
 
-                mag_it = 1 - mag_ft
-                phase_it = 1 - phase_ft
+            ##################################################################################################################
 
             # plt.imsave('mag_ft_{}.jpg'.format(len(mag_gates_remember[i_cell])), mag_ft[0,0,:,:].cpu().detach())
             # plt.imsave('mag_it_{}.jpg'.format(len(mag_gates_remember[i_cell])), mag_it[0,0,:,:].cpu().detach())
@@ -540,6 +573,7 @@ class convLSTM_Kspace1(nn.Module):
                         kspace_combine_coils = self.param_dic['kspace_combine_coils'],
                         coilwise = self.param_dic['coilwise'],
                         input_proc_identity = self.param_dic['lstm_input_proc_identity'],
+                        gate_cat_prev_output = self.param_dic['gate_cat_prev_output'],
                     )
         else:
             self.kspace_m = Identity(n_lstm_cells = self.param_dic['n_lstm_cells'], ispace_lstm = self.param_dic['ispace_lstm'])
