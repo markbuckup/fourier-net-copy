@@ -66,7 +66,7 @@ def train_paradigm(rank, world_size, args, parameters):
                         proc_device,
                         train = False, 
                     )
-    if parameters['num_epochs_ispace'] == 0:
+    if parameters['num_epochs_ispace'] == 0 or (not parameters['memoise_ispace']):
         ispace_trainset = None
         ispace_testset = None
     else:
@@ -350,7 +350,6 @@ def test_paradigm(rank, world_size, args, parameters):
     proc_device = torch.device('cuda:{}'.format(args.gpu[rank]))
     if parameters['dataset'] == 'acdc':
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial as dataset
-        from utils.myDatasets.ACDC_radial_faster import ACDC_radial_ispace as dataset_ispace
     from utils.models.periodLSTM import fetch_lstm_type as rnn_func
     Model_Kspace, Model_Ispace = rnn_func(parameters)
     from utils.Trainers.DDP_LSTMTrainer_nufft import Trainer

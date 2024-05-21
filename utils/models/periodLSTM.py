@@ -708,8 +708,7 @@ class convLSTM_Kspace1(nn.Module):
         else:
             ans_coils = self.param_dic['num_coils']
 
-        ans_mag_log = torch.zeros(*mag_log.shape[0:2], ans_coils, *mag_log.shape[3:])
-        length = ans_mag_log.shape[-1]
+        length = mag_log.shape[-1]
         x_size, y_size = length, length
         x_arr, y_arr = np.mgrid[0:x_size, 0:y_size]
         cell = (length//2, length//2)
@@ -722,7 +721,6 @@ class convLSTM_Kspace1(nn.Module):
         cycle_mask[cycle_mask > -1] = 1
         cycle_mask[cycle_mask == -1] = 0
         cycle_mask = torch.FloatTensor(cycle_mask).to(device).unsqueeze(0).unsqueeze(0)
-        ans_phase = torch.zeros(*phase.shape[0:2], ans_coils, *phase.shape[3:])
         predr = torch.zeros(*mag_log.shape[0:2], ans_coils, *mag_log.shape[3:]).to(device)
         if self.param_dic['ispace_lstm']:
             predr_kspace = torch.zeros(*mag_log.shape[0:2], ans_coils, *mag_log.shape[3:])
@@ -807,7 +805,8 @@ class convLSTM_Kspace1(nn.Module):
                 curr_mask = None
             else:
                 curr_mask = gt_masks[:,ti,:,:,:]
-            prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(hist_mag, hist_phase, curr_mask, prev_outputs2, prev_outputs1, background = background, window_size = self.param_dic['window_size'], mag_gates_remember = mag_gates_remember, phase_gates_remember = phase_gates_remember)
+            random_window_size = np.random.choice(self.param_dic['window_size'])
+            prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(hist_mag, hist_phase, curr_mask, prev_outputs2, prev_outputs1, background = background, window_size = random_window_size, mag_gates_remember = mag_gates_remember, phase_gates_remember = phase_gates_remember)
             # print(hist_mag.min(), hist_mag.max())
             # print(hist_phase.min(), hist_phase.max())
             # print(prev_outputs2[-1].min(), prev_outputs2[-1].max())
@@ -940,21 +939,20 @@ class convLSTM_Kspace1(nn.Module):
                             loss_ss1 += ss1.mean(1).sum().detach().cpu() / (self.param_dic['n_lstm_cells'])
 
             
-            for i_cell in range(self.param_dic['n_lstm_cells']):
-                prev_outputs1[i_cell] = prev_outputs1[i_cell].detach()
-                prev_outputs2[i_cell] = prev_outputs2[i_cell].detach()
+            if ti % 7 == 0:
+                for i_cell in range(self.param_dic['n_lstm_cells']):
+                    prev_outputs1[i_cell] = prev_outputs1[i_cell].detach()
+                    prev_outputs2[i_cell] = prev_outputs2[i_cell].detach()
 
-            if self.param_dic['ispace_lstm']:
-                prev_output3 = prev_output3.detach()
+                if self.param_dic['ispace_lstm']:
+                    prev_output3 = prev_output3.detach()
 
-            ans_mag_log[:,ti,:,:] = prev_outputs2[-1].detach()
-            ans_phase[:,ti,:,:,:,:] = stacked_phase.detach()
             if self.param_dic['ispace_lstm']:
                 predr_kspace[:,ti,:,:] = predr_ti.detach().cpu()
             predr[:,ti,:,:] = prev_output3.detach()
 
         predr = predr * self.predr_mask
-        return predr, predr_kspace, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, loss_ss1)
+        return predr, predr_kspace, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, loss_ss1)
 
 
 class CoupledDown(nn.Module):

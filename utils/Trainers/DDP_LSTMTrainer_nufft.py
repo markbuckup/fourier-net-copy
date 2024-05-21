@@ -335,7 +335,7 @@ class Trainer(nn.Module):
                             self.kspace_model.eval()
 
                     if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
-                        predr, _, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
+                        predr, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
 
                         predr_sos = ((predr**2).sum(2, keepdim = True) ** 0.5)[:,kspace_skip_frames_loss:]
                         targ_vid = og_video.to(self.device)[:,kspace_skip_frames_loss:]
@@ -598,7 +598,7 @@ class Trainer(nn.Module):
                     if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
                         if not self.parameters['kspace_architecture'] == 'MDCNN':
                             self.kspace_model.eval()
-                        predr, _, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
+                        predr, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
                         avgkspacelossphase += float(loss_phase.item()/(len(dloader)))
                         avgkspacelossmag += float(loss_mag.item()/(len(dloader)))
                         avgkspacelossforget_gate += float(loss_forget_gate.item()/(len(dloader)))
@@ -740,7 +740,7 @@ class Trainer(nn.Module):
 
             if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
                 # predr, _, _, loss_mag, loss_phase, loss_real,loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
-                predr, predr_kspace, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(actual_data, None, self.device, None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
+                predr, predr_kspace, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(actual_data, None, self.device, None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
             else:
                 predr = torch.fft.ifft2(torch.fft.ifftshift(actual_data, dim = (-2,-1))).abs().to(self.device)
                 predr_kspace = predr
@@ -917,7 +917,7 @@ class Trainer(nn.Module):
                 num_plots = num_vids*num_frames
                 if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
                     # predr, _, _, loss_mag, loss_phase, loss_real,loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
-                    predr, predr_kspace, _, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
+                    predr, predr_kspace, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
                 else:
                     predr = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts, dim = (-2,-1))).abs().to(self.device)
                     predr_kspace = predr
