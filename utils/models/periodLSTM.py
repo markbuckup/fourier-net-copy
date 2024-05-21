@@ -30,14 +30,12 @@ class Identity(nn.Module):
             self.m = nn.Linear(3,3)
         self.n_lstm_cells = n_lstm_cells
 
-    def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_states = None, mag_prev_outputs = None, phase_prev_states = None, phase_prev_outputs = None):
+    def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_outputs = None, phase_prev_outputs = None):
 
         new_mag_outputs = [hist_mag for i in range(self.n_lstm_cells)]
         new_phase_outputs = [hist_phase for i in range(self.n_lstm_cells)]
-        new_mag_states = [hist_mag for i in range(self.n_lstm_cells)]
-        new_phase_states = [hist_phase for i in range(self.n_lstm_cells)]
-
-        return new_mag_states, new_phase_states, new_mag_outputs, new_phase_outputs
+        
+        return new_mag_outputs, new_phase_outputs
 
 class Identity_param(nn.Module):
     def __init__(self, parameters, proc_device):
@@ -227,26 +225,26 @@ class convLSTMcell_kspace(nn.Module):
                 self.phase_forgetGates = nn.ModuleList([concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode) for i in range(self.n_lstm_cells)])
             self.mag_outputGates = nn.ModuleList([concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode) for i in range(self.n_lstm_cells)])
             self.phase_outputGates = nn.ModuleList([concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode) for i in range(self.n_lstm_cells)])
+            #### Output gates  and states deleted
+            assert(0)
         if not self.input_proc_identity:
             self.mag_inputProcs = nn.ModuleList([concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode) for i in range(self.n_lstm_cells)])
             self.phase_inputProcs = nn.ModuleList([concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, catmode = self.catmode) for i in range(self.n_lstm_cells)])
         
         # self.decoder2 = nn.Linear(64*64*2, 64*64)
 
-    def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_states = None, mag_prev_outputs = None, phase_prev_states = None, phase_prev_outputs = None, background = None, window_size = np.inf, mag_gates_remember = None, phase_gates_remember = None):
+    def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_outputs = None, phase_prev_outputs = None, background = None, window_size = np.inf, mag_gates_remember = None, phase_gates_remember = None):
         # x is a batch of video frames at a single time stamp
         del gt_mask
         foreground = torch.logical_not(background).float().to(hist_mag.device)
-        if mag_prev_states is None:
+        if mag_prev_outputs is None:
             if self.coilwise:
                 mag_shape1 = (hist_mag.shape[0], self.num_coils, *hist_mag.shape[2:])
                 phase_shape1 = (hist_phase.shape[0], self.num_coils, *hist_phase.shape[2:])
             else:
                 mag_shape1 = (hist_mag.shape[0], self.input_gate_output_size, *hist_mag.shape[2:])
                 phase_shape1 = (hist_phase.shape[0], self.input_gate_output_size, *hist_phase.shape[2:])
-            mag_prev_states = [torch.zeros(mag_shape1, device = hist_mag.device) for _ in range(self.n_lstm_cells)]
             mag_prev_outputs = [torch.zeros(mag_shape1, device = hist_mag.device) for _ in range(self.n_lstm_cells)]
-            phase_prev_states = [torch.zeros(phase_shape1, device = hist_phase.device) for _ in range(self.n_lstm_cells)]
             phase_prev_outputs = [torch.zeros(phase_shape1, device = hist_phase.device) for _ in range(self.n_lstm_cells)]
 
 
@@ -257,15 +255,11 @@ class convLSTMcell_kspace(nn.Module):
             foreground = foreground.reshape(og_B*og_C, 1, *hist_phase.shape[2:])
             # gt_mask = gt_mask.repeat((1, self.num_coils,1,1)).reshape(og_B*og_C, 1, *hist_phase.shape[2:])
             for i_cell in range(self.n_lstm_cells):
-                mag_prev_states[i_cell] = mag_prev_states[i_cell].reshape(og_B*og_C, 1, *mag_prev_states[i_cell].shape[2:])
-                phase_prev_states[i_cell] = phase_prev_states[i_cell].reshape(og_B*og_C, 1, *phase_prev_states[i_cell].shape[2:])
                 mag_prev_outputs[i_cell] = mag_prev_outputs[i_cell].reshape(og_B*og_C, 1, *mag_prev_outputs[i_cell].shape[2:])
                 phase_prev_outputs[i_cell] = phase_prev_outputs[i_cell].reshape(og_B*og_C, 1, *phase_prev_outputs[i_cell].shape[2:])
 
         new_mag_outputs = [hist_mag]
         new_phase_outputs = [hist_phase]
-        new_mag_states = []
-        new_phase_states = []
         loss_forget_gate = 0
         loss_input_gate = 0
         criterionL1 = nn.L1Loss()
@@ -387,21 +381,17 @@ class convLSTMcell_kspace(nn.Module):
 
 
 
-            new_mag_states.append((mag_ft * mag_prev_states[i_cell]) + (mag_it * mag_Cthat))
-            new_phase_states.append((phase_ft * phase_prev_states[i_cell]) + (phase_it * phase_Cthat))
+            new_mag_outputs.append((mag_ft * mag_prev_outputs[i_cell]) + (mag_it * mag_Cthat))
+            new_phase_outputs.append((phase_ft * phase_prev_outputs[i_cell]) + (phase_it * phase_Cthat))
 
-            new_mag_outputs.append(new_mag_states[i_cell]*mag_ot)
-            new_phase_outputs.append(self.phase_activation(new_phase_states[i_cell])*phase_ot)
-
+            
 
         if self.coilwise:
             for i_cell in range(self.n_lstm_cells):
-                new_mag_states[i_cell] = new_mag_states[i_cell].reshape(og_B,og_C,*new_mag_states[i_cell].shape[2:])
-                new_phase_states[i_cell] = new_phase_states[i_cell].reshape(og_B,og_C,*new_phase_states[i_cell].shape[2:])
                 new_mag_outputs[i_cell+1] = new_mag_outputs[i_cell+1].reshape(og_B,og_C,*new_mag_outputs[i_cell+1].shape[2:])
                 new_phase_outputs[i_cell+1] = new_phase_outputs[i_cell+1].reshape(og_B,og_C,*new_phase_outputs[i_cell+1].shape[2:])
 
-        return new_mag_states, new_phase_states, new_mag_outputs[1:], new_phase_outputs[1:], loss_forget_gate, loss_input_gate, mag_gates_remember, phase_gates_remember
+        return new_mag_outputs[1:], new_phase_outputs[1:], loss_forget_gate, loss_input_gate, mag_gates_remember, phase_gates_remember
 
 class convLSTMcell(nn.Module):
     def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, sigmoid_mode = True, real_mode = False, theta = False, mini = False):
@@ -706,9 +696,7 @@ class convLSTM_Kspace1(nn.Module):
         # print(targ_real.min(), targ_real.max())
         # asdf
 
-        prev_states1 = None
         prev_outputs1 = None
-        prev_states2 = None
         prev_outputs2 = None
         prev_state3 = None
         prev_output3 = None
@@ -819,7 +807,7 @@ class convLSTM_Kspace1(nn.Module):
                 curr_mask = None
             else:
                 curr_mask = gt_masks[:,ti,:,:,:]
-            prev_states2, prev_states1, prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(hist_mag, hist_phase, curr_mask, prev_states2, prev_outputs2, prev_states1, prev_outputs1, background = background, window_size = self.param_dic['window_size'], mag_gates_remember = mag_gates_remember, phase_gates_remember = phase_gates_remember)
+            prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(hist_mag, hist_phase, curr_mask, prev_outputs2, prev_outputs1, background = background, window_size = self.param_dic['window_size'], mag_gates_remember = mag_gates_remember, phase_gates_remember = phase_gates_remember)
             # print(hist_mag.min(), hist_mag.max())
             # print(hist_phase.min(), hist_phase.max())
             # print(prev_outputs2[-1].min(), prev_outputs2[-1].max())
@@ -869,11 +857,11 @@ class convLSTM_Kspace1(nn.Module):
                     predr_ti = predr_ti.reshape(B*C, 1, numr, numc)
                     if prev_output3 is not None:
                         prev_output3 = prev_output3.reshape(B*C, 1, numr, numc)
-                    prev_state3, prev_output3 = self.ispacem(predr_ti, prev_state3, prev_output3)
+                    prev_state3, prev_output3 = self.ispacem(predr_ti.detach(), prev_state3, prev_output3)
                     prev_output3 = prev_output3.reshape(B, C, numr, numc)
                     predr_ti = predr_ti.reshape(B, C, numr, numc)
                 else:
-                    prev_output3 = None
+                    prev_output3 = predr_ti
                 
                 
 
