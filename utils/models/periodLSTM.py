@@ -654,7 +654,18 @@ class convLSTM_Kspace1(nn.Module):
 
                 curr_mask = None
                 random_window_size = np.random.choice(self.param_dic['window_size'])
-                prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(hist_mag, hist_phase, curr_mask, prev_outputs2, prev_outputs1, background = background, window_size = random_window_size, mag_gates_remember = mag_gates_remember, phase_gates_remember = phase_gates_remember, eval = True)
+                prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(
+                                                                                                                                                        hist_mag,
+                                                                                                                                                        hist_phase,
+                                                                                                                                                        background = background,
+                                                                                                                                                        gt_mask = curr_mask,
+                                                                                                                                                        mag_prev_outputs = prev_outputs2,
+                                                                                                                                                        phase_prev_outputs = prev_outputs1,
+                                                                                                                                                        window_size = random_window_size,
+                                                                                                                                                        mag_gates_remember = mag_gates_remember,
+                                                                                                                                                        phase_gates_remember = phase_gates_remember,
+                                                                                                                                                        eval = True
+                                                                                                                                                    )
             
                 prev_outputs2 = [(x - 5)*cycle_mask for x in prev_outputs2]
                 prev_outputs1 = [(x - 4)*cycle_mask for x in prev_outputs1]
@@ -819,7 +830,18 @@ class convLSTM_Kspace1(nn.Module):
             else:
                 curr_mask = gt_masks[:,ti,:,:,:]
             random_window_size = np.random.choice(self.param_dic['window_size'])
-            prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(hist_mag, hist_phase, curr_mask, prev_outputs2, prev_outputs1, background = background, window_size = random_window_size, mag_gates_remember = mag_gates_remember, phase_gates_remember = phase_gates_remember)
+            prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(
+                                                                                                                                                        hist_mag,
+                                                                                                                                                        hist_phase,
+                                                                                                                                                        background = background,
+                                                                                                                                                        gt_mask = curr_mask,
+                                                                                                                                                        mag_prev_outputs = prev_outputs2,
+                                                                                                                                                        phase_prev_outputs = prev_outputs1,
+                                                                                                                                                        window_size = random_window_size,
+                                                                                                                                                        mag_gates_remember = mag_gates_remember,
+                                                                                                                                                        phase_gates_remember = phase_gates_remember,
+                                                                                                                                                        eval = False
+                                                                                                                                                    )
             # print(hist_mag.min(), hist_mag.max())
             # print(hist_phase.min(), hist_phase.max())
             # print(prev_outputs2[-1].min(), prev_outputs2[-1].max())

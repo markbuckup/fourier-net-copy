@@ -25,7 +25,7 @@ parameters['forget_gate_coupled'] = True
 parameters['forget_gate_same_coils'] = True
 parameters['forget_gate_same_phase_mag'] = True
 parameters['logarithm_base'] = 10
-parameters['memoise_ispace'] = False
+parameters['memoise_ispace'] = True
 
 
 parameters['skip_kspace_lstm'] = False
@@ -48,7 +48,7 @@ parameters['loop_videos'] = 38
 parameters['dataset'] = 'acdc'
 parameters['train_test_split'] = 0.8
 parameters['normalisation'] = False
-parameters['window_size'] = [1,2,3]
+parameters['window_size'] = [3]
 parameters['gate_cat_prev_output'] = True
 parameters['init_skip_frames'] = 8
 parameters['SHM_looping'] = False
