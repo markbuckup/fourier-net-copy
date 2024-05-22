@@ -1063,7 +1063,7 @@ class Trainer(nn.Module):
                             # plt.ylabel('Pixel Count')
                             # plt.xlabel('Difference Value')
                             # print(f_num, 4)
-                            if self.parameters['kspace_combine_coils']:
+                            if self.parameters['kspace_combine_coils'] or self.parameters['kspace_architecture'] == 'MDCNN':
                                 kspace_out_size = 1
                             else:
                                 kspace_out_size = self.parameters['num_coils']

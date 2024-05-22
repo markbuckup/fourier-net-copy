@@ -423,4 +423,4 @@ class MDCNN(nn.Module):
             predr[:,ti] = ans.detach()
 
         # return predr, predr_kspace, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, loss_ss1)
-        return predr, None, zero_tensor, zero_tensor, loss_real, zero_tensor, zero_tensor, (loss_l1, loss_l2, loss_ss1)
+        return predr, predr, zero_tensor, zero_tensor, loss_real, zero_tensor, zero_tensor, (loss_l1, loss_l2, loss_ss1)
