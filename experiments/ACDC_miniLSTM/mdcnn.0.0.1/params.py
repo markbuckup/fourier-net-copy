@@ -60,7 +60,7 @@ parameters['scheduler'] = 'CyclicLR'
 parameters['optimizer_params'] = (0.9, 0.999)
 parameters['scheduler_params'] = {
     'base_lr': 4e-6,
-    'max_lr': 4e-4,
+    'max_lr': 1e-5,
     'step_size_up': 3000,
     'mode': 'exp_range',
     'step_size': parameters['num_epochs_kspace']//3,
@@ -70,7 +70,7 @@ parameters['scheduler_params'] = {
 }
 parameters['ispace_scheduler_params'] = {
     'base_lr': 4e-6,
-    'max_lr': 4e-4,
+    'max_lr': 1e-5,
     'step_size_up': 400,
     'mode': 'exp_range',
     'step_size': parameters['num_epochs_kspace']//3,
