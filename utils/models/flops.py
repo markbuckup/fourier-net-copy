@@ -20,21 +20,22 @@ def spec_format(num):
         return f'{round(num / 1000000, 1)}M'
     return f'{num // 1000}K'
 
-mdcnn = MDCNN(parameters_mdcnn)
-lstm = convLSTM_Kspace1(parameters_lstm, torch.device('cpu'))
-ispace = ImageSpaceModel1(parameters_lstm, torch.device('cpu'))
+mdcnn = MDCNN(parameters_mdcnn, torch.device('cpu'))
+fouriernet = convLSTM_Kspace1(parameters_lstm, torch.device('cpu'))
+unet = ImageSpaceModel1(parameters_lstm, torch.device('cpu'))
 
-flops_mdcnn_k = FlopCountAnalysis(mdcnn.kspacem, torch.zeros(1,8,7,256,256,2))
-flops_mdcnn_i = FlopCountAnalysis(mdcnn.imspacem, torch.zeros(1,8,7,256,256))
-flops_lstm_m = FlopCountAnalysis(lstm.mag_m, torch.zeros(1,8,256,256))
-flops_lstm_p = FlopCountAnalysis(lstm.phase_m, torch.zeros(1,8,256,256))
-flops_ispace = FlopCountAnalysis(ispace, torch.zeros(1,8,256,256))
+flops_mdcnn_k = FlopCountAnalysis(mdcnn.kspace_m, torch.zeros(1,8,7,256,256,2))
+flops_mdcnn_i = FlopCountAnalysis(mdcnn.ispacem, torch.zeros(1,8,7,256,256,2))
+flops_klstm = FlopCountAnalysis(fouriernet.kspace_m, (torch.zeros(1,8,256,256),torch.zeros(1,8,256,256)))
+flops_ilstm = FlopCountAnalysis(fouriernet.ispacem, torch.zeros(8,1,256,256))
+flops_unet = FlopCountAnalysis(unet, torch.zeros(1,8,256,256))
 
 print('MDCNN K Space FLOPs = {}'.format(spec_format(flops_mdcnn_k.total())))
 print('MDCNN I Space FLOPs = {}'.format(spec_format(flops_mdcnn_i.total())))
 print('MDCNN Total FLOPs = {}'.format(spec_format(flops_mdcnn_k.total()+flops_mdcnn_i.total())))
 
-print('LSTM K Space FLOPs = {}'.format(spec_format(flops_lstm_m.total()+flops_lstm_p.total())))
-print('LSTM I Space FLOPs = {}'.format(spec_format(flops_ispace.total())))
-print('LSTM Total FLOPs = {}'.format(spec_format(flops_lstm_m.total()+flops_lstm_p.total()+flops_ispace.total())))
+print('KLSTM FLOPs = {}'.format(spec_format(flops_klstm.total())))
+print('ILSTM FLOPs = {}'.format(spec_format(flops_ilstm.total())))
+print('UNET FLOPs = {}'.format(spec_format(flops_unet.total())))
+print('FOURIER-Net Total FLOPs = {}'.format(spec_format(flops_klstm.total()+flops_ilstm.total()+flops_unet.total())))
 

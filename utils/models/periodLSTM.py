@@ -233,9 +233,11 @@ class convLSTMcell_kspace(nn.Module):
         
         # self.decoder2 = nn.Linear(64*64*2, 64*64)
 
-    def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_outputs = None, phase_prev_outputs = None, background = None, window_size = np.inf, mag_gates_remember = None, phase_gates_remember = None, eval = False):
+    def forward(self, hist_mag, hist_phase, background = None, gt_mask = None, mag_prev_outputs = None, phase_prev_outputs = None, window_size = np.inf, mag_gates_remember = None, phase_gates_remember = None, eval = False):
         # x is a batch of video frames at a single time stamp
         del gt_mask
+        if background is None:
+            background = torch.ones_like(hist_mag) == 1
         foreground = torch.logical_not(background).float().to(hist_mag.device)
         if mag_prev_outputs is None:
             if self.coilwise:
