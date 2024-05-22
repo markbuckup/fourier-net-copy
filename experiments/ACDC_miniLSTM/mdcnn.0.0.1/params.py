@@ -42,7 +42,7 @@ assert(parameters['coil_combine'] in ['SOS', 'UNET'])
 
 parameters['ispace_lstm'] = True
 parameters['ispace_architecture'] = 'Identity'
-parameters['image_space_real'] = True
+parameters['image_space_real'] = False
 parameters['history_length'] = 0
 parameters['loop_videos'] = 30
 parameters['dataset'] = 'acdc'

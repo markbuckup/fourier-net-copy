@@ -7,6 +7,7 @@ import numpy as np
 import os
 import kornia
 import sys
+import time
 sys.path.append('../')
 sys.path.append('../../')
 import matplotlib.pyplot as plt
@@ -346,6 +347,38 @@ class MDCNN(nn.Module):
         self.criterionL1 = nn.L1Loss().to(proc_device)
         self.SSIM = kornia.metrics.SSIM(11)
 
+    def time_analysis(self, fft_exp, device, periods, ispace_model):
+        with torch.no_grad():
+            times = []
+            predr = torch.zeros(*fft_exp.shape[0:2], 1, *fft_exp.shape[3:])
+
+            for ti in range(self.num_window - 1, fft_exp.shape[1]):
+                start1 = time.time()
+                input = fft_exp[:,ti-self.num_window+1:ti+1]
+                fft_log = (input+CEPS).log().to(device)
+                fft_log = torch.stack((fft_log.real, fft_log.imag), -1)
+                
+                x1 = self.kspace_m(torch.swapaxes(fft_log, 1,2))
+                
+                real, imag = torch.unbind(x1, -1)
+                fftshifted = torch.complex(real, imag)
+                x2 = torch.fft.ifft2(torch.fft.ifftshift(fftshifted.exp(), dim = (-2, -1)))
+                if self.image_space_real:
+                    x3 = x2.abs()
+                    ans = self.ispacem(x3)
+                else:
+                    x3 = torch.stack([x2.real, x2.imag], dim=-1)
+                    ans = (self.ispacem(x3).pow(2).sum(-1)+EPS).pow(0.5)
+                    # assert(0)
+
+                predr[:,ti] = ans.detach().cpu()
+
+                times.append(time.time() - start1)
+                print(time.time() - start1)
+
+        return times
+
+
     def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
         fft_log = (fft_exp+CEPS).log()
         fft_log = torch.stack((fft_log.real, fft_log.imag), -1)
@@ -373,14 +406,13 @@ class MDCNN(nn.Module):
             else:
                 x3 = torch.stack([x2.real, x2.imag], dim=-1)
                 ans = (self.ispacem(x3).pow(2).sum(-1)+EPS).pow(0.5)
-                assert(0)
+                # assert(0)
             # print(ans.cpu().detach()[0,0].min(), ans.cpu().detach()[0,0].max())
             if og_video is not None:
                 targ_now = og_video[:,ti,:,:]
 
                 # plt.imsave('targ_now.jpg', targ_now.cpu().detach()[0,0], cmap = 'gray')
                 # plt.imsave('ans.jpg', ans.cpu().detach()[0,0], cmap = 'gray')
-
 
                 loss_real += self.criterionL1(ans, targ_now.to(device))
                 loss_l1 += (ans - targ_now).reshape(ans .shape[0]*ans .shape[1], -1).abs().mean(1).sum().detach().cpu()/self.param_dic['n_lstm_cells']
@@ -391,5 +423,5 @@ class MDCNN(nn.Module):
 
             predr[:,ti] = ans.detach()
 
-        # return predr, ans_phase, ans_mag_log, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, loss_ss1)
-        return predr, None, None, zero_tensor, zero_tensor, loss_real, zero_tensor, zero_tensor, (loss_l1, loss_l2, loss_ss1)
+        # return predr, predr_kspace, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, loss_ss1)
+        return predr, None, zero_tensor, zero_tensor, loss_real, zero_tensor, zero_tensor, (loss_l1, loss_l2, loss_ss1)

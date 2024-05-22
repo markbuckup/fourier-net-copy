@@ -13,6 +13,7 @@ parameters['window_size'] = 7
 parameters['init_skip_frames'] = parameters['window_size']-1
 parameters['SHM_looping'] = False
 parameters['FT_radial_sampling'] = 10
+parameters['kspace_combine_coils'] = False
 parameters['num_coils'] = 8
 parameters['scale_input_fft'] = False
 parameters['dataloader_num_workers'] = 2

@@ -233,7 +233,7 @@ class convLSTMcell_kspace(nn.Module):
         
         # self.decoder2 = nn.Linear(64*64*2, 64*64)
 
-    def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_outputs = None, phase_prev_outputs = None, background = None, window_size = np.inf, mag_gates_remember = None, phase_gates_remember = None):
+    def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_outputs = None, phase_prev_outputs = None, background = None, window_size = np.inf, mag_gates_remember = None, phase_gates_remember = None, eval = False):
         # x is a batch of video frames at a single time stamp
         del gt_mask
         foreground = torch.logical_not(background).float().to(hist_mag.device)
@@ -307,20 +307,7 @@ class convLSTMcell_kspace(nn.Module):
             else:
                 phase_it = mag_it
 
-            if not self.forget_gate_coupled:
-                mag_ft = torch.sigmoid(self.mag_forgetGates[i_cell](mag_inp_cat))
-                if not self.forget_gate_same_phase_mag:
-                    phase_ft = torch.sigmoid(self.phase_forgetGates[i_cell](phase_inp_cat))
-                else:
-                    phase_ft = mag_ft
-                mag_ot = torch.sigmoid(self.mag_outputGates[i_cell](mag_inp_cat))
-                phase_ot = torch.sigmoid(self.phase_outputGates[i_cell](phase_inp_cat))
-            else:
-                # mag_ft = 1 - mag_it
-                # phase_ft = 1 - phase_it
-                mag_ot = torch.ones_like(mag_it, device = mag_it.device)
-                phase_ot = torch.ones_like(phase_it, device = phase_it.device)
-
+            
             loss_forget_gate += criterionL1(mag_it*foreground, foreground)
             # plt.imsave('mag_ft.jpg', mag_ft.detach().cpu()[0,0], cmap = 'gray')
             if self.forget_gate_same_coils:
@@ -350,17 +337,21 @@ class convLSTMcell_kspace(nn.Module):
             ##################################################################################################################
             # New
             ##################################################################################################################
-            if len(mag_gates_remember[i_cell][-window_size:-1]) >= 1:
-                mag_ft = torch.stack(mag_gates_remember[i_cell][-window_size:-1], -1).max(-1)[0].to(mag_it.device) - 5*mag_it
-                mag_ft = mag_ft.clip(0,1)
-                if not self.forget_gate_same_phase_mag:
-                    phase_ft = torch.stack(phase_gates_remember[i_cell][-window_size:-1], -1).max(-1)[0].to(phase_it.device) - 5*phase_it
-                    phase_ft = phase_ft.clip(0,1)
-                else:
-                    phase_ft = mag_ft
+            if window_size == np.inf:
+                mag_ft = 1 - mag_it
+                phase_ft = 1 - phase_it
             else:
-                mag_ft = torch.zeros_like(mag_it, device = mag_it.device)
-                phase_ft = torch.zeros_like(phase_it, device = phase_it.device)
+                if len(mag_gates_remember[i_cell][-window_size:-1]) >= 1:
+                    mag_ft = torch.stack(mag_gates_remember[i_cell][-window_size:-1], -1).max(-1)[0].to(mag_it.device) - 5*mag_it
+                    mag_ft = mag_ft.clip(0,1)
+                    if not self.forget_gate_same_phase_mag:
+                        phase_ft = torch.stack(phase_gates_remember[i_cell][-window_size:-1], -1).max(-1)[0].to(phase_it.device) - 5*phase_it
+                        phase_ft = phase_ft.clip(0,1)
+                    else:
+                        phase_ft = mag_ft
+                else:
+                    mag_ft = torch.zeros_like(mag_it, device = mag_it.device)
+                    phase_ft = torch.zeros_like(phase_it, device = phase_it.device)
 
             ##################################################################################################################
 
@@ -375,8 +366,9 @@ class convLSTMcell_kspace(nn.Module):
             else:
                 mag_Cthat = self.mag_inputProcs[i_cell](mag_inp_cat)
                 phase_Cthat = self.phase_activation(self.phase_inputProcs[i_cell](phase_inp_cat))
-                loss_input_gate += criterionL1(mag_Cthat*foreground, hist_mag*foreground)
-                loss_input_gate += criterionL1(phase_Cthat*foreground, hist_phase*foreground)
+                if not eval:
+                    loss_input_gate += criterionL1(mag_Cthat*foreground, hist_mag*foreground)
+                    loss_input_gate += criterionL1(phase_Cthat*foreground, hist_phase*foreground)
 
 
 
@@ -595,77 +587,110 @@ class convLSTM_Kspace1(nn.Module):
 
         assert(sigmoid_mode)
 
-    # def time_analysis(self, fft_exp, device, periods, ispace_model):
-    #     times = []
-    #     with torch.no_grad():
-    #         # mag_log = (fft_exp.abs()+EPS).log()
-    #         # phase = fft_exp / (mag_log.exp())
-    #         # phase = torch.stack((phase.real, phase.imag), -1)
+    def time_analysis(self, fft_exp, device, periods, ispace_model):
+        times = []
+        with torch.no_grad():
+            prev_outputs1 = None
+            prev_outputs2 = None
+            prev_state3 = None
+            prev_output3 = None
+            mag_gates_remember = None
+            phase_gates_remember = None
 
-    #         prev_state1 = None
-    #         prev_output1 = None
-    #         prev_state2 = None
-    #         prev_output2 = None
-    #         prev_state3 = None
-    #         prev_output3 = None
+            predr = torch.zeros(fft_exp.shape)
 
-    #         predr = torch.zeros(fft_exp.shape)
- 
-    #         for ti in range(fft_exp.shape[1]):
-    #             start1 = time.time()
-    #             hist_ind = (torch.arange(self.history_length+1).repeat(fft_exp.shape[0],1) - self.history_length)
-    #             hist_ind = hist_ind * periods.reshape(-1,1).cpu()
-    #             hist_ind += ti
-    #             temp1 = hist_ind.clone()
-    #             temp1[temp1 < 0] = 9999999999
-    #             min_vals = temp1.min(1)[0]
-    #             base = torch.zeros(temp1.shape) + min_vals.reshape(-1,1)
+            length = fft_exp.shape[-1]
+            x_size, y_size = length, length
+            x_arr, y_arr = np.mgrid[0:x_size, 0:y_size]
+            cell = (length//2, length//2)
+            dists = ((x_arr - cell[0])**2 + (y_arr - cell[1])**2)**0.22
+            dists = torch.FloatTensor(dists+1).to(device).unsqueeze(0).unsqueeze(0)
+            if not self.param_dic['crop_loss']:
+                dists = torch.ones_like(dists, device = device).unsqueeze(0).unsqueeze(0)
+            cycle_mask = ((x_arr - cell[0])**2 + (y_arr - cell[1])**2)**2
+            cycle_mask[cycle_mask > cycle_mask[0,x_size//2]] = -1
+            cycle_mask[cycle_mask > -1] = 1
+            cycle_mask[cycle_mask == -1] = 0
+            cycle_mask = torch.FloatTensor(cycle_mask).to(device).unsqueeze(0).unsqueeze(0)
 
-    #             hist_ind = hist_ind - base
-    #             hist_ind[hist_ind < 0] = 0
-    #             hist_ind = (hist_ind + base).long()
+            
+            for ti in range(fft_exp.shape[1]):
+                start1 = time.time()
+                hist_ind = (torch.arange(self.history_length+1).repeat(fft_exp.shape[0],1) - self.history_length)
+                hist_ind = hist_ind * periods.reshape(-1,1).cpu()
+                hist_ind += ti
+                temp1 = hist_ind.clone()
+                temp1[temp1 < 0] = 9999999999
+                min_vals = temp1.min(1)[0]
+                base = torch.zeros(temp1.shape) + min_vals.reshape(-1,1)
 
-    #             mult = (torch.arange(fft_exp.shape[0])*fft_exp.shape[1]).reshape(-1,1)
-    #             hist_ind = hist_ind + mult
-    #             hist_fft = fft_exp.reshape(-1, *fft_exp.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *fft_exp.shape[3:]).to(device)
-    #             hist_mag = mylog((hist_fft.abs()+EPS), base = self.param_dic['logarithm_base'])
-    #             hist_phase = hist_fft / (self.param_dic['logarithm_base']**hist_mag)
-    #             hist_phase = torch.stack((hist_phase.real, hist_phase.imag), -1)
+                hist_ind = hist_ind - base
+                hist_ind[hist_ind < 0] = 0
+                hist_ind = (hist_ind + base).long()
 
-    #             if self.param_dic['kspace_predict_mode'] == 'thetas':
-    #                 hist_phase = torch.atan2(hist_phase[:,:,:,:,1],hist_phase[:,:,:,:,0])
-    #             elif self.param_dic['kspace_predict_mode'] == 'cosine':
-    #                 hist_phase = hist_phase[:,:,:,:,0]
-    #             elif self.param_dic['kspace_predict_mode'] == 'unit-vector':
-    #                 hist_phase = hist_phase
-    #             else:
-    #                 assert 0
+                mult = (torch.arange(fft_exp.shape[0])*fft_exp.shape[1]).reshape(-1,1)
+                hist_ind = hist_ind + mult
+                hist_fft = fft_exp.reshape(-1, *fft_exp.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *fft_exp.shape[3:]).to(device)
+                hist_mag = mylog((hist_fft.abs()+EPS), base = self.param_dic['logarithm_base'])
+                hist_phase = hist_fft / (self.param_dic['logarithm_base']**hist_mag)
+                hist_phase = torch.stack((hist_phase.real, hist_phase.imag), -1)
 
-    #             prev_state2, prev_state1, prev_output2, prev_output1 = self.kspace_m(hist_mag, hist_phase, prev_state2, prev_output2, prev_state1, prev_output1)
+                if self.param_dic['kspace_predict_mode'] == 'thetas':
+                    background = ((hist_phase[:,:,:,:,1].abs() + hist_phase[:,:,:,:,0].abs()) < 1)
+                    hist_phase = torch.atan2(hist_phase[:,:,:,:,1]+EPS,hist_phase[:,:,:,:,0]) + 4
+                    hist_phase[background] = 0
+                    hist_mag[background] = 0
+                elif self.param_dic['kspace_predict_mode'] == 'cosine':
+                    hist_phase = hist_phase[:,:,:,:,0]
+                    assert 0
+                elif self.param_dic['kspace_predict_mode'] == 'unit-vector':
+                    hist_phase = hist_phase
+                    assert 0
+                else:
+                    assert 0
 
-    #             if self.param_dic['kspace_predict_mode'] == 'cosine':
-    #                 phase_ti = torch.complex(prev_output1, ((1-(prev_output1**2)) + EPS)**0.5)
-    #             elif self.param_dic['kspace_predict_mode'] == 'thetas':
-    #                 phase_ti = torch.complex(torch.cos(prev_output1), torch.sin(prev_output1))
-    #             elif self.param_dic['kspace_predict_mode'] == 'unit-vector':
-    #                 # prev_output1 = prev_output1 / (((prev_output1**2).sum(-1)+EPS)**0.5).unsqueeze(-1).detach()
-    #                 phase_ti = torch.complex(prev_output1[:,:,:,:,0], prev_output1[:,:,:,:,1])
+                if prev_outputs2 is not None:
+                    prev_outputs2 = [(x + 5) for x in prev_outputs2]
+                    prev_outputs1 = [x + 4 for x in prev_outputs1]
 
-    #             predr_ti = torch.fft.ifft2(torch.fft.ifftshift((self.param_dic['logarithm_base']**prev_output2)*phase_ti, dim = (-2,-1))).real.clip(-200,200)
-    #             if self.param_dic['ispace_lstm']:
-    #                 prev_state3, prev_output3 = self.ispacem(predr_ti, prev_state3, prev_output3)
-    #             else:
-    #                 prev_output3 = ispace_model(predr_ti)
+                curr_mask = None
+                random_window_size = np.random.choice(self.param_dic['window_size'])
+                prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(hist_mag, hist_phase, curr_mask, prev_outputs2, prev_outputs1, background = background, window_size = random_window_size, mag_gates_remember = mag_gates_remember, phase_gates_remember = phase_gates_remember, eval = True)
+            
+                prev_outputs2 = [(x - 5)*cycle_mask for x in prev_outputs2]
+                prev_outputs1 = [(x - 4)*cycle_mask for x in prev_outputs1]
+     
+                del hist_mag
+                del hist_phase
                 
-    #             if self.param_dic['ispace_lstm']:
-    #                 prev_output3 = prev_output3.detach()            
-    #             prev_output2 = prev_output2.detach()
-    #             prev_output1 = prev_output1.detach()            
+                if self.param_dic['kspace_predict_mode'] == 'cosine':
+                    phase_ti = torch.complex(prev_outputs1[-1], ((1-(prev_outputs1[-1]**2)) + EPS)**0.5)
+                elif self.param_dic['kspace_predict_mode'] == 'thetas':
+                    phase_ti = torch.complex(torch.cos(prev_outputs1[-1]), torch.sin(prev_outputs1[-1]))
+                elif self.param_dic['kspace_predict_mode'] == 'unit-vector':
+                    prev_outputs1[-1] = prev_outputs1[-1] / (((prev_outputs1[-1]**2).sum(-1)+EPS)**0.5).unsqueeze(-1).detach()
+                    phase_ti = torch.complex(prev_outputs1[-1][:,:,:,:,0], prev_outputs1[-1][:,:,:,:,1])
 
-    #             predr[:,ti,:,:,:] = prev_output3.cpu()
-    #             times.append(time.time() - start1)
+                lstm_predicted_fft = (self.param_dic['logarithm_base']**prev_outputs2[-1])*phase_ti
+                predr_ti = torch.fft.ifft2(torch.fft.ifftshift(lstm_predicted_fft, dim = (-2,-1)))
+                predr_ti = predr_ti.abs().clip(-10,10)
+                
+                if self.param_dic['ispace_lstm']:
+                    B,C,numr, numc = predr_ti.shape
+                    predr_ti = predr_ti.reshape(B*C, 1, numr, numc)
+                    if prev_output3 is not None:
+                        prev_output3 = prev_output3.reshape(B*C, 1, numr, numc)
+                    prev_state3, prev_output3 = self.ispacem(predr_ti.detach(), prev_state3, prev_output3)
+                    prev_output3 = prev_output3.reshape(B, C, numr, numc)
+                    predr_ti = predr_ti.reshape(B, C, numr, numc)
+                else:
+                    prev_output3 = predr_ti
+                
+                predr[:,ti,:,:,:] = prev_output3.cpu()
+                times.append(time.time() - start1)
+                print(time.time() - start1)
 
-    #     return times
+        return times
 
 
     def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
@@ -787,18 +812,8 @@ class convLSTM_Kspace1(nn.Module):
             else:
                 assert 0
 
-            # print(hist_mag.min(), hist_mag.max())
-            # print(hist_phase.min(), hist_phase.max())
-            # print(hist_mag[0,0,:8,:8])
-            # print(hist_phase[0,0,:8,:8])
-            # plt.imsave('inp_phase.jpg', (hist_phase[0,0,:,:]).cpu(), cmap = 'gray')
-            # plt.imsave('inp_mag.jpg', (hist_mag[0,0,:,:]).cpu(), cmap = 'gray')
-            # asdf
 
-            # hist_phase = hist_phase * gt_masks[:,ti,:,:,:]
-
-
-            # if prev_outputs2 is not None:
+            if prev_outputs2 is not None:
                 prev_outputs2 = [(x + 5) for x in prev_outputs2]
                 prev_outputs1 = [x + 4 for x in prev_outputs1]
             if gt_masks is None:
@@ -939,13 +954,14 @@ class convLSTM_Kspace1(nn.Module):
                             loss_ss1 += ss1.mean(1).sum().detach().cpu() / (self.param_dic['n_lstm_cells'])
 
             
+            if self.param_dic['ispace_lstm']:
+                prev_output3 = prev_output3.detach()
+            
             if ti % 7 == 0:
                 for i_cell in range(self.param_dic['n_lstm_cells']):
                     prev_outputs1[i_cell] = prev_outputs1[i_cell].detach()
                     prev_outputs2[i_cell] = prev_outputs2[i_cell].detach()
 
-                if self.param_dic['ispace_lstm']:
-                    prev_output3 = prev_output3.detach()
 
             if self.param_dic['ispace_lstm']:
                 predr_kspace[:,ti,:,:] = predr_ti.detach().cpu()

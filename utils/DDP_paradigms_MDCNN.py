@@ -45,7 +45,7 @@ def train_paradigm(rank, world_size, args, parameters):
     if parameters['dataset'] == 'acdc':
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial as dataset
     from utils.models.MDCNN import MDCNN
-    model = MDCNN(parameters).to(args.gpu[rank])
+    model = MDCNN(parameters, proc_device).to(args.gpu[rank])
     from utils.Trainers.DDP_MDCNNTrainer_nufft import Trainer
 
     trainset = dataset(
@@ -212,7 +212,7 @@ def test_paradigm(rank, world_size, args, parameters):
     if parameters['dataset'] == 'acdc':
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial as dataset
     from utils.models.MDCNN import MDCNN
-    model = MDCNN(parameters).to(args.gpu[rank])
+    model = MDCNN(parameters, proc_device).to(args.gpu[rank])
     from utils.Trainers.DDP_MDCNNTrainer_nufft import Trainer
 
     trainset = dataset(

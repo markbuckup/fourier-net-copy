@@ -25,6 +25,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
 os.environ['display'] = 'localhost:14.0'
+
 from utils.DDP_paradigms_LSTM_nufft import train_paradigm, test_paradigm
 
 parser = argparse.ArgumentParser()
@@ -65,6 +66,7 @@ if parameters['dataset'] == 'acdc':
     
 if args.numbers_only or args.visualise_only:
     parameters['init_skip_frames'] = 90
+    parameters['loop_videos'] = 120
 
 if args.write_csv:
     assert(args.eval)
@@ -72,6 +74,7 @@ if args.write_csv:
 if args.time_analysis or args.visualise_only:
     parameters['train_batch_size'] = 1
     parameters['test_batch_size'] = 1
+
 
 # sys.path.append('/root/Cardiac-MRI-Reconstrucion/experiments/ACDC/{}/'.format(args.run_id))
 
