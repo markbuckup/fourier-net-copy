@@ -370,9 +370,6 @@ class convLSTMcell_kspace(nn.Module):
                     loss_input_gate += criterionL1(mag_Cthat*foreground, hist_mag*foreground)
                     loss_input_gate += criterionL1(phase_Cthat*foreground, hist_phase*foreground)
 
-
-
-
             new_mag_outputs.append((mag_ft * mag_prev_outputs[i_cell]) + (mag_it * mag_Cthat))
             new_phase_outputs.append((phase_ft * phase_prev_outputs[i_cell]) + (phase_it * phase_Cthat))
 
@@ -660,8 +657,6 @@ class convLSTM_Kspace1(nn.Module):
                 prev_outputs2 = [(x - 5)*cycle_mask for x in prev_outputs2]
                 prev_outputs1 = [(x - 4)*cycle_mask for x in prev_outputs1]
      
-                del hist_mag
-                del hist_phase
                 
                 if self.param_dic['kspace_predict_mode'] == 'cosine':
                     phase_ti = torch.complex(prev_outputs1[-1], ((1-(prev_outputs1[-1]**2)) + EPS)**0.5)
@@ -686,9 +681,10 @@ class convLSTM_Kspace1(nn.Module):
                 else:
                     prev_output3 = predr_ti
                 
-                predr[:,ti,:,:,:] = prev_output3.cpu()
+                predr[:,ti,:,:,:] = ispace_model(prev_output3).cpu()
+                
                 times.append(time.time() - start1)
-                print(time.time() - start1)
+
 
         return times
 

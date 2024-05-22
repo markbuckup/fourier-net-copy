@@ -191,14 +191,14 @@ class ImageSpaceModel(nn.Module):
                     nn.Conv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
                     nn.ReLU(),
                     nn.BatchNorm2d(32),
-                    nn.Conv2d(32, 1, (3,3), stride = (1,1), padding = (1,1)),
+                    nn.Conv2d(32, 1, (1,1), stride = (1,1), padding = (0,0)),
                 )
         else:
             self.block1 = nn.Sequential(
-                    cmplx_conv.ComplexConv3d(self.num_coils, 2*self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
+                    cmplx_conv.ComplexConv3d(self.num_coils, 2*self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = True),
                     cmplx_activation.CReLU(),
                     radial_bn.RadialBatchNorm3d(2*self.num_coils),
-                    cmplx_conv.ComplexConv3d(2*self.num_coils, self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = False),
+                    cmplx_conv.ComplexConv3d(2*self.num_coils, self.num_coils, (3,3,3), stride = (1,1,1), padding = (1,1,1), bias = True),
                     cmplx_activation.CReLU(),
                     radial_bn.RadialBatchNorm3d(self.num_coils)
                 )
@@ -209,13 +209,13 @@ class ImageSpaceModel(nn.Module):
             self.up2 = CoupledUp(256, [128,64])
             self.up3 = CoupledUp(128, [64,32])
             self.finalblock = nn.Sequential(
-                    cmplx_conv.ComplexConv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    cmplx_conv.ComplexConv2d(64, 32, (3,3), stride = (1,1), padding = (1,1), bias = True),
                     cmplx_activation.CReLU(),
                     radial_bn.RadialBatchNorm2d(32),
-                    cmplx_conv.ComplexConv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = False),
+                    cmplx_conv.ComplexConv2d(32, 32, (3,3), stride = (1,1), padding = (1,1), bias = True),
                     cmplx_activation.CReLU(),
                     radial_bn.RadialBatchNorm2d(32),
-                    cmplx_conv.ComplexConv2d(32, 1,     (3,3), stride = (1,1), padding = (1,1)),
+                    cmplx_conv.ComplexConv2d(32, 1, (1,1), stride = (1,1), padding = (0,0)),
                 )
         self.train_mode = True
 
@@ -374,8 +374,7 @@ class MDCNN(nn.Module):
                 predr[:,ti] = ans.detach().cpu()
 
                 times.append(time.time() - start1)
-                print(time.time() - start1)
-
+                
         return times
 
 
