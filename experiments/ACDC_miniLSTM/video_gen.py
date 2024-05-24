@@ -221,6 +221,90 @@ for fnum in tqdm(range(120)):
     os.system('rm kspace_temp.jpg')
     
 
+#### save lag plot
+fig = plt.figure(figsize=(20, 19))
+gs = gridspec.GridSpec(7, 10, figure=fig, width_ratios=[1, 0.05, 1, 0.05, 1, 0.05, 1, 0.05, 1, 0.05], height_ratios=[1,0.05,1,1,0.05,1,1])
+# gs.update(hspace=0.4)  # Add spacing between the rows
+
+
+for ii,fnum in enumerate(range(112,117)):
+    curr_path = os.path.join(fouriernet_raw_path, 'frame_{}'.format(fnum))
+
+    ispace_pred = np.flip(read_gray(os.path.join(curr_path, 'ispace_pred.jpg'))/255.,0)
+    
+    ispace_gt = np.flip(read_gray(os.path.join(curr_path, 'ground_truth.jpg'))/255.,0)
+
+    ax0 = fig.add_subplot(gs[0, 2*ii])
+    ax0.imshow(ispace_gt, cmap='gray')
+    if ii == 2:
+        ax0.set_title("Ground Truths\nFrame {}".format(100+ii), fontsize=24, pad=10)
+    else:
+        ax0.set_title("Frame {}".format(100+ii), fontsize=24, pad=10)
+    ax0.axis('off')
+
+    ax0 = fig.add_subplot(gs[2, 2*ii])
+    ax0.imshow(ispace_pred, cmap='gray')
+    if ii == 2:
+        ax0.set_title("FOURIER-Net Predictions \nFrame {}".format(100+ii), fontsize=24, pad=10)
+    else:
+        ax0.set_title("Frame {}".format(100+ii), fontsize=24, pad=10)
+    ax0.axis('off')
+
+    diff_pred_ispace = np.abs(ispace_pred - ispace_gt).mean(2)
+    ax0 = fig.add_subplot(gs[3, 2*ii])
+    im = ax0.imshow(diff_pred_ispace, cmap = 'plasma')
+    # if ii == 2:
+    #     ax0.set_title("Difference Frames", fontsize=24, pad=10)
+    ax0.axis('off')
+
+    # Color bar for Difference Frame
+    cbar_ax = fig.add_subplot(gs[3, 2*ii + 1])
+    cbar = fig.colorbar(im, cax=cbar_ax)
+    cbar.ax.set_yticklabels(np.arange(11)/10)
+    cbar.ax.tick_params(labelsize=14)  # Adjust the font size of the colorbar ticks
+
+    im.set_clim(vmin=0, vmax=1)
+
+
+for ii,fnum in enumerate(range(112,117)):
+    curr_path = os.path.join(fouriernet_raw_path, 'frame_{}'.format(fnum))
+    lag_path = os.path.join(fouriernet_raw_path, 'frame_{}'.format(fnum+3))
+
+    ispace_pred = np.flip(read_gray(os.path.join(lag_path, 'ispace_pred.jpg'))/255.,0)
+    
+    ispace_gt = np.flip(read_gray(os.path.join(curr_path, 'ground_truth.jpg'))/255.,0)
+
+    ax0 = fig.add_subplot(gs[5, 2*ii])
+    ax0.imshow(ispace_pred, cmap='gray')
+    
+    if ii == 2:
+        ax0.set_title("FOURIER-Net Predictions Shifted by 3 Frames\nFrame {}".format(100+ii), fontsize=24, pad=10)
+    else:
+        ax0.set_title("Frame {}".format(100+ii+3), fontsize=24, pad=10)
+    ax0.axis('off')
+
+    diff_pred_ispace = np.abs(ispace_pred - ispace_gt).mean(2)
+    ax0 = fig.add_subplot(gs[6, 2*ii])
+    im = ax0.imshow(diff_pred_ispace, cmap = 'plasma')
+    # if ii == 2:
+    #     ax0.set_title("Difference Frames of Shifted Outputs", fontsize=24)
+    ax0.axis('off')
+
+    # Color bar for Difference Frame
+    cbar_ax = fig.add_subplot(gs[6, 2*ii + 1])
+    cbar = fig.colorbar(im, cax=cbar_ax)
+    cbar.ax.set_yticklabels(np.arange(11)/10)
+    cbar.ax.tick_params(labelsize=14)  # Adjust the font size of the colorbar ticks
+
+    im.set_clim(vmin=0, vmax=1)
+
+
+# Global super title
+# fig.suptitle("Lag Analysis", fontsize=24)
+plt.tight_layout()
+plt.savefig(os.path.join(video_path,'lag_analysis.jpg'))
+plt.close('all')
+
 
 kspace_preds = (torch.FloatTensor(np.array(kspace_preds)))
 ispace_preds = (torch.FloatTensor(np.array(ispace_preds)))
