@@ -311,7 +311,6 @@ class convLSTMcell_kspace(nn.Module):
 
             
             loss_forget_gate += criterionL1(mag_it*foreground, foreground)
-            # plt.imsave('mag_ft.jpg', mag_ft.detach().cpu()[0,0], cmap = 'gray')
             if self.forget_gate_same_coils:
                 # mag_ft = mag_ft.repeat(1,self.input_gate_output_size,1,1)
                 # phase_ft = phase_ft.repeat(1,self.input_gate_output_size,1,1)
@@ -355,6 +354,7 @@ class convLSTMcell_kspace(nn.Module):
                     mag_ft = torch.zeros_like(mag_it, device = mag_it.device)
                     phase_ft = torch.zeros_like(phase_it, device = phase_it.device)
 
+            # plt.imsave('mag_ft.jpg', mag_ft.detach().cpu()[0,0], cmap = 'gray')
             ##################################################################################################################
 
             # plt.imsave('mag_ft_{}.jpg'.format(len(mag_gates_remember[i_cell])), mag_ft[0,0,:,:].cpu().detach())
@@ -666,7 +666,7 @@ class convLSTM_Kspace1(nn.Module):
                                                                                                                                                         phase_gates_remember = phase_gates_remember,
                                                                                                                                                         eval = True
                                                                                                                                                     )
-            
+
                 prev_outputs2 = [(x - 5)*cycle_mask for x in prev_outputs2]
                 prev_outputs1 = [(x - 4)*cycle_mask for x in prev_outputs1]
      
@@ -705,8 +705,7 @@ class convLSTM_Kspace1(nn.Module):
     def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
 
         # print(fft_exp[0,0,0,:8,:8])
-        mag_log = mylog(fft_exp.abs().clip(1e-10,1e20), base = self.param_dic['logarithm_base']) + 5
-
+        mag_log = mylog(fft_exp.abs().clip(1e-5,1e20), base = self.param_dic['logarithm_base']) + 5
 
         # print('\n')
         # print(mag_log.min(), mag_log.max())
@@ -723,7 +722,7 @@ class convLSTM_Kspace1(nn.Module):
         # targ_mag_log = mylog(fft_exp.abs(), base = self.param_dic['logarithm_base'])
         # targ_phase = phase
         # plt.imsave('targ_real.jpg', targ_real.cpu()[0,0,0,:,:], cmap = 'gray')
-        # input_real = torch.fft.ifft2(torch.fft.ifftshift(fft_exp, dim = (-2,-1))).abs()
+        input_real = torch.fft.ifft2(torch.fft.ifftshift(fft_exp, dim = (-2,-1))).abs()
         # plt.imsave('input_real.jpg', input_real.cpu()[0,0,0,:,:], cmap = 'gray')
         # asdf
         # print(targ_real.shape)
@@ -756,6 +755,12 @@ class convLSTM_Kspace1(nn.Module):
         cycle_mask[cycle_mask == -1] = 0
         cycle_mask = torch.FloatTensor(cycle_mask).to(device).unsqueeze(0).unsqueeze(0)
         predr = torch.zeros(*mag_log.shape[0:2], ans_coils, *mag_log.shape[3:]).to(device)
+
+
+        if targ_mag_log is not None:
+            targ_mag_log *= cycle_mask.unsqueeze(0)
+            targ_phase *= cycle_mask.unsqueeze(0).unsqueeze(-1)
+
         if self.param_dic['ispace_lstm']:
             predr_kspace = torch.zeros(*mag_log.shape[0:2], ans_coils, *mag_log.shape[3:])
         else:
@@ -846,6 +851,9 @@ class convLSTM_Kspace1(nn.Module):
             # print(hist_phase.min(), hist_phase.max())
             # print(prev_outputs2[-1].min(), prev_outputs2[-1].max())
             # print(prev_outputs1[-1].min(), prev_outputs1[-1].max())
+            # print((targ_mag_log+5)[:,ti].min(), (targ_mag_log+5)[:,ti].max())
+            # targ_angles = torch.atan2((targ_phase[:,ti,:,:,:,1])+EPS,(targ_phase[:,ti,:,:,:,0])).to(device)
+            # print((targ_angles+4)[:,ti].min(), (targ_angles+4)[:,ti].max())
             # # print(prev_outputs1[-1][:,:,:8,:8])
             # # print(hist_phase[:,:,:8,:8])
             # print('\n\n')
@@ -877,8 +885,10 @@ class convLSTM_Kspace1(nn.Module):
                 # lstm_predicted_fft.real = lstm_predicted_fft.real - lstm_predicted_fft.real.reshape(*lstm_predicted_fft.shape[:2], -1).mean(2).unsqueeze(-1).unsqueeze(-1).detach()
                 # lstm_predicted_fft.imag = lstm_predicted_fft.imag - lstm_predicted_fft.imag.reshape(*lstm_predicted_fft.shape[:2], -1).mean(2).unsqueeze(-1).unsqueeze(-1).detach()
                 predr_ti = torch.fft.ifft2(torch.fft.ifftshift(lstm_predicted_fft, dim = (-2,-1)))
+                # plt.imsave('lstm_predicted_fft.jpg', (lstm_predicted_fft[0,0,:,:].abs().detach().cpu() + 1e-10).log())
                 # print(predr_ti.abs().min(), predr_ti.abs().max())
                 predr_ti = predr_ti.abs().clip(-10,10)
+                # plt.imsave('lstm_predicted_fft.jpg', (torch.fft.fftshift(torch.fft.fft2(predr_ti), dim = (-2,-1))[0,0,:,:].abs().detach().cpu() + 1e-10).log())
                 # predr_ti = predr_ti - predr_ti.min(3)[0].min(2)[0].unsqueeze(2).unsqueeze(2).detach()
                 # predr_ti = predr_ti / (EPS + predr_ti.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
@@ -891,11 +901,11 @@ class convLSTM_Kspace1(nn.Module):
                     predr_ti = predr_ti.reshape(B*C, 1, numr, numc)
                     if prev_output3 is not None:
                         prev_output3 = prev_output3.reshape(B*C, 1, numr, numc)
-                    prev_state3, prev_output3 = self.ispacem(predr_ti.detach(), prev_state3, prev_output3)
+                    prev_state3, prev_output3 = self.ispacem(predr_ti.detach().clone(), prev_state3, prev_output3)
                     prev_output3 = prev_output3.reshape(B, C, numr, numc)
                     predr_ti = predr_ti.reshape(B, C, numr, numc)
                 else:
-                    prev_output3 = predr_ti
+                    prev_output3 = predr_ti.clone()
                 
                 
 
@@ -988,6 +998,11 @@ class convLSTM_Kspace1(nn.Module):
             predr[:,ti,:,:] = prev_output3.detach()
 
         predr = predr * self.predr_mask
+
+        # predr_k = torch.fft.fftshift(torch.fft.fft2(predr_kspace), dim = (-2,-1))
+        # predr_ti = torch.fft.fftshift(torch.fft.fft2(predr), dim = (-2,-1))
+        # plt.imsave('klstm_predicted_fft.jpg', (predr_k[0,0,0,:,:].abs().detach().cpu() + 1e-10).log())
+        # plt.imsave('ilstm_predicted_fft.jpg', (predr_ti[0,0,0,:,:].abs().detach().cpu() + 1e-10).log())
         return predr, predr_kspace, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, loss_ss1)
 
 

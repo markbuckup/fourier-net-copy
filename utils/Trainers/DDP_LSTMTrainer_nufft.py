@@ -991,7 +991,7 @@ class Trainer(nn.Module):
                 
 
                 predr = predr.reshape(batch,num_frames,chan,numr, numc).to(self.device)
-                pred_ft = torch.fft.fftshift(torch.fft.fft2(predr), dim = (-2,-1))
+                pred_ft = torch.fft.fftshift(torch.fft.fft2(predr_kspace), dim = (-2,-1))
                 
                 tot = 0
                 with tqdm(total=num_plots) as pbar:
@@ -1119,9 +1119,9 @@ class Trainer(nn.Module):
                                         
                                         targi = og_coiled_vids.cpu()[bi,f_num, c_num].squeeze().cpu().numpy()
                                         orig_fti = mylog((og_coiled_fts.cpu()[bi,f_num,c_num].abs()+EPS), base = self.parameters['logarithm_base'])
-                                        mask_fti = mylog((EPS+undersampled_fts.cpu()[bi,f_num,c_num].abs()), base = self.parameters['logarithm_base'])
+                                        mask_fti = mylog((undersampled_fts.cpu()[bi,f_num,c_num].abs()+EPS), base = self.parameters['logarithm_base'])
                                         ifft_of_undersamp = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts.cpu()[bi,f_num,c_num], dim = (-2,-1))).abs().squeeze()
-                                        pred_fti = mylog((pred_ft.cpu()[bi,f_num,c_num].abs()+1), base = self.parameters['logarithm_base'])
+                                        pred_fti = mylog((pred_ft.cpu()[bi,f_num,c_num].abs()+EPS), base = self.parameters['logarithm_base'])
                                         predi = predr_kspace.cpu()[bi,f_num,c_num].squeeze().cpu().numpy()
                                         pred_ilstmi = predr.cpu()[0,f_num,c_num].squeeze().cpu().numpy()
 

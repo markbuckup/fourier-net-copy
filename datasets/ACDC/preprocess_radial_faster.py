@@ -85,9 +85,16 @@ N_COILS_VARIANTS = 100
 N_COILS = 8
 LOOP_FRAMES = 120
 
-kb_ob = tkbn.KbNufft(im_size=(512,512), grid_size = (1024,1024), numpoints = 4, kbwidth = 2.34, device = device)
-kbinterp = tkbn.KbInterpAdjoint(im_size=(256,256), grid_size = (256,256), numpoints = 3, kbwidth = 2.34, device = device)
-kbinterp2 = tkbn.KbInterpAdjoint(im_size=(256,256), grid_size = (1024,1024), numpoints = 8, kbwidth = 0.84, device = device)
+kb_ob = tkbn.KbInterp(im_size=(256,256), grid_size = (1024,1024), numpoints = 1, kbwidth = 19.34, device = device)
+kbinterp = tkbn.KbInterpAdjoint(im_size=(256,256), grid_size = (256,256), numpoints = 3, kbwidth = 8.34, device = device)
+
+recon_im_size = (256,256)
+recon_grid_size = (1024,1024)
+recon_num_points = 6
+recon_kbwidth = 9.15
+kbinterp2 = tkbn.KbInterpAdjoint(im_size=recon_im_size, grid_size = recon_grid_size, numpoints = recon_num_points, kbwidth = recon_kbwidth, device = device)
+kbinterp_full = tkbn.KbInterpAdjoint(im_size=recon_im_size, grid_size = recon_grid_size, numpoints = 6, kbwidth = 9.34, device = device)
+
 
 def get_omega2d(thetas, rad_max = 128):
     
@@ -105,6 +112,11 @@ def get_omega2d(thetas, rad_max = 128):
         # omega1 = torch.Size([2, 65, 513]) for the 65 spoke, first nufft
     return omega1
 
+
+angles = GA*np.arange(1000)
+omega_full = get_omega2d(angles, rad_max = 2048).to(device).reshape(2,-1)
+
+dcomp_full = tkbn.calc_density_compensation_function(ktraj=omega_full, im_size=recon_im_size, grid_size = recon_grid_size, numpoints = 6, kbwidth = 9.34).to(device)
 
 transform = torch.nn.Sequential(
     transforms.Resize((256,256), antialias = True),
@@ -134,7 +146,7 @@ else:
     # for angle_index in tqdm(range(377), desc = 'Writing Metadata spoke_masks'):
     #     angles = GA*(np.arange(1)+angle_index)
     #     omega1 = get_omega2d(angles, rad_max = 256).to(device).reshape(2,-1)
-    #     dcomp_full = tkbn.calc_density_compensation_function(ktraj=omega1, im_size=(256,256), grid_size = (1024,1024), numpoints = 8, kbwidth = 0.34)
+    #     dcomp_full = tkbn.calc_density_compensation_function(ktraj=omega1, im_size=(256,256), grid_size = (512,512), numpoints = 8, kbwidth = 0.34)
     #     metadic['spoke_masks'][angle_index] = torch.fft.fftshift(kbinterp(dcomp_full, omega1)[0,:].abs().squeeze(), dim = (-2,-1)).cpu() > 0
     #     mask = torch.fft.fftshift(kbinterp(dcomp_full, omega1)[0,:].abs().squeeze(), dim = (-2,-1)).cpu()
     #     print(mask.sum())
@@ -199,28 +211,102 @@ if not args.metadata_only:
                 coil_variant = metadic['coil_variant_per_patient_per_video'][p_num][vi]
                 curr_coil = metadic['coil_masks'][coil_variant]
 
+
                 input_frame = dic['targ_video'][fi,:,:,:] * curr_coil
+
+
+                temp = ((input_frame**2).sum(0)**0.5)
+                input_frame = input_frame / (1e-10 + temp.max())
+                temp = ((input_frame**2).sum(0)**0.5)
+
                 angle_indices = metadic['GAs_per_patient_per_video'][p_num][vi][fi]
                 angles = GA*angle_indices
 
-                omega1 = get_omega2d(angles, rad_max = 256).to(device).reshape(2,-1)
+                omega1 = get_omega2d(angles, rad_max = 2048).to(device).reshape(2,-1)
 
-                padded_frame = torch.zeros(1, N_COILS, 2*input_frame.shape[1],2*input_frame.shape[2])
-                padded_frame[0,:,(RES//2):(RES//2)+RES,(RES//2):(RES//2)+RES] = input_frame
+                padded_frame = torch.zeros(1, N_COILS, input_frame.shape[1],input_frame.shape[2])
+                # padded_frame[0,:,(RES//2):(RES//2)+RES,(RES//2):(RES//2)+RES] = torch.fft.fftshift(input_frame, dim = (-2, -1))
+                # padded_frame[0,:,(RES//2):(RES//2)+RES,(RES//2):(RES//2)+RES] = input_frame
+                padded_frame[0,:,:,:] = input_frame
+                padded_frame = torch.fft.fft2(padded_frame)
+                # print(padded_frame.real.min(), padded_frame.real.max())
+                # print(padded_frame.imag.min(), padded_frame.imag.max(), '\n')
 
-                y = kb_ob(torch.complex(padded_frame,padded_frame*0).to(device),omega1)
+                y = kb_ob(padded_frame.to(device),omega1)
+                y_full = kb_ob(padded_frame.to(device),omega_full)
 
-                dcomp_full = tkbn.calc_density_compensation_function(ktraj=omega1, im_size=(256,256), grid_size = (1024,1024), numpoints = 4, kbwidth = 2.34).to(device)
-                dic['spoke_mask'][fi,0,:,:] = torch.fft.fftshift(kbinterp(dcomp_full, omega1)[0,:].abs().squeeze(), dim = (-2,-1)).cpu() > 0
+                # print(y_full.abs().min(), y_full.abs().max())
+                # print(y_full.real.min(), y_full.real.max())
+                # print(y_full.imag.min(), y_full.imag.max(), '\n')
 
-                myfft_interp = torch.fft.fftshift(kbinterp2(dcomp_full*y, omega1)[0,:].cpu())
+                dcomp_under = tkbn.calc_density_compensation_function(ktraj=omega1, im_size=recon_im_size, grid_size = recon_grid_size, numpoints = recon_num_points, kbwidth = recon_kbwidth).to(device)
+                dic['spoke_mask'][fi,0,:,:] = torch.fft.fftshift(kbinterp(dcomp_under, omega1)[0,:].abs().squeeze(), dim = (-2,-1)).cpu() > 0.1
+
+                myfft_interp = torch.fft.fftshift(kbinterp2(dcomp_under*y, omega1)[0,:].cpu(), dim = (-2,-1))
+                myfft_interp_full = torch.fft.fftshift(kbinterp_full(dcomp_full*y_full, omega_full)[0,:].cpu(), dim = (-2,-1))
+
+
+                
                 myfft_interp = myfft_interp[:,::4,::4]
+                myfft_interp_full = myfft_interp_full[:,::4,::4]
+
+                # myfft_interp = myfft_interp_full * dic['spoke_mask'][fi,0:1,:,:]
+
+                og_fft = torch.fft.fftshift(torch.fft.fft2(input_frame), dim = (-2,-1))
+                
+                temp = torch.fft.ifft2(torch.fft.ifftshift(myfft_interp_full, dim = (-2,-1)))
+                temp = temp - temp.abs().min(2)[0].min(1)[0].unsqueeze(-1).unsqueeze(-1)
+                # print(temp.abs().min(), temp.abs().max())
+                # print(temp.shape)
+                # asdf
+                scaling_factor = 1/(1e-10 + ((temp.abs()**2).sum(0)**0.5).max())
+                temp = temp * scaling_factor
+                # scaling_factor = 1/(1e-10 + ((temp**2).sum(0)**0.5).max())
+                # print(scaling_factor)
+                temp = torch.fft.fftshift(torch.fft.fft2(temp), dim = (-2,-1))
+                
+                true_dc = temp[:,RES//2,RES//2].clone()
+                temp[:,RES//2,RES//2] = 0
+                myfft_interp_full[:,RES//2,RES//2] = 0
+                myfft_interp[:,RES//2,RES//2] = 0
+
+                myfft_interp_full = myfft_interp_full * (temp.abs()[:,127:130,127:130].mean() / (myfft_interp_full.abs()[:,127:130,127:130].mean() + 1e-10))
+                myfft_interp = myfft_interp * (myfft_interp_full.abs()[:,127:130,127:130].mean() / (myfft_interp.abs()[:,127:130,127:130].mean() + 1e-10))
+                myfft_interp_full[:,RES//2,RES//2] = true_dc
+                myfft_interp[:,RES//2,RES//2] = true_dc
 
                 dic['coilwise_input'][fi] = myfft_interp
+                # myfft_interp = myfft_interp * (temp.abs().max() / (myfft_interp.abs().max() + 1e-10))
+
+                # og_input_frame = input_frame
+                # print(myfft_interp_full.shape)
+                # og_frame_recon = (torch.fft.ifft2(torch.fft.ifftshift(myfft_interp_full, dim = (-2,-1))).abs()**2).sum(0)**0.5
+                # print(og_frame_recon.min(), og_frame_recon.max())
+                # plt.imsave('og_frame.jpg', og_frame_recon, cmap = 'gray')
+                # print('L1', (og_input_frame - input_frame).abs().mean()  )
+
+                
+                # print(myfft_interp[0,126:130,126:130])
+                # print(myfft_interp.abs().min(), myfft_interp.abs().max())
+                # print(myfft_interp.real.min(), myfft_interp.real.max())
+                # print(myfft_interp.imag.min(), myfft_interp.imag.max(), '\n')
+
+                # print(myfft_interp_full[0,126:130,126:130])
+                # print(myfft_interp_full.abs().min(), myfft_interp_full.abs().max())
+                # print(myfft_interp_full.real.min(), myfft_interp_full.real.max())
+                # print(myfft_interp_full.imag.min(), myfft_interp_full.imag.max(), '\n')
+
+                # print(og_fft[0,126:130,126:130])
+                # print(og_fft.abs().min(), og_fft.abs().max())
+                # print(og_fft.real.min(), og_fft.real.max())
+                # print(og_fft.imag.min(), og_fft.imag.max(), '\n\n\n')
 
 
-                # inverse_interp = torch.fft.ifft2(torch.fft.ifftshift(myfft_interp))
-                # for coil in range(8):
+                # inverse_interp = torch.fft.ifft2(torch.fft.ifftshift(myfft_interp, dim = (-2,-1)))
+                # inverse_interp_full = torch.fft.ifft2(torch.fft.ifftshift(myfft_interp_full, dim = (-2,-1)))
+                # for coil in range(curr_coil.shape[0]):
+                #     plt.imsave('coil_{}_inverse_interp_gt.jpg'.format(coil), input_frame[coil], cmap = 'gray')
+                #     plt.imsave('coil_{}_inverse_interp_full.jpg'.format(coil), inverse_interp_full.abs()[coil], cmap = 'gray')
                 #     plt.imsave('coil_{}_inverse_interp.jpg'.format(coil), inverse_interp.abs()[coil], cmap = 'gray')
                 #     plt.imsave('coil_{}_mag_of_log_interp.jpg'.format(coil), (myfft_interp + torch.complex(torch.tensor([1e-10]),torch.tensor([1e-10])).exp()).log().abs()[coil], cmap = 'gray')
                 #     plt.imsave('coil_{}_phase_interp.jpg'.format(coil), torch.atan2(myfft_interp.imag, myfft_interp.real)[coil], cmap = 'gray')
