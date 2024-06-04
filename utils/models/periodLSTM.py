@@ -702,7 +702,7 @@ class convLSTM_Kspace1(nn.Module):
         return times
 
 
-    def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
+    def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None, epoch = np.inf):
 
         # print(fft_exp[0,0,0,:8,:8])
         mag_log = mylog(fft_exp.abs().clip(1e-5,1e20), base = self.param_dic['logarithm_base']) + 5
@@ -974,7 +974,10 @@ class convLSTM_Kspace1(nn.Module):
                             # print('\n')
                             loss_real += criterionL1(predr_ti*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
                             if prev_output3 is not None:
-                                loss_real += criterionL1(prev_output3*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+                                if epoch < 100:
+                                    loss_real += 1e-10*criterionL1(prev_output3*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+                                else:
+                                    loss_real += 8*criterionL1(prev_output3*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
                     
                         with torch.no_grad():
                             loss_l1 += (predr_ti- targ_now).reshape(predr_ti.shape[0]*predr_ti.shape[1], -1).abs().mean(1).sum().detach().cpu()/self.param_dic['n_lstm_cells']

@@ -321,6 +321,8 @@ class Trainer(nn.Module):
                         inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
                     else:
                         og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
+                        temp = ((og_coiled_vids**2).sum(2)**0.5).max(-1)[0].max(-1)[0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+                        og_coiled_vids = og_coiled_vids / (1e-10 + temp)
                         # og_coiled_vids = og_coiled_vids - og_coiled_vids.min(-1)[0].min(-1)[0].unsqueeze(-1).unsqueeze(-1)
                         # og_coiled_vids = og_coiled_vids / (og_coiled_vids.max(-1)[0].max(-1)[0].unsqueeze(-1).unsqueeze(-1) + EPS)
                         og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
@@ -335,7 +337,7 @@ class Trainer(nn.Module):
                             self.kspace_model.eval()
 
                     if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
-                        predr, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
+                        predr, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video, epoch = epoch)
 
                         predr_sos = ((predr**2).sum(2, keepdim = True) ** 0.5)[:,kspace_skip_frames_loss:]
                         targ_vid = og_video.to(self.device)[:,kspace_skip_frames_loss:]
@@ -587,6 +589,8 @@ class Trainer(nn.Module):
                         inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
                     else:
                         og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
+                        temp = ((og_coiled_vids**2).sum(2)**0.5).max(-1)[0].max(-1)[0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+                        og_coiled_vids = og_coiled_vids / (1e-10 + temp)
                         # og_coiled_vids = og_coiled_vids - og_coiled_vids.min(-1)[0].min(-1)[0].unsqueeze(-1).unsqueeze(-1)
                         # og_coiled_vids = og_coiled_vids / (og_coiled_vids.max(-1)[0].max(-1)[0].unsqueeze(-1).unsqueeze(-1) + EPS)
                         og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
@@ -898,6 +902,8 @@ class Trainer(nn.Module):
                     inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
                 else:
                     og_coiled_vids = og_video.to(self.device) * coils_used.to(self.device)
+                    temp = ((og_coiled_vids**2).sum(2)**0.5).max(-1)[0].max(-1)[0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+                    og_coiled_vids = og_coiled_vids / (1e-10 + temp)
                     # og_coiled_vids = og_coiled_vids - og_coiled_vids.min(-1)[0].min(-1)[0].unsqueeze(-1).unsqueeze(-1)
                     # og_coiled_vids = og_coiled_vids / (og_coiled_vids.max(-1)[0].max(-1)[0].unsqueeze(-1).unsqueeze(-1) + EPS)
                     og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
