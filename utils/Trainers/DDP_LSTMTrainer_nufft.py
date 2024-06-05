@@ -924,6 +924,8 @@ class Trainer(nn.Module):
                 if not (self.parameters['skip_kspace_lstm'] and (not self.parameters['ispace_lstm'])):
                     # predr, _, _, loss_mag, loss_phase, loss_real,loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
                     predr, predr_kspace, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
+                    if predr_kspace is None:
+                        predr_kspace = predr
                 else:
                     predr = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts, dim = (-2,-1))).abs().to(self.device)
                     predr_kspace = predr
