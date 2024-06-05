@@ -1,4 +1,3 @@
-import numpy as np
 parameters = {}
 parameters['save_folder'] = '/Data/ContijochLab/projects/cineMRIRecon'
 parameters['image_resolution'] = 256
@@ -28,47 +27,44 @@ parameters['forget_gate_same_phase_mag'] = True
 parameters['logarithm_base'] = 10
 parameters['memoise_ispace'] = True
 
-
 parameters['skip_kspace_lstm'] = False
 parameters['coilwise'] = True
 assert( not (parameters['coilwise'] and parameters['kspace_combine_coils']))
 parameters['crop_loss'] = False
 parameters['lstm_input_proc_identity'] = False
-parameters['lstm_forget_gate_loss'] = True
+parameters['lstm_forget_gate_loss'] = False
 parameters['lstm_input_gate_loss'] = True
 parameters['coil_combine'] = 'UNET'
 assert(parameters['coil_combine'] in ['SOS', 'UNET'])
 
 
 
-parameters['ispace_lstm'] = True
+parameters['ispace_lstm'] = False
 parameters['ispace_architecture'] = 'ILSTM1'
 parameters['image_space_real'] = True
 parameters['history_length'] = 0
-parameters['loop_videos'] = 32
+parameters['loop_videos'] = 30
 parameters['dataset'] = 'acdc'
 parameters['train_test_split'] = 0.8
 parameters['normalisation'] = False
-parameters['window_size'] = [np.inf]
-parameters['gate_cat_prev_output'] = False
-parameters['init_skip_frames'] = 8
+parameters['window_size'] = -1
+parameters['init_skip_frames'] = 20
 parameters['SHM_looping'] = False
 parameters['FT_radial_sampling'] = 10
 parameters['num_coils'] = 8
 parameters['scale_input_fft'] = False
-parameters['dataloader_num_workers'] = 8
+parameters['dataloader_num_workers'] = 6
 parameters['optimizer'] = 'Adam'
 parameters['scheduler'] = 'CyclicLR'
 parameters['optimizer_params'] = (0.9, 0.999)
 parameters['scheduler_params'] = {
     'base_lr': 4e-6,
     'max_lr': 4e-4,
-    'step_size_up': 3000,
+    'step_size_up': 600,
     'mode': 'exp_range',
     'step_size': parameters['num_epochs_kspace']//3,
     'gamma': 0.9999,
     'verbose': True,
-    'cycle_momentum': False,
 }
 parameters['ispace_scheduler_params'] = {
     'base_lr': 4e-6,
