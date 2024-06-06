@@ -325,6 +325,8 @@ def train_paradigm(rank, world_size, args, parameters):
             # dic['scaler'] = trainer.scaler.state_dict()
             if (e+1) % SAVE_INTERVAL == 0:
                 if e > parameters['num_epochs_kspace']:
+                    model_state = 2
+                elif e > 100:
                     model_state = 1
                 else:
                     model_state = 0
