@@ -265,6 +265,7 @@ class convLSTMcell_kspace(nn.Module):
         loss_forget_gate = 0
         loss_input_gate = 0
         criterionL1 = nn.L1Loss()
+        criterionL2 = nn.MSELoss()
         if mag_gates_remember is None:
             mag_gates_remember = [[] for i in range(self.n_lstm_cells)]
             if not self.forget_gate_same_phase_mag:
@@ -733,6 +734,7 @@ class convLSTM_Kspace1(nn.Module):
             loss_l2 = 0
             loss_ss1 = 0
             criterionL1 = nn.L1Loss().to(device)
+            criterionL2 = nn.MSELoss().to(device)
             criterionCos = nn.CosineSimilarity(dim = 4) 
         else:
             loss_phase = None
@@ -934,9 +936,9 @@ class convLSTM_Kspace1(nn.Module):
                             # print(predr_ti.min(), predr_ti.max())
                             # print(targ_now.min(), targ_now.max())
                             # print('\n')
-                            loss_real += criterionL1(predr_ti*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+                            loss_real += criterionL2(predr_ti*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
                             if prev_output3 is not None:
-                                loss_real += 8*criterionL1(prev_output3*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+                                loss_real += 8*criterionL2(prev_output3*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
                     
                         with torch.no_grad():
                             loss_l1 += (predr_ti- targ_now).reshape(predr_ti.shape[0]*predr_ti.shape[1], -1).abs().mean(1).sum().detach().cpu()/self.param_dic['n_lstm_cells']
