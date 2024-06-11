@@ -226,7 +226,7 @@ class Trainer(nn.Module):
                 self.ispace_scheduler = optim.lr_scheduler.CyclicLR(self.ispace_optim, ispace_mydic['base_lr'], ispace_mydic['max_lr'], step_size_up=ispace_mydic['step_size_up'], mode=ispace_mydic['mode'], cycle_momentum = ispace_mydic['cycle_momentum'])
 
         self.l1loss = fetch_loss_function('L1',self.device, self.parameters['loss_params'])
-        # self.l2loss = fetch_loss_function('L2',self.device, self.parameters['loss_params'])
+        self.l2loss = fetch_loss_function('L2',self.device, self.parameters['loss_params'])
         self.SSIM = kornia.metrics.SSIM(11)
         self.msssim_loss = kornia.losses.SSIMLoss(11).to(device)
         self.HM = Histogram_Matching(differentiable=False)
@@ -459,7 +459,7 @@ class Trainer(nn.Module):
                 if self.ispace_mode:
                     loss_ss1 = self.msssim_loss(outp.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
                     loss = 0.2*loss_ss1
-                    loss += self.l1loss(outp*mask, targ_vid*mask)
+                    loss += self.l2loss(outp*mask, targ_vid*mask)
 
                     # ss1 = self.SSIM(outp.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
                     # ss1 = ss1.reshape(ss1.shape[0],-1)

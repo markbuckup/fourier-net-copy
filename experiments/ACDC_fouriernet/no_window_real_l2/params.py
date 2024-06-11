@@ -27,6 +27,7 @@ parameters['forget_gate_same_coils'] = True
 parameters['forget_gate_same_phase_mag'] = True
 parameters['logarithm_base'] = 10
 parameters['memoise_ispace'] = True
+parameters['acdc_debug_mini'] = True
 
 
 parameters['skip_kspace_lstm'] = False

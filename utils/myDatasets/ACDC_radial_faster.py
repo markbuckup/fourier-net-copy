@@ -217,8 +217,9 @@ class ACDC_radial(Dataset):
             self.num_patients = self.num_patients - int(self.train_split*self.num_patients)
         
         # # DEBUG
-        self.num_vids_per_patient *= 0
-        self.num_vids_per_patient += 1
+        if self.parameters['acdc_debug_mini']:
+            self.num_vids_per_patient *= 0
+            self.num_vids_per_patient += 1
         # # DEBUG
 
         self.num_vids_per_patient = self.num_vids_per_patient[self.offset:self.offset+self.num_patients]

@@ -514,17 +514,17 @@ class convLSTM_Kspace1(nn.Module):
             self.kspace_m = Identity(n_lstm_cells = self.param_dic['n_lstm_cells'], ispace_lstm = self.param_dic['ispace_lstm'])
 
         if self.param_dic['ispace_lstm']:
-            # self.ispacem = convLSTMcell(
-            #         tanh_mode = False, 
-            #         sigmoid_mode = sigmoid_mode, 
-            #         real_mode = True, 
-            #         in_channels = 1, 
-            #         out_channels = 1, 
-            #     )
-            self.ispacem = UNet(
+            self.ispacem = convLSTMcell(
+                    tanh_mode = False, 
+                    sigmoid_mode = sigmoid_mode, 
+                    real_mode = True, 
                     in_channels = 1, 
                     out_channels = 1, 
                 )
+            # self.ispacem = UNet(
+            #         in_channels = 1, 
+            #         out_channels = 1, 
+            #     )
         self.SSIM = kornia.metrics.SSIM(11)
 
         if self.param_dic['crop_loss']:
@@ -793,7 +793,10 @@ class convLSTM_Kspace1(nn.Module):
                 curr_mask = None
             else:
                 curr_mask = gt_masks[:,ti,:,:,:]
-            random_window_size = np.random.choice(self.param_dic['window_size'])
+            if epoch < 200:
+                random_window_size = np.inf
+            else:
+                random_window_size = np.random.choice(self.param_dic['window_size'])
             prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(
                                                                                                                                                         hist_mag,
                                                                                                                                                         hist_phase,
@@ -861,8 +864,8 @@ class convLSTM_Kspace1(nn.Module):
                     if prev_output3 is not None:
                         prev_output3 = prev_output3.reshape(B*C, 1, numr, numc)
                     # print(predr_ti.min(), predr_ti.max())
-                    # prev_state3, prev_output3 = self.ispacem(predr_ti.detach().clone(), prev_state3, prev_output3)
-                    prev_output3 = self.ispacem(predr_ti)
+                    prev_state3, prev_output3 = self.ispacem(predr_ti, prev_state3, prev_output3)
+                    # prev_output3 = self.ispacem(predr_ti)
                     # print(prev_output3.min(), prev_output3.max())
                     # print(targ_real[:,ti,:,:,:].min(), targ_real[:,ti,:,:,:].max())
                     # print('\n\n')
@@ -936,9 +939,12 @@ class convLSTM_Kspace1(nn.Module):
                             # print(predr_ti.min(), predr_ti.max())
                             # print(targ_now.min(), targ_now.max())
                             # print('\n')
-                            loss_real += criterionL1(predr_ti*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
                             if prev_output3 is not None:
-                                loss_real += 8*criterionL1(prev_output3*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+                                if epoch < 100:
+                                    loss_real += 1e-10*criterionL2(prev_output3*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+                                else:
+                                    loss_real += 8*criterionL2(prev_output3*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
+                            loss_real += criterionL2(predr_ti*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_lstm_cells'])
                     
                         with torch.no_grad():
                             loss_l1 += (predr_ti- targ_now).reshape(predr_ti.shape[0]*predr_ti.shape[1], -1).abs().mean(1).sum().detach().cpu()/self.param_dic['n_lstm_cells']

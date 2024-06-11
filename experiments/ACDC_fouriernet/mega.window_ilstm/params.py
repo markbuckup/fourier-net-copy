@@ -6,9 +6,9 @@ parameters['train_batch_size'] = 1
 parameters['test_batch_size'] = 1
 parameters['lr_kspace'] = 1e-5
 parameters['lr_ispace'] = 1e-5
-parameters['num_epochs_ispace'] = 200
+parameters['num_epochs_ispace'] = 300
 parameters['num_epochs_kspace'] = 300
-parameters['num_epochs_total'] = 500
+parameters['num_epochs_total'] = 600
 assert(parameters['num_epochs_kspace'] <= parameters['num_epochs_total'])
 assert(parameters['num_epochs_ispace'] <= parameters['num_epochs_total'])
 parameters['kspace_architecture'] = 'KLSTM1'
@@ -27,7 +27,7 @@ parameters['forget_gate_same_coils'] = True
 parameters['forget_gate_same_phase_mag'] = True
 parameters['logarithm_base'] = 10
 parameters['memoise_ispace'] = True
-parameters['acdc_debug_mini'] = True
+parameters['acdc_debug_mini'] = False
 
 
 parameters['skip_kspace_lstm'] = False
@@ -35,29 +35,29 @@ parameters['coilwise'] = True
 assert( not (parameters['coilwise'] and parameters['kspace_combine_coils']))
 parameters['crop_loss'] = False
 parameters['lstm_input_proc_identity'] = False
-parameters['lstm_forget_gate_loss'] = False
+parameters['lstm_forget_gate_loss'] = True
 parameters['lstm_input_gate_loss'] = True
 parameters['coil_combine'] = 'UNET'
 assert(parameters['coil_combine'] in ['SOS', 'UNET'])
 
 
 
-parameters['ispace_lstm'] = False
+parameters['ispace_lstm'] = True
 parameters['ispace_architecture'] = 'ILSTM1'
 parameters['image_space_real'] = True
 parameters['history_length'] = 0
-parameters['loop_videos'] = 32
+parameters['loop_videos'] = 30
 parameters['dataset'] = 'acdc'
 parameters['train_test_split'] = 0.8
 parameters['normalisation'] = False
-parameters['window_size'] = [np.inf]
+parameters['window_size'] = [2]
 parameters['gate_cat_prev_output'] = False
 parameters['init_skip_frames'] = 8
 parameters['SHM_looping'] = False
 parameters['FT_radial_sampling'] = 10
 parameters['num_coils'] = 8
 parameters['scale_input_fft'] = False
-parameters['dataloader_num_workers'] = 6
+parameters['dataloader_num_workers'] = 8
 parameters['optimizer'] = 'Adam'
 parameters['scheduler'] = 'CyclicLR'
 parameters['optimizer_params'] = (0.9, 0.999)
