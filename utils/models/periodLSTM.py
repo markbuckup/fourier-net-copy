@@ -394,7 +394,7 @@ class convLSTMcell_kspace(nn.Module):
         return new_mag_outputs[1:], new_phase_outputs[1:], loss_forget_gate, loss_input_gate, mag_gates_remember, phase_gates_remember
 
 class convLSTMcell(nn.Module):
-    def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, sigmoid_mode = True, real_mode = False, theta = False, mini = False):
+    def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, sigmoid_mode = True, real_mode = False, theta = False, mini = False, ilstm_gate_cat_prev_output = False):
         super(convLSTMcell, self).__init__()
         self.tanh_mode = tanh_mode
         self.mini = mini
@@ -403,6 +403,7 @@ class convLSTMcell(nn.Module):
         self.in_channels = in_channels
         self.real_mode = real_mode
         self.theta = theta
+        self.ilstm_gate_cat_prev_output = ilstm_gate_cat_prev_output
         if real_mode:
             cnn_func = nn.Conv2d
             relu_func = nn.ReLU
@@ -421,20 +422,30 @@ class convLSTMcell(nn.Module):
             else:
                 self.activation = lambda x: x
 
+        if self.ilstm_gate_cat_prev_output:
+            gate_input_size = self.in_channels + self.out_channels
+        else:
+            gate_input_size = self.in_channels
+
         self.inputGate = nn.Sequential(
-                cnn_func(self.in_channels, self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                cnn_func(gate_input_size, 2*self.in_channels, (3,3), stride = (1,1), padding = (1,1)),
                 relu_func(),
+                cnn_func(2*self.in_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
             )
         self.forgetGate = nn.Sequential(
-                cnn_func(self.in_channels, self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                cnn_func(gate_input_size, 2*self.in_channels, (3,3), stride = (1,1), padding = (1,1)),
                 relu_func(),
+                cnn_func(2*self.in_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
             )
         self.outputGate = nn.Sequential(
-                cnn_func(self.in_channels, self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                cnn_func(gate_input_size, 2*self.in_channels, (3,3), stride = (1,1), padding = (1,1)),
                 relu_func(),
+                cnn_func(2*self.in_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
             )
         self.inputProc = nn.Sequential(
-                cnn_func(self.in_channels, self.out_channels, (3,3), stride = (1,1), padding = (1,1)),
+                cnn_func(gate_input_size, 2*self.in_channels, (3,3), stride = (1,1), padding = (1,1)),
+                relu_func(),
+                cnn_func(2*self.in_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
                 relu_func(),
             )
 
@@ -443,9 +454,12 @@ class convLSTMcell(nn.Module):
         if prev_state is None:
             shape1 = (x.shape[0], self.out_channels, *x.shape[2:])
             prev_state = torch.zeros(shape1, device = x.device)
-            # prev_output = torch.zeros(shape1, device = x.device)
-        # inp_cat = torch.cat((x, prev_output), 1)
-        inp_cat = x
+            if self.ilstm_gate_cat_prev_output:
+                prev_output = torch.zeros(shape1, device = x.device)
+        if self.ilstm_gate_cat_prev_output:
+            inp_cat = torch.cat((x, prev_output), 1)
+        else:
+            inp_cat = x
 
         if self.sigmoid_mode:
             ft = torch.sigmoid(self.forgetGate(inp_cat))
@@ -520,6 +534,7 @@ class convLSTM_Kspace1(nn.Module):
                     real_mode = True, 
                     in_channels = 1, 
                     out_channels = 1, 
+                    ilstm_gate_cat_prev_output = self.param_dic['ilstm_gate_cat_prev_output'],
                 )
             # self.ispacem = UNet(
             #         in_channels = 1, 
