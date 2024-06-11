@@ -42,7 +42,7 @@ assert(parameters['coil_combine'] in ['SOS', 'UNET'])
 
 
 
-parameters['ispace_lstm'] = False
+parameters['ispace_lstm'] = True
 parameters['ispace_architecture'] = 'ILSTM1'
 parameters['image_space_real'] = True
 parameters['history_length'] = 0
