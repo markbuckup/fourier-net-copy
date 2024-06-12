@@ -1,6 +1,5 @@
 import os
 import sys
-sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
 import PIL
 import time
 import scipy
@@ -16,9 +15,6 @@ from PIL import Image
 from tqdm import tqdm
 from torchvision import transforms, datasets
 from torch.utils.data.dataset import Dataset
-# from utils.functions import get_window_mask
-from utils.functions import get_coil_mask, get_golden_bars
-from utils.models.MDCNN import MDCNN
 
 EPS = 1e-10
 CEPS = torch.complex(torch.tensor(EPS),torch.tensor(EPS)).exp()
@@ -290,6 +286,7 @@ class ACDC_radial(Dataset):
         masks_applicable = dic['spoke_mask'].type(torch.float32)[:self.loop_videos,:,:,:]
         og_video = ((dic['targ_video']/255.)[:self.loop_videos,:,:,:])
         undersampled_fts = dic['coilwise_input'][:self.loop_videos,:,:,:]
+        coilwise_targets = (dic['coilwise_targets']/255.)[:self.loop_videos,:,:,:]
 
         # for i in range(8):
         #     plt.imsave('{}_{}_undersampled_fts_{}.jpg'.format(p_num, v_num, i), torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts[0,i,:,:])).abs(), cmap = 'gray')
@@ -297,7 +294,7 @@ class ACDC_radial(Dataset):
 
         Nf = self.actual_frames_per_vid_per_patient[p_num]
 
-        return torch.tensor([actual_pnum, v_num]), masks_applicable, og_video, undersampled_fts, coils_used, Nf
+        return torch.tensor([actual_pnum, v_num]), masks_applicable, og_video, coilwise_targets, undersampled_fts, coils_used, Nf
 
         
     def __len__(self):
