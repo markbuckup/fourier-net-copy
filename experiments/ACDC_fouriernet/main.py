@@ -28,13 +28,13 @@ os.environ['display'] = 'localhost:14.0'
 from utils.DDP_paradigms_LSTM_nufft import train_paradigm, test_paradigm
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--resume', action = 'store_true')
-parser.add_argument('--time_analysis', action = 'store_true')
-parser.add_argument('--resume_kspace', action = 'store_true')
-parser.add_argument('--eval', action = 'store_true')
-parser.add_argument('--eval_on_real', action = 'store_true')
-parser.add_argument('--write_csv', action = 'store_true')
-parser.add_argument('--test_only', action = 'store_true')
+parser.add_argument('--resume', action = 'store_true', help = 'Resumes the code from the latest checkpoint')
+parser.add_argument('--time_analysis', action = 'store_true', help = 'Computes and prints the time taken per frame')
+parser.add_argument('--resume_kspace', action = 'store_true', help = 'Resumes the Neural Network after the first 100 epochs, that is, before the image lstm starts training')
+parser.add_argument('--eval', action = 'store_true', help = 'Evaluates the architecture - prints the SSIM and saves the predicted images')
+parser.add_argument('--eval_on_real', action = 'store_true', help = '[Under development] Runs the evaluate script on real data')
+parser.add_argument('--write_csv', action = 'store_true', help = '[Not Updated since October 2023] Stores the l1/l2/ssim scores for each frame into a csv')
+parser.add_argument('--test_only', action = 'store_true', help = '')
 parser.add_argument('--visualise_only', action = 'store_true')
 parser.add_argument('--motion_mask', action = 'store_true')
 parser.add_argument('--numbers_only', action = 'store_true')
@@ -50,6 +50,7 @@ parser.add_argument('--state', type = int, default = -1)
 parser.add_argument('--gpu', nargs='+', type = int, default = [-1])
 parser.add_argument('--neptune_log', action = 'store_true')
 parser.add_argument('--actual_data_path', default = '../../datasets/actual_data/data1.pth')
+parser.add_argument('--dataset_path', default = '/Data/ExtraDrive1/niraj/datasets/ACDC/')
 # parser.add_argument('--gpu', type = int, default = '-1')
 args = parser.parse_args()
 
@@ -61,7 +62,6 @@ sys.path.append('/root/Cardiac-MRI-Reconstrucion/experiments/ACDC_fouriernet/{}/
 from params import parameters
 if parameters['dataset'] == 'acdc':
     from utils.myDatasets.ACDC_radial import ACDC_radial as dataset
-    args.dataset_path = '../../datasets/ACDC'
     
 if args.numbers_only or args.visualise_only:
     parameters['init_skip_frames'] = 90
