@@ -5,7 +5,7 @@ import random
 import PIL
 import argparse
 import sys
-sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
+sys.path.append('../../')
 from tqdm import tqdm
 import kornia
 import pickle
@@ -38,6 +38,7 @@ parser.add_argument('--resolution', type = int, default = 256)
 parser.add_argument('--gpu', type = int, default = -1)
 parser.add_argument('--pat_start', type = int, default = 1)
 parser.add_argument('--pat_end', type = int, default = 150)
+parser.add_argument('--save_path', type = str, default = '/Data/ExtraDrive1/niraj/datasets/ACDC')
 parser.add_argument('--metadata_only', action = 'store_true')
 args = parser.parse_args()
 
@@ -85,13 +86,13 @@ N_COILS_VARIANTS = 100
 N_COILS = 8
 LOOP_FRAMES = 120
 
-kb_ob = tkbn.KbInterp(im_size=(256,256), grid_size = (1024,1024), numpoints = 1, kbwidth = 19.34, device = device)
-kbinterp = tkbn.KbInterpAdjoint(im_size=(256,256), grid_size = (256,256), numpoints = 3, kbwidth = 8.34, device = device)
+kb_ob = tkbn.KbInterp(im_size=(512,512), grid_size = (1024,1024), numpoints = 6, kbwidth = 19.34, device = device)
+kbinterp = tkbn.KbInterpAdjoint(im_size=(256,256), grid_size = (256,256), numpoints = 3, kbwidth = 2.34, device = device)
 
 recon_im_size = (256,256)
 recon_grid_size = (1024,1024)
-recon_num_points = 6
-recon_kbwidth = 9.15
+recon_num_points = 8
+recon_kbwidth = 0.84
 kbinterp2 = tkbn.KbInterpAdjoint(im_size=recon_im_size, grid_size = recon_grid_size, numpoints = recon_num_points, kbwidth = recon_kbwidth, device = device)
 kbinterp_full = tkbn.KbInterpAdjoint(im_size=recon_im_size, grid_size = recon_grid_size, numpoints = 6, kbwidth = 9.34, device = device)
 
@@ -128,7 +129,7 @@ if os.path.isfile(metapath):
     metadic = torch.load(metapath)
     print("Meta Data Loaded")
 else:
-    os.makedirs('radial_faster/{}_resolution_{}_spokes'.format(RES, NUM_SPOKES), exist_ok = True)
+    os.makedirs(os.path.join(args.save_path, 'radial_faster/{}_resolution_{}_spokes'.format(RES, NUM_SPOKES)), exist_ok = True)
     metadic = {}
     metadic['num_patients'] = NUM_PATIENTS
     metadic['coil_masks'] = torch.zeros((N_COILS_VARIANTS,N_COILS, RES, RES))
@@ -206,6 +207,7 @@ if not args.metadata_only:
             # dic['coilwise_input_mag'] = torch.zeros((LOOP_FRAMES, N_COILS, RES, RES)).type(torch.uint8) # FRAMES, COILS, RES, RES
             dic['coilwise_input'] = torch.zeros((LOOP_FRAMES, N_COILS, RES, RES)) # FRAMES, COILS, RES, RES
             dic['coilwise_input'] = torch.complex(dic['coilwise_input'],dic['coilwise_input'])
+            dic['coilwise_target'] = torch.zeros((LOOP_FRAMES, N_COILS, RES, RES)).type(torch.uint8) # FRAMES, COILS, RES, RES
 
             for fi in range(LOOP_FRAMES):
                 coil_variant = metadic['coil_variant_per_patient_per_video'][p_num][vi]
@@ -224,14 +226,10 @@ if not args.metadata_only:
 
                 omega1 = get_omega2d(angles, rad_max = 2048).to(device).reshape(2,-1)
 
-                padded_frame = torch.zeros(1, N_COILS, input_frame.shape[1],input_frame.shape[2])
-                # padded_frame[0,:,(RES//2):(RES//2)+RES,(RES//2):(RES//2)+RES] = torch.fft.fftshift(input_frame, dim = (-2, -1))
-                # padded_frame[0,:,(RES//2):(RES//2)+RES,(RES//2):(RES//2)+RES] = input_frame
-                padded_frame[0,:,:,:] = input_frame
+                padded_frame = torch.zeros(1, N_COILS, 2*input_frame.shape[1],2*input_frame.shape[2])
+                padded_frame[0,:,(RES//2):(RES//2)+RES,(RES//2):(RES//2)+RES] = input_frame
                 padded_frame = torch.fft.fft2(padded_frame)
-                # print(padded_frame.real.min(), padded_frame.real.max())
-                # print(padded_frame.imag.min(), padded_frame.imag.max(), '\n')
-
+                
                 y = kb_ob(padded_frame.to(device),omega1)
                 y_full = kb_ob(padded_frame.to(device),omega_full)
 
@@ -244,7 +242,6 @@ if not args.metadata_only:
 
                 myfft_interp = torch.fft.fftshift(kbinterp2(dcomp_under*y, omega1)[0,:].cpu(), dim = (-2,-1))
                 myfft_interp_full = torch.fft.fftshift(kbinterp_full(dcomp_full*y_full, omega_full)[0,:].cpu(), dim = (-2,-1))
-
 
                 
                 myfft_interp = myfft_interp[:,::4,::4]
@@ -270,12 +267,13 @@ if not args.metadata_only:
                 myfft_interp_full[:,RES//2,RES//2] = 0
                 myfft_interp[:,RES//2,RES//2] = 0
 
-                myfft_interp_full = myfft_interp_full * (temp.abs()[:,127:130,127:130].mean() / (myfft_interp_full.abs()[:,127:130,127:130].mean() + 1e-10))
-                myfft_interp = myfft_interp * (myfft_interp_full.abs()[:,127:130,127:130].mean() / (myfft_interp.abs()[:,127:130,127:130].mean() + 1e-10))
+                myfft_interp_full = myfft_interp_full * (temp.abs()[:,127:130,127:130].mean(-2, keepdim = True).mean(-1, keepdim = True) / (myfft_interp_full.abs()[:,127:130,127:130].mean(-2, keepdim = True).mean(-1, keepdim = True) + 1e-10))
+                myfft_interp = myfft_interp * (temp.abs()[:,127:130,127:130].mean(-2, keepdim = True).mean(-1, keepdim = True) / (myfft_interp.abs()[:,127:130,127:130].mean(-2, keepdim = True).mean(-1, keepdim = True) + 1e-10))
                 myfft_interp_full[:,RES//2,RES//2] = true_dc
                 myfft_interp[:,RES//2,RES//2] = true_dc
 
                 dic['coilwise_input'][fi] = myfft_interp
+                dic['coilwise_target'][fi] = (torch.fft.ifft2(torch.fft.ifftshift(myfft_interp_full, dim = (-2,-1))).abs().clip(0,1)*255).type(torch.uint8)
                 # myfft_interp = myfft_interp * (temp.abs().max() / (myfft_interp.abs().max() + 1e-10))
 
                 # og_input_frame = input_frame
@@ -286,15 +284,29 @@ if not args.metadata_only:
                 # print('L1', (og_input_frame - input_frame).abs().mean()  )
 
                 
-                # print(myfft_interp[0,126:130,126:130])
+                # print(temp.abs()[0,126:130,126:130])
+                # print(temp.abs().min(), temp.abs().max())
+                # print(temp.real.min(), temp.real.max())
+                # print(temp.imag.min(), temp.imag.max(), '\n')
+
+                # print(myfft_interp.abs()[0,126:130,126:130])
                 # print(myfft_interp.abs().min(), myfft_interp.abs().max())
                 # print(myfft_interp.real.min(), myfft_interp.real.max())
                 # print(myfft_interp.imag.min(), myfft_interp.imag.max(), '\n')
 
-                # print(myfft_interp_full[0,126:130,126:130])
+                # print(myfft_interp_full.abs()[0,126:130,126:130])
                 # print(myfft_interp_full.abs().min(), myfft_interp_full.abs().max())
                 # print(myfft_interp_full.real.min(), myfft_interp_full.real.max())
                 # print(myfft_interp_full.imag.min(), myfft_interp_full.imag.max(), '\n')
+
+                interp_full_inverse = dic['coilwise_target'][fi]
+                interp_full_inverse = interp_full_inverse / 255.
+                interp_full_inverse = torch.fft.fftshift(torch.fft.fft2(interp_full_inverse), dim = (-2,-1))
+
+                # print(interp_full_inverse.abs()[0,126:130,126:130])
+                # print(interp_full_inverse.abs().min(), interp_full_inverse.abs().max())
+                # print(interp_full_inverse.real.min(), interp_full_inverse.real.max())
+                # print(interp_full_inverse.imag.min(), interp_full_inverse.imag.max(), '\n')
 
                 # print(og_fft[0,126:130,126:130])
                 # print(og_fft.abs().min(), og_fft.abs().max())
@@ -302,8 +314,8 @@ if not args.metadata_only:
                 # print(og_fft.imag.min(), og_fft.imag.max(), '\n\n\n')
 
 
-                # inverse_interp = torch.fft.ifft2(torch.fft.ifftshift(myfft_interp, dim = (-2,-1)))
-                # inverse_interp_full = torch.fft.ifft2(torch.fft.ifftshift(myfft_interp_full, dim = (-2,-1)))
+                inverse_interp = torch.fft.ifft2(torch.fft.ifftshift(myfft_interp, dim = (-2,-1)))
+                inverse_interp_full = torch.fft.ifft2(torch.fft.ifftshift(myfft_interp_full, dim = (-2,-1)))
                 # for coil in range(curr_coil.shape[0]):
                 #     plt.imsave('coil_{}_inverse_interp_gt.jpg'.format(coil), input_frame[coil], cmap = 'gray')
                 #     plt.imsave('coil_{}_inverse_interp_full.jpg'.format(coil), inverse_interp_full.abs()[coil], cmap = 'gray')
