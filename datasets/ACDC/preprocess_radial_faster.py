@@ -179,7 +179,7 @@ else:
 
 if not args.metadata_only:
     for p_num in range(args.pat_start-1, args.pat_end):
-        folder_name = 'radial_faster/{}_resolution_{}_spokes/patient_{}'.format(RES, NUM_SPOKES,p_num+1)
+        folder_name = os.path.join(args.save_path, 'radial_faster/{}_resolution_{}_spokes/patient_{}'.format(RES, NUM_SPOKES,p_num+1))
         os.makedirs(folder_name, exist_ok = True)
 
         path = num_to_str(p_num+1)
