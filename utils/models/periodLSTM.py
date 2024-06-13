@@ -24,6 +24,14 @@ EPS = 1e-10
 CEPS = torch.complex(torch.tensor(EPS),torch.tensor(EPS))
 
 class Identity(nn.Module):
+    """
+    A simple identity module - placeholder for absent modules during ablation studies
+
+    Attributes:
+        n_rnn_cells (int): Place holder argument
+        m (nn.Module): Place holder attribute so that the module has parameters.
+    """
+
     def __init__(self, n_rnn_cells = 1, image_lstm = False):
         super(Identity, self).__init__()
         if not image_lstm:
@@ -31,23 +39,67 @@ class Identity(nn.Module):
         self.n_rnn_cells = n_rnn_cells
 
     def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_outputs = None, phase_prev_outputs = None):
+        """
+        Place holder Forward pass - will never be used
 
+        Args:
+            hist_mag (Tensor): Historical magnitude data.
+            hist_phase (Tensor): Historical phase data.
+            gt_mask (Tensor, optional): Ground truth mask.
+            mag_prev_outputs (Tensor, optional): Previous magnitude outputs.
+            phase_prev_outputs (Tensor, optional): Previous phase outputs.
+
+        Returns:
+            Tuple[List[Tensor], List[Tensor]]: The same outputs as input
+        """
         new_mag_outputs = [hist_mag for i in range(self.n_rnn_cells)]
         new_phase_outputs = [hist_phase for i in range(self.n_rnn_cells)]
         
         return new_mag_outputs, new_phase_outputs
 
 class Identity_param(nn.Module):
+    """
+    A identity module - placeholder for absent modules during ablation studies
+
+    Attributes:
+        m (nn.Module): Linear transformation layer.
+    """
+
     def __init__(self, parameters, proc_device):
+        """
+        Placeholder Initialization
+
+        Args:
+            parameters (dict): Dictionary of parameters.
+            proc_device (str): Processing device.
+        """
         super(Identity_param, self).__init__()
         self.m = nn.Linear(3,3)
         
     def forward(self, x):
+        """
+        Placeholder Forward pass of the Identity_param module.
 
+        Args:
+            x (Tensor): Input tensor.
+
+        Returns:
+            Tensor: x
+        """
         return x
 
 
 def mylog(x,base = 10):
+    """
+    Computes the logarithm of a tensor with a specified base.
+
+    Args:
+        x (Tensor): Input tensor.
+        base (int, optional): Logarithm base. Defaults to 10.
+
+    Returns:
+        Tensor: Logarithm of the input tensor.
+    """
     return x.log10()/torch.tensor(base).log10()
 
 def gaussian_2d(shape, sigma=None):
@@ -77,12 +129,32 @@ def gaussian_2d(shape, sigma=None):
     return h
 
 def special_trim(x, l = 5, u = 95):
+    """
+    Trims the values of a tensor to be within the specified percentiles.
+
+    Args:
+        x (Tensor): Input tensor.
+        l (int, optional): Lower percentile. Defaults to 5.
+        u (int, optional): Upper percentile. Defaults to 95.
+
+    Returns:
+        Tensor: Trimmed tensor.
+    """
     percentile_95 = np.percentile(x.detach().cpu(), u)
     percentile_5 = np.percentile(x.detach().cpu(), l)
     x = x.clip(percentile_5, percentile_95)
     return x
 
-def fetch_lstm_type(parameters):
+def fetch_models(parameters):
+    """
+    Fetches the LSTM model types based on the given parameters.
+
+    Args:
+        parameters (dict): Dictionary of parameters.
+
+    Returns:
+        Tuple[Type[nn.Module], Type[nn.Module]]: LSTM model types for image and k-space.
+    """
     ispace_name = parameters['ispace_architecture']
     kspace_name = parameters['kspace_architecture']
     if ispace_name == 'ILSTM1':
@@ -98,7 +170,28 @@ def fetch_lstm_type(parameters):
     return km, im
 
 class concatConv(nn.Module):
+    """
+    Concatenated convolutional layers module.
+
+    Attributes:
+        layerlist (nn.ModuleList): List of convolutional layers.
+        skip_connections (bool): Flag for using skip connections.
+        relu_func (nn.Module): ReLU activation function.
+        n_layers (int): Number of layers.
+    """
     def __init__(self, cnn_func, relu_func, gate_input_size = 8, hidden_channels = 32, gate_output_size = 1, n_layers = 4, skip_connections = True):
+        """
+        Initializes the concatConv module.
+
+        Args:
+            cnn_func (Type[nn.Module]): Convolution function - real or complex
+            relu_func (Type[nn.Module]): ReLU function.
+            gate_input_size (int, optional): Input size of the gate. Defaults to 8.
+            hidden_channels (int, optional): Number of hidden channels. Defaults to 32.
+            gate_output_size (int, optional): Output size of the gate. Defaults to 1.
+            n_layers (int, optional): Number of layers. Defaults to 4.
+            skip_connections (bool, optional): Flag for using skip connections. Defaults to True.
+        """
         super(concatConv, self).__init__()
         self.layerlist = []
         self.skip_connections = skip_connections
@@ -121,6 +214,15 @@ class concatConv(nn.Module):
         self.layerlist = nn.ModuleList(self.layerlist)
 
     def forward(self, x):
+        """
+        Forward pass of the concatConv module.
+
+        Args:
+            x (Tensor): Input tensor.
+
+        Returns:
+            Tensor: Output tensor.
+        """
         if self.n_layers == 1:
             return self.layerlist[0](x)
 
@@ -142,9 +244,32 @@ class concatConv(nn.Module):
 
 
 
-class convLSTMcell_kspace(nn.Module):
-    def __init__(self, history_length = 0, num_coils = 8, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, rnn_input_mask = False, skip_connections = False, n_layers = 3, n_hidden = 12, n_rnn_cells = 1, coilwise = False, gate_cat_prev_output = True):
-        super(convLSTMcell_kspace, self).__init__()
+class RecurrentModule(nn.Module):
+    """
+    The Recurrent Module for undersampled k-space data processing. Contains the kspace-RNN and the image LSTM.
+
+    Attributes:
+        Various attributes for LSTM cell configuration.
+    """
+    def __init__(self, history_length = 0, num_coils = 8, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, rnn_input_mask = True, skip_connections = False, n_layers = 3, n_hidden = 12, n_rnn_cells = 1, coilwise = True, gate_cat_prev_output = False):
+         """
+        Initializes the convLSTMcell_kspace module.
+
+        Args:
+            history_length (int, optional): Length of the history to append to the undersampled input. Appends historical frames from previous cardiac cycles. Defaults to 0.
+            num_coils (int, optional): Number of coils. Defaults to 8.
+            forget_gate_coupled (bool, optional): Flag for coupled forget gate - forget gate mask and input gate mask sum to 1. Defaults to False.
+            forget_gate_same_coils (bool, optional): Flag for same forget gate for all coils. Defaults to False.
+            forget_gate_same_phase_mag (bool, optional): Flag for same forget gate for phase and magnitude. Defaults to False.
+            rnn_input_mask (bool, optional): Flag for appending the mask of the locations of newly acquired data to the RNN input. Defaults to True.
+            skip_connections (bool, optional): Flag for having skip connections. Defaults to False.
+            n_layers (int, optional): Number of layers in the K-space RNN gates. Defaults to 3.
+            n_hidden (int, optional): Number of channels in the K-space RNN gates. Defaults to 12.
+            n_rnn_cells (int, optional): Number of RNN cells - can be coupled one after the other. Defaults to 1.
+            coilwise (bool, optional): If enabled, each coil of the input is processed independently. Defaults to True.
+            gate_cat_prev_output (bool, optional): Flag for appending the previously predicted frame to the RNN input. Defaults to True.
+        """
+        super(RecurrentModule, self).__init__()
         self.n_rnn_cells = n_rnn_cells
         self.n_hidden = n_hidden
         self.history_length = history_length
@@ -195,14 +320,29 @@ class convLSTMcell_kspace(nn.Module):
                 self.phase_forgetGates = nn.ModuleList([concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, skip_connections = self.skip_connections) for i in range(self.n_rnn_cells)])
         self.mag_outputGates = nn.ModuleList([concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, skip_connections = self.skip_connections) for i in range(self.n_rnn_cells)])
         self.phase_outputGates = nn.ModuleList([concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, skip_connections = self.skip_connections) for i in range(self.n_rnn_cells)])
-            #### Output gates  and states deleted
-        # assert(0)
         self.mag_inputProcs = nn.ModuleList([concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, skip_connections = self.skip_connections) for i in range(self.n_rnn_cells)])
         self.phase_inputProcs = nn.ModuleList([concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, skip_connections = self.skip_connections) for i in range(self.n_rnn_cells)])
         
 
     def forward(self, hist_mag, hist_phase, background = None, gt_mask = None, mag_prev_outputs = None, phase_prev_outputs = None, window_size = np.inf, mag_gates_remember = None, phase_gates_remember = None, eval = False):
-        # x is a batch of video frames at a single time stamp
+        """
+        Forward pass of the RecurrentModule.
+
+        Args:
+            hist_mag (Tensor): Log Magnitude data. If history is provided, then this will have multiple frames appended as channnels.
+            hist_phase (Tensor): Phase data as angles. If history is provided, then this will have multiple frames appended as channnels.
+            background (Tensor, optional): Background mask. Defaults to None.
+            gt_mask (Tensor, optional): Ground truth mask. Defaults to None.
+            mag_prev_outputs (Tensor, optional): Previous magnitude outputs. Defaults to None.
+            phase_prev_outputs (Tensor, optional): Previous phase outputs. Defaults to None.
+            window_size (int, optional): Window size for gating. Defaults to np.inf.
+            mag_gates_remember (list, optional): List to remember magnitude gates to enforce windowing. Defaults to None.
+            phase_gates_remember (list, optional): List to remember phase gates to enforce windowing. Defaults to None.
+            eval (bool, optional): Evaluation flag - if yes, then do not compute loss. Defaults to False.
+
+        Returns:
+            Tuple[List[Tensor], List[Tensor], Tensor, Tensor, List, List]: New magnitude and phase outputs, loss for forget gate, loss for input gate, remembered magnitude gates, remembered phase gates.
+        """
         del gt_mask
         if background is None:
             background = torch.ones_like(hist_mag) == 1
@@ -316,7 +456,23 @@ class convLSTMcell_kspace(nn.Module):
         return new_mag_outputs[1:], new_phase_outputs[1:], loss_forget_gate, loss_input_gate, mag_gates_remember, phase_gates_remember
 
 class convLSTMcell(nn.Module):
+    """
+    A convolutional LSTM cell module.
+
+    Attributes:
+        Various attributes for LSTM cell configuration.
+    """
     def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, real_mode = False,, ilstm_gate_cat_prev_output = False):
+         """
+        Initializes the convLSTMcell module.
+
+        Args:
+            in_channels (int, optional): Number of input channels. Defaults to 1.
+            out_channels (int, optional): Number of output channels. Defaults to 1.
+            tanh_mode (bool, optional): Flag for using tanh activation for the output. Defaults to False.
+            real_mode (bool, optional): Flag for real mode for the layers. Defaults to False.
+            ilstm_gate_cat_prev_output (bool, optional): Flag for concatenating previous output to gate input. Defaults to False.
+        """
         super(convLSTMcell, self).__init__()
         self.tanh_mode = tanh_mode
         self.out_channels = out_channels
@@ -363,7 +519,17 @@ class convLSTMcell(nn.Module):
             )
 
     def forward(self, x, prev_state = None, prev_output = None):
-        # x is a batch of video frames at a single time stamp
+        """
+        Forward pass of the convLSTMcell module.
+
+        Args:
+            x (Tensor): Input tensor.
+            prev_state (Tensor, optional): Previous cell state. Defaults to None.
+            prev_output (Tensor, optional): Previous output. Defaults to None.
+
+        Returns:
+            Tuple[Tensor, Tensor]: New cell state and output.
+        """
         if prev_state is None:
             shape1 = (x.shape[0], self.out_channels, *x.shape[2:])
             prev_state = torch.zeros(shape1, device = x.device)
@@ -395,7 +561,7 @@ class convLSTM_Kspace1(nn.Module):
         self.real_mode = True
 
         if not self.param_dic['skip_kspace_rnn']:
-            self.kspace_m = convLSTMcell_kspace(
+            self.kspace_m = RecurrentModule(
                         num_coils = self.n_coils,
                         history_length = self.history_length,
                         forget_gate_coupled = self.param_dic['forget_gate_coupled'],

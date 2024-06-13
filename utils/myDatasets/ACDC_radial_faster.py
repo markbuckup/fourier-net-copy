@@ -1,17 +1,10 @@
 import os
-import sys
-import PIL
-import time
-import scipy
 import torch
 import random
-import pickle
 import numpy as np
 import torchvision
 import matplotlib.pyplot as plt
 
-from scipy.ndimage import median_filter as median_filter_func
-from PIL import Image
 from tqdm import tqdm
 from torchvision import transforms, datasets
 from torch.utils.data.dataset import Dataset
@@ -19,12 +12,13 @@ from torch.utils.data.dataset import Dataset
 EPS = 1e-10
 CEPS = torch.complex(torch.tensor(EPS),torch.tensor(EPS)).exp()
 
-def complex_log(ct):
-    indices = ct.abs() < 1e-10
-    ct[indices] = CEPS
-    return ct.log()
-
 def seed_torch(seed=0):
+    """
+    Sets the random seed for reproducibility across various libraries.
+
+    Parameters:
+    seed (int, optional): The seed value to use. Defaults to 0.
+    """
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
@@ -35,7 +29,30 @@ def seed_torch(seed=0):
     torch.backends.cudnn.deterministic = True
 
 class ACDC_radial_ispace(Dataset):
+    """
+    Custom dataset for ACDC radial data with in-memory storage optimization.
+    A memoised version of the ACDC_radial class defined further is this module
+
+    Attributes:
+    mem_inputs (list): List of tensors to store inputs.
+    mem_inputs_min (list): List of tensors to store minimum values of inputs.
+    mem_inputs_max (list): List of tensors to store maximum values of inputs.
+    mem_gts (list): List of tensors to store ground truth data.
+    mem_stored_bool (list): List of boolean flags to indicate stored data.
+    data_init_done (bool): Flag to indicate if data initialization is done.
     
+    Methods:
+    set_data(input, gt, pat_id, vid_id): Sets the data for a given patient and video ID.
+    get_data(pat_id, vid_id): Retrieves the data for a given patient and video ID.
+    check_data(pat_id, vid_id): Checks if data for a given patient and video ID is stored.
+    bulk_set_data(actual_pnums, vnums, inputs, gts): Sets data for multiple patients and videos in bulk.
+    data_init(whole_num_vids_per_patient, parameters): Initializes data storage.
+    __init__(path, parameters, device, train=True, visualise_only=False): Initializes the dataset.
+    __getitem__(i): Retrieves an item from the dataset.
+    __len__(): Returns the length of the dataset.
+    """
+
+
     mem_inputs = []
     mem_inputs_min = []
     mem_inputs_max = []
@@ -117,6 +134,17 @@ class ACDC_radial_ispace(Dataset):
 
 
     def __init__(self, path, parameters, device, train = True, visualise_only = False):
+        """
+        Initializes the ACDC_radial_ispace dataset.
+
+        Parameters:
+        path (str): Path to the dataset.
+        parameters (dict): Dictionary of parameters for dataset configuration.
+        device (torch.device): Device to use for computations.
+        train (bool, optional): Whether the dataset is for training. Defaults to True.
+        visualise_only (bool, optional): Whether to only visualize the data. Defaults to False.
+        """
+
         super(ACDC_radial_ispace, self).__init__()
         ACDC_radial_ispace.max_frames = 120
         self.train = train
@@ -125,10 +153,18 @@ class ACDC_radial_ispace(Dataset):
         self.parameters['init_skip_frames'] = 90
         self.orig_dataset = ACDC_radial(path, self.parameters, device, train = train, visualise_only = visualise_only)
         self.total_unskipped_frames = self.parameters['num_coils']*((ACDC_radial_ispace.max_frames - self.parameters['init_skip_frames'])*self.orig_dataset.num_vids_per_patient).sum()
-        # ACDC_radial_ispace.data_init(self.orig_dataset.whole_num_vids_per_patient, self.parameters)
 
 
     def __getitem__(self, i):
+        """
+        Retrieves an item from the dataset.
+
+        Parameters:
+        i (int): Index of the item to retrieve.
+
+        Returns:
+        tuple: A tuple containing the memory flag, data, and ground truth.
+        """
         if not ACDC_radial_ispace.data_init_done:
             ACDC_radial_ispace.data_init(self.orig_dataset.whole_num_vids_per_patient, self.parameters)
         pat_id, vid_id = self.orig_dataset.index_to_location(i)
@@ -147,14 +183,36 @@ class ACDC_radial_ispace(Dataset):
             return mem, *self.orig_dataset[i]
 
     def __len__(self):
+        """
+        Returns the length of the dataset.
+
+        Returns:
+        int: The length of the dataset.
+        """
         return len(self.orig_dataset)
 
-# Manual CROP
 class ACDC_radial(Dataset):
+    """
+    Custom dataset for ACDC radial data.
 
+    Methods:
+    index_to_location(i): Converts a flat index to patient and video IDs.
+    __init__(path, parameters, device, train=True, visualise_only=False): Initializes the dataset.
+    __getitem__(i): Retrieves an item from the dataset.
+    __len__(): Returns the length of the dataset.
+    """
     def __init__(self, path, parameters, device, train = True, visualise_only = False):
+        """
+        Initializes the ACDC_radial dataset.
+
+        Parameters:
+        path (str): Path to the dataset.
+        parameters (dict): Dictionary of parameters for dataset configuration.
+        device (torch.device): Device to use for computations.
+        train (bool, optional): Whether the dataset is for training. Defaults to True.
+        visualise_only (bool, optional): Whether to only visualize the data. Defaults to False.
+        """
         super(ACDC_radial, self).__init__()
-        
         self.path = path
         self.train = train
         self.parameters = parameters
@@ -176,7 +234,6 @@ class ACDC_radial(Dataset):
         
         self.data_path = os.path.join(self.path, 'radial_faster/{}_resolution_{}_spokes'.format(self.final_resolution, self.ft_num_radial_views))
 
-        # Read metadata
         metadic = torch.load(os.path.join(self.data_path, 'metadata.pth'))
         
         self.num_patients = metadic['num_patients']
@@ -198,11 +255,9 @@ class ACDC_radial(Dataset):
             self.offset = int(self.train_split*self.num_patients)
             self.num_patients = self.num_patients - int(self.train_split*self.num_patients)
         
-        # # DEBUG
         if self.parameters['acdc_debug_mini']:
             self.num_vids_per_patient *= 0
             self.num_vids_per_patient += 1
-        # # DEBUG
 
         self.num_vids_per_patient = self.num_vids_per_patient[self.offset:self.offset+self.num_patients]
         self.frames_per_vid_per_patient = self.frames_per_vid_per_patient[self.offset:self.offset+self.num_patients]
@@ -222,6 +277,15 @@ class ACDC_radial(Dataset):
 
 
     def index_to_location(self, i):
+        """
+        Converts a flat index to patient and video IDs.
+
+        Parameters:
+        i (int): The flat index.
+
+        Returns:
+        tuple: The patient and video IDs corresponding to the flat index.
+        """
         p_num = (self.vid_cumsum <= i).sum()
         if p_num == 0:
             v_num = i
@@ -231,17 +295,15 @@ class ACDC_radial(Dataset):
         return p_num, v_num
 
     def __getitem__(self, i):
+        """
+        Retrieves an item from the dataset.
 
-        # actual_pnum = 1
-        # v_num = 1
-        # grid_data = torch.zeros(30,8,256,256)
-        # grid_data = torch.complex(grid_data, grid_data)
-        # og_coiled_fft = grid_data
-        # og_video_coils = torch.zeros(30,8,256,256)
-        # og_video = torch.zeros(30,256,256)
-        # Nf = 30
+        Parameters:
+        i (int): The index of the item to retrieve.
 
-        # return torch.tensor([actual_pnum, v_num]), grid_data, og_coiled_fft, og_video_coils, og_video, Nf
+        Returns:
+        tuple: A tuple containing various data tensors related to the item.
+        """
 
         p_num, v_num = self.index_to_location(i)
         actual_pnum = self.offset + p_num
@@ -249,10 +311,6 @@ class ACDC_radial(Dataset):
         coils_used = torch.flip(self.coil_masks[index_coils_used].unsqueeze(0), dims = (-2,-1))
 
         GAs_used = self.GAs_per_patient_per_video[p_num][v_num][:self.loop_videos,:]
-
-
-        # for i in range(8):
-        #     plt.imsave('{}_{}_coil_{}.jpg'.format(p_num, v_num, i), (coils_used[0,i,:,:]), cmap = 'gray')
 
         dic_path = os.path.join(self.data_path, 'patient_{}/vid_{}.pth'.format(actual_pnum+1, v_num))
 
@@ -268,14 +326,16 @@ class ACDC_radial(Dataset):
         else:
             coilwise_targets = (dic['coilwise_targets']/255.)[:self.loop_videos,:,:,:]
 
-        # for i in range(8):
-        #     plt.imsave('{}_{}_undersampled_fts_{}.jpg'.format(p_num, v_num, i), torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts[0,i,:,:])).abs(), cmap = 'gray')
-        # asdf
-
         Nf = self.actual_frames_per_vid_per_patient[p_num]
 
         return torch.tensor([actual_pnum, v_num]), masks_applicable, og_video, coilwise_targets, undersampled_fts, coils_used, Nf
 
         
     def __len__(self):
+        """
+        Returns the length of the dataset.
+
+        Returns:
+        int: The length of the dataset.
+        """
         return self.num_videos

@@ -23,6 +23,18 @@ from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 def setup(rank, world_size, args):
+    """
+    Sets up the process group for distributed training.
+
+    Parameters:
+    rank (int): The rank of the current process.
+    world_size (int): The total number of processes.
+    args (Namespace): Arguments containing the port number and GPU configuration.
+
+    This function initializes the process group using either 'gloo' or 'nccl' backend
+    based on the GPU configuration provided in args. It also sets the master address
+    and port for communication.
+    """
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '{}'.format(args.port)
     if args.gpu[0] == -1:
@@ -31,6 +43,12 @@ def setup(rank, world_size, args):
         dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
 def cleanup():
+    """
+    Cleans up the process group for distributed training.
+
+    This function destroys the process group, ensuring that all processes are properly
+    terminated and resources are released.
+    """
     dist.destroy_process_group()
 
 sys.path.append('../')
@@ -38,6 +56,19 @@ sys.path.append('../')
 SAVE_INTERVAL = 1
 
 def train_paradigm(rank, world_size, args, parameters):
+    """
+    Trains a distributed model for cardiac MRI reconstruction using DDP.
+
+    Parameters:
+    rank (int): The rank of the current process.
+    world_size (int): The total number of processes.
+    args (Namespace): Arguments containing paths, GPU configuration, logging options, etc.
+    parameters (dict): Training parameters including dataset configuration, model parameters, and training options.
+
+    This function sets up the environment for distributed training, initializes the dataset and models,
+    loads checkpoint if resuming, and trains the model over a specified number of epochs. Training and
+    validation losses are logged, and model checkpoints are saved periodically.
+    """
     torch.cuda.set_device(args.gpu[rank])
     setup(rank, world_size, args)
     proc_device = torch.device('cuda:{}'.format(args.gpu[rank]))
@@ -45,7 +76,7 @@ def train_paradigm(rank, world_size, args, parameters):
     if parameters['dataset'] == 'acdc':
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial as dataset
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial_ispace as dataset_ispace
-    from utils.models.periodLSTM import fetch_lstm_type as rnn_func
+    from utils.models.periodLSTM import fetch_models as rnn_func
     Model_Kspace, Model_Ispace = rnn_func(parameters)
     from utils.Trainers.DDP_LSTMTrainer_nufft import Trainer
 
@@ -83,8 +114,8 @@ def train_paradigm(rank, world_size, args, parameters):
                             train = False, 
                         )
 
-    kspace_model = Model_Kspace(parameters, proc_device).to(proc_device)
-    ispace_model = Model_Ispace(parameters, proc_device).to(proc_device)
+    recurrent_model = Model_Kspace(parameters, proc_device).to(proc_device)
+    coil_combine_unet = Model_Ispace(parameters, proc_device).to(proc_device)
     
     checkpoint_path = os.path.join(save_path, 'checkpoints/')
     os.makedirs(checkpoint_path, exist_ok = True)
@@ -126,13 +157,13 @@ def train_paradigm(rank, world_size, args, parameters):
             print('Loading checkpoint at model state {}'.format(model_state), flush = True)
         dic = torch.load(checkpoint_path + 'checkpoint_{}.pth'.format(model_state),map_location = proc_device)
         pre_e = dic['e']
-        kspace_model.load_state_dict(dic['kspace_model'])
-        ispace_model.load_state_dict(dic['ispace_model'])
-        opt_dict_kspace = dic['kspace_optim']
-        opt_dict_ispace = dic['ispace_optim']
+        recurrent_model.load_state_dict(dic['recurrent_model'])
+        coil_combine_unet.load_state_dict(dic['coil_combine_unet'])
+        opt_dict_recurrent = dic['recurrent_optim']
+        opt_dict_unet = dic['unet_optim']
         if parameters['scheduler'] != 'None':
-            scheduler_dict_ispace = dic['ispace_scheduler']
-            scheduler_dict_kspace = dic['kspace_scheduler']
+            scheduler_dict_unet = dic['unet_scheduler']
+            scheduler_dict_recurrent = dic['recurrent_scheduler']
         losses = dic['losses']
         test_losses = dic['test_losses']
         if rank == 0:
@@ -144,13 +175,13 @@ def train_paradigm(rank, world_size, args, parameters):
             print('Loading checkpoint at model state {}'.format(model_state), flush = True)
         dic = torch.load(checkpoint_path + 'checkpoint_{}.pth'.format(model_state),map_location = proc_device)
         pre_e = dic['e']
-        kspace_model.load_state_dict(dic['kspace_model'])
-        # ispace_model.load_state_dict(dic['ispace_model'])
-        opt_dict_kspace = dic['kspace_optim']
-        # opt_dict_ispace = dic['ispace_optim']
+        recurrent_model.load_state_dict(dic['recurrent_model'])
+        # coil_combine_unet.load_state_dict(dic['coil_combine_unet'])
+        opt_dict_recurrent = dic['recurrent_optim']
+        # opt_dict_unet = dic['unet_optim']
         if parameters['scheduler'] != 'None':
-            scheduler_dict_ispace = dic['ispace_scheduler']
-            scheduler_dict_kspace = dic['kspace_scheduler']
+            scheduler_dict_unet = dic['unet_scheduler']
+            scheduler_dict_recurrent = dic['recurrent_scheduler']
         losses = dic['losses']
         test_losses = dic['test_losses']
         if rank == 0:
@@ -161,16 +192,16 @@ def train_paradigm(rank, world_size, args, parameters):
         pre_e =0
         losses = []
         test_losses = []
-        opt_dict_kspace = None
-        opt_dict_ispace = None
-        scheduler_dict_ispace = None
-        scheduler_dict_kspace = None
+        opt_dict_recurrent = None
+        opt_dict_unet = None
+        scheduler_dict_unet = None
+        scheduler_dict_recurrent = None
         if rank == 0:
             print('Starting Training', flush = True)
 
-    kspace_model = DDP(kspace_model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
-    ispace_model = DDP(ispace_model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
-    trainer = Trainer(kspace_model, ispace_model, ispace_trainset, ispace_testset, trainset, testset, parameters, proc_device, rank, world_size, args)
+    recurrent_model = DDP(recurrent_model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
+    coil_combine_unet = DDP(coil_combine_unet, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
+    trainer = Trainer(recurrent_model, coil_combine_unet, ispace_trainset, ispace_testset, trainset, testset, parameters, proc_device, rank, world_size, args)
 
     if args.time_analysis:
         if rank == 0:
@@ -179,12 +210,12 @@ def train_paradigm(rank, world_size, args, parameters):
 
     if args.resume or args.resume_kspace:
         if not args.resume_kspace:
-            trainer.ispace_optim.load_state_dict(opt_dict_ispace)
-        trainer.kspace_optim.load_state_dict(opt_dict_kspace)
+            trainer.unet_optim.load_state_dict(opt_dict_unet)
+        trainer.recurrent_optim.load_state_dict(opt_dict_recurrent)
         if parameters['scheduler'] != 'None':
             if not args.resume_kspace:
-                trainer.ispace_scheduler.load_state_dict(scheduler_dict_ispace)
-            trainer.kspace_scheduler.load_state_dict(scheduler_dict_kspace)
+                trainer.unet_scheduler.load_state_dict(scheduler_dict_unet)
+            trainer.recurrent_scheduler.load_state_dict(scheduler_dict_recurrent)
 
     for e in range(parameters['num_epochs_total']):
         if pre_e > 0:
@@ -244,12 +275,8 @@ def train_paradigm(rank, world_size, args, parameters):
             print('ISpace Real (L1) Loss = {}' .format(avgispace_train_real_loss), flush = True)
             print('ISpace SSIM = {}\n\n' .format(ispacessim_score), flush = True)
 
-        tt = time.time()
         kspaceloss_mag, kpsaceloss_phase, kspaceloss_real, loss_forget_gate, loss_input_gate, kspacessim, kpsaceloss_l1, kspaceloss_l2, test_sosssim_score, test_sosl1_score, test_sosl2_score, ispaceloss_real, ispacessim, ipsaceloss_l1, ispaceloss_l2 = trainer.evaluate(e, train = False)
-        # print('Time1',time.time()-tt)
-        tt = time.time()
         dist.all_gather(collected_test_losses, torch.tensor([kspaceloss_mag, kpsaceloss_phase, kspaceloss_real, loss_forget_gate, loss_input_gate, kspacessim, kpsaceloss_l1, kspaceloss_l2, test_sosssim_score, test_sosl1_score, test_sosl2_score, ispaceloss_real, ispacessim, ipsaceloss_l1, ispaceloss_l2]).to(proc_device))
-        # print('Time2', time.time()-tt)
         if rank == 0:
             avgkspace_test_mag_loss = sum([x[0] for x in collected_test_losses]).cpu().item()/len(args.gpu)
             avgkspace_test_phase_loss = sum([x[1] for x in collected_test_losses]).cpu().item()/len(args.gpu)
@@ -307,14 +334,14 @@ def train_paradigm(rank, world_size, args, parameters):
 
             dic = {}
             dic['e'] = e+1
-            dic['kspace_model'] = trainer.kspace_model.module.state_dict()
-            dic['ispace_model'] = trainer.ispace_model.module.state_dict()
-            dic['kspace_optim'] = trainer.kspace_optim.state_dict()
+            dic['recurrent_model'] = trainer.recurrent_model.module.state_dict()
+            dic['coil_combine_unet'] = trainer.coil_combine_unet.module.state_dict()
+            dic['recurrent_optim'] = trainer.recurrent_optim.state_dict()
 
-            dic['ispace_optim'] = trainer.ispace_optim.state_dict()
+            dic['unet_optim'] = trainer.unet_optim.state_dict()
             if parameters['scheduler'] != 'None':
-                dic['ispace_scheduler'] = trainer.ispace_scheduler.state_dict()
-                dic['kspace_scheduler'] = trainer.kspace_scheduler.state_dict()
+                dic['unet_scheduler'] = trainer.unet_scheduler.state_dict()
+                dic['recurrent_scheduler'] = trainer.recurrent_scheduler.state_dict()
             dic['losses'] = losses
             dic['test_losses'] = test_losses
             if (e+1) % SAVE_INTERVAL == 0:
@@ -342,13 +369,26 @@ def train_paradigm(rank, world_size, args, parameters):
 
     cleanup()
 
+"""
+    Tests a distributed model for cardiac MRI reconstruction using DDP.
+
+    Parameters:
+    rank (int): The rank of the current process.
+    world_size (int): The total number of processes.
+    args (Namespace): Arguments containing paths, GPU configuration, logging options, etc.
+    parameters (dict): Testing parameters including dataset configuration, model parameters, and testing options.
+
+    This function sets up the environment for distributed testing, initializes the dataset and models,
+    loads checkpoint if resuming, and evaluates the model on the test dataset. Test losses are logged,
+    and model performance is visualized if specified.
+    """
 def test_paradigm(rank, world_size, args, parameters):
     torch.cuda.set_device(args.gpu[rank])
     setup(rank, world_size, args)
     proc_device = torch.device('cuda:{}'.format(args.gpu[rank]))
     if parameters['dataset'] == 'acdc':
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial as dataset
-    from utils.models.periodLSTM import fetch_lstm_type as rnn_func
+    from utils.models.periodLSTM import fetch_models as rnn_func
     Model_Kspace, Model_Ispace = rnn_func(parameters)
     from utils.Trainers.DDP_LSTMTrainer_nufft import Trainer
 
@@ -377,8 +417,8 @@ def test_paradigm(rank, world_size, args, parameters):
 
 
 
-    kspace_model = Model_Kspace(parameters, proc_device).to(proc_device)
-    ispace_model = Model_Ispace(parameters, proc_device).to(proc_device)
+    recurrent_model = Model_Kspace(parameters, proc_device).to(proc_device)
+    coil_combine_unet = Model_Ispace(parameters, proc_device).to(proc_device)
     checkpoint_path = os.path.join(save_path, 'checkpoints/')
 
     if rank == 0:
@@ -416,8 +456,8 @@ def test_paradigm(rank, world_size, args, parameters):
             print('Loading checkpoint at model state {}'.format(model_state), flush = True)
         dic = torch.load(checkpoint_path + 'checkpoint_{}.pth'.format(model_state),map_location = proc_device)
         pre_e = dic['e']
-        kspace_model.load_state_dict(dic['kspace_model'])
-        ispace_model.load_state_dict(dic['ispace_model'])
+        recurrent_model.load_state_dict(dic['recurrent_model'])
+        coil_combine_unet.load_state_dict(dic['coil_combine_unet'])
         if rank == 0:
             print('Loading kspace model after {} epochs'.format(dic['e']), flush = True)
         losses = dic['losses']
@@ -433,8 +473,8 @@ def test_paradigm(rank, world_size, args, parameters):
             print('Loading checkpoint at model state {}'.format(model_state), flush = True)
         dic = torch.load(checkpoint_path + 'checkpoint_{}.pth'.format(model_state),map_location = proc_device)
         pre_e = dic['e']
-        kspace_model.load_state_dict(dic['kspace_model'])
-        # ispace_model.load_state_dict(dic['ispace_model'])
+        recurrent_model.load_state_dict(dic['recurrent_model'])
+        # coil_combine_unet.load_state_dict(dic['coil_combine_unet'])
         if rank == 0:
             print('Loading kspace model after {} epochs'.format(dic['e']), flush = True)
         losses = dic['losses']
@@ -451,10 +491,10 @@ def test_paradigm(rank, world_size, args, parameters):
         if rank == 0:
             print('Starting Training', flush = True)
 
-    # kspace_model = DDP(kspace_model, device_ids = None, output_device = None, find_unused_parameters = False)
-    kspace_model = DDP(kspace_model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
-    ispace_model = DDP(ispace_model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
-    trainer = Trainer(kspace_model, ispace_model, ispace_trainset, ispace_testset, trainset, testset, parameters, proc_device, rank, world_size, args)
+    # recurrent_model = DDP(recurrent_model, device_ids = None, output_device = None, find_unused_parameters = False)
+    recurrent_model = DDP(recurrent_model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
+    coil_combine_unet = DDP(coil_combine_unet, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
+    trainer = Trainer(recurrent_model, coil_combine_unet, ispace_trainset, ispace_testset, trainset, testset, parameters, proc_device, rank, world_size, args)
 
     if args.time_analysis:
         if rank == 0:

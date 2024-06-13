@@ -29,12 +29,15 @@ sys.path.append('../../')
 from utils.functions import fetch_loss_function
 from utils.models.periodLSTM import gaussian_2d, mylog
 
-def complex_log(ct):
-    indices = ct.abs() < 1e-10
-    ct[indices] = CEPS
-    return ct.log()
-
 def myimshow(x, cmap = 'gray', trim = False):
+    """
+    Displays an image with optional trimming.
+
+    Parameters:
+    x (np.ndarray): Image array to be displayed.
+    cmap (str): Colormap used for display. Default is 'gray'.
+    trim (bool): Whether to trim the image intensities at 5th and 95th percentiles. Default is False.
+    """
     if trim:
         percentile_95 = np.percentile(x, 95)
         percentile_5 = np.percentile(x, 5)
@@ -46,12 +49,32 @@ def myimshow(x, cmap = 'gray', trim = False):
     plt.imshow(x, cmap = cmap)
 
 def special_trim(x, l = 5, u = 95):
+    """
+    Trims the values of a tensor to be within the specified percentiles.
+
+    Parameters:
+    x (torch.Tensor): Tensor to be trimmed.
+    l (int): Lower percentile for trimming. Default is 5.
+    u (int): Upper percentile for trimming. Default is 95.
+
+    Returns:
+    torch.Tensor: Trimmed tensor.
+    """
     percentile_95 = np.percentile(x.detach().cpu(), u)
     percentile_5 = np.percentile(x.detach().cpu(), l)
     x = x.clip(percentile_5, percentile_95)
     return x
 
 def torch_trim(x):
+    """
+    Normalizes and trims a 4D tensor along its last two dimensions.
+
+    Parameters:
+    x (torch.Tensor): Input tensor of shape (B, C, H, W).
+
+    Returns:
+    torch.Tensor: Normalized and trimmed tensor.
+    """
     B,C,row,col = x.shape
     
     with torch.no_grad():
@@ -76,6 +99,16 @@ def torch_trim(x):
         return x.reshape(B,C,row,col)
 
 def show_difference_image(im1, im2):
+     """
+    Displays the absolute difference between two images.
+
+    Parameters:
+    im1 (np.ndarray): First image array.
+    im2 (np.ndarray): Second image array.
+
+    Returns:
+    np.ndarray: Absolute difference image reshaped to a 1D array.
+    """
     diff = (im1-im2)
     plt.axis('off')
     plt.imshow(np.abs(diff), cmap = 'plasma', vmin=0, vmax=0.5)
@@ -83,10 +116,27 @@ def show_difference_image(im1, im2):
     return np.abs(diff).reshape(-1)
 
 class Trainer(nn.Module):
-    def __init__(self, kspace_model, ispace_model, ispace_trainset, ispace_testset, trainset, testset, parameters, device, ddp_rank, ddp_world_size, args):
+    """
+    Trainer class for handling the training and evaluation of models in a distributed setup.
+
+    Attributes:
+    recurrent_model (nn.Module): The recurrent module consisting of the k-space RNN and the image lstm.
+    coil_combine_unet (nn.Module): The UNet model for combining coils.
+    trainset (Dataset): Training dataset.
+    testset (Dataset): Testing dataset.
+    ispace_trainset (Dataset): Training dataset that can memoise the recurrent module prediction for a fast Unet training.
+    ispace_testset (Dataset): Testing dataset that can memoise the recurrent module prediction for a fast Unet training
+    parameters (dict): Dictionary of training parameters loaded from params.py
+    device (torch.device): Device on which the training is conducted.
+    ddp_rank (int): Rank of the current process in distributed training.
+    ddp_world_size (int): Total number of processes in distributed training.
+    args (Namespace): argparse arguments
+    """
+
+    def __init__(self, recurrent_model, coil_combine_unet, ispace_trainset, ispace_testset, trainset, testset, parameters, device, ddp_rank, ddp_world_size, args):
         super(Trainer, self).__init__()
-        self.kspace_model = kspace_model
-        self.ispace_model = ispace_model
+        self.recurrent_model = recurrent_model
+        self.coil_combine_unet = coil_combine_unet
         self.ispace_trainset = ispace_trainset
         self.ispace_testset = ispace_testset
         self.trainset = trainset
@@ -188,32 +238,32 @@ class Trainer(nn.Module):
 
         if self.parameters['optimizer'] == 'Adam':
             if self.parameters['image_lstm']:
-                self.kspace_optim = optim.Adam(list(self.kspace_model.module.kspace_m.parameters())+list(self.kspace_model.module.ispacem.parameters()), lr=self.parameters['lr_kspace'], betas=(0.9, 0.999))
+                self.recurrent_optim = optim.Adam(list(self.recurrent_model.module.kspace_m.parameters())+list(self.recurrent_model.module.ispacem.parameters()), lr=self.parameters['lr_kspace'], betas=(0.9, 0.999))
             else:
-                self.kspace_optim = optim.Adam(self.kspace_model.module.kspace_m.parameters(), lr=self.parameters['lr_kspace'], betas=(0.9, 0.999))
-            self.ispace_optim = optim.Adam(self.ispace_model.parameters(), lr=self.parameters['lr_ispace'], betas=(0.9, 0.999))
+                self.recurrent_optim = optim.Adam(self.recurrent_model.module.kspace_m.parameters(), lr=self.parameters['lr_kspace'], betas=(0.9, 0.999))
+            self.unet_optim = optim.Adam(self.coil_combine_unet.parameters(), lr=self.parameters['lr_ispace'], betas=(0.9, 0.999))
             self.parameters['scheduler_params']['cycle_momentum'] = False
             
         if self.parameters['scheduler'] == 'None':
-            self.kspace_scheduler = None
-            self.ispace_scheduler = None
+            self.recurrent_scheduler = None
+            self.unet_scheduler = None
         if self.parameters['scheduler'] == 'StepLR':
             mydic = self.parameters['scheduler_params']
             if self.ddp_rank == 0:
-                self.kspace_scheduler = optim.lr_scheduler.StepLR(self.kspace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
-                self.ispace_scheduler = optim.lr_scheduler.StepLR(self.ispace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
+                self.recurrent_scheduler = optim.lr_scheduler.StepLR(self.recurrent_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
+                self.unet_scheduler = optim.lr_scheduler.StepLR(self.unet_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=mydic['verbose'])
             else:
-                self.kspace_scheduler = optim.lr_scheduler.StepLR(self.kspace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
-                self.ispace_scheduler = optim.lr_scheduler.StepLR(self.ispace_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
+                self.recurrent_scheduler = optim.lr_scheduler.StepLR(self.recurrent_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
+                self.unet_scheduler = optim.lr_scheduler.StepLR(self.unet_optim, mydic['step_size'], gamma=mydic['gamma'], verbose=False)
         if self.parameters['scheduler'] == 'CyclicLR':
             mydic = self.parameters['scheduler_params']
-            ispace_mydic = self.parameters['ispace_scheduler_params']
+            ispace_mydic = self.parameters['unet_scheduler_params']
             if self.ddp_rank == 0:
-                self.kspace_scheduler = optim.lr_scheduler.CyclicLR(self.kspace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=False)
-                self.ispace_scheduler = optim.lr_scheduler.CyclicLR(self.ispace_optim, ispace_mydic['base_lr'], ispace_mydic['max_lr'], step_size_up=ispace_mydic['step_size_up'], mode=ispace_mydic['mode'], cycle_momentum = ispace_mydic['cycle_momentum'],  verbose=False)
+                self.recurrent_scheduler = optim.lr_scheduler.CyclicLR(self.recurrent_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'],  verbose=False)
+                self.unet_scheduler = optim.lr_scheduler.CyclicLR(self.unet_optim, ispace_mydic['base_lr'], ispace_mydic['max_lr'], step_size_up=ispace_mydic['step_size_up'], mode=ispace_mydic['mode'], cycle_momentum = ispace_mydic['cycle_momentum'],  verbose=False)
             else:
-                self.kspace_scheduler = optim.lr_scheduler.CyclicLR(self.kspace_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
-                self.ispace_scheduler = optim.lr_scheduler.CyclicLR(self.ispace_optim, ispace_mydic['base_lr'], ispace_mydic['max_lr'], step_size_up=ispace_mydic['step_size_up'], mode=ispace_mydic['mode'], cycle_momentum = ispace_mydic['cycle_momentum'])
+                self.recurrent_scheduler = optim.lr_scheduler.CyclicLR(self.recurrent_optim, mydic['base_lr'], mydic['max_lr'], step_size_up=mydic['step_size_up'], mode=mydic['mode'], cycle_momentum = mydic['cycle_momentum'])
+                self.unet_scheduler = optim.lr_scheduler.CyclicLR(self.unet_optim, ispace_mydic['base_lr'], ispace_mydic['max_lr'], step_size_up=ispace_mydic['step_size_up'], mode=ispace_mydic['mode'], cycle_momentum = ispace_mydic['cycle_momentum'])
 
         self.l1loss = fetch_loss_function('L1',self.device, self.parameters['loss_params'])
         self.l2loss = fetch_loss_function('L2',self.device, self.parameters['loss_params'])
@@ -221,14 +271,25 @@ class Trainer(nn.Module):
         self.msssim_loss = kornia.losses.SSIMLoss(11).to(device)
 
     def train(self, epoch, print_loss = False):
+        """
+        Trains the model for one epoch.
+
+        Parameters:
+        epoch (int): The current epoch number.
+        print_loss (bool): Whether to print the loss values. Default is False.
+
+        Returns:
+        tuple: Averaged losses and scores for the epoch.
+        """
+
         if epoch < self.parameters['num_epochs_recurrent']:
-            self.kspace_mode = True
+            self.recurrent_mode = True
         else:
-            self.kspace_mode = False
+            self.recurrent_mode = False
         if epoch >= (self.parameters['num_epochs_total'] - self.parameters['num_epochs_unet']):
-            self.ispace_mode = True
+            self.unet_mode = True
         else:
-            self.ispace_mode = False
+            self.unet_mode = False
         avgkspacelossphase = 0.
         avgkspacelossreal = 0.
         avgkspacelossforget_gate = 0.
@@ -244,7 +305,7 @@ class Trainer(nn.Module):
         ispacessim_score = 0.
         avgispace_l1_loss = 0.
         avgispace_l2_loss = 0.
-        if self.ispace_mode and not self.args.eval and not self.args.eval_on_real and not self.kspace_mode:
+        if self.unet_mode and not self.args.eval and not self.args.eval_on_real and not self.recurrent_mode:
             self.ispacetrainloader.sampler.set_epoch(epoch)
             dset = self.ispace_trainset
             dloader = self.ispacetrainloader
@@ -255,19 +316,19 @@ class Trainer(nn.Module):
             dloader = self.trainloader
             kspace_skip_frames_loss = self.parameters['init_skip_frames']
         if self.ddp_rank == 0:
-            if self.ispace_mode and self.kspace_mode:
+            if self.unet_mode and self.recurrent_mode:
                 tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | KS+IS Epoch {}/{}".format(os.getpid(), epoch+1, self.parameters['num_epochs_total']), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
-            elif self.ispace_mode:
+            elif self.unet_mode:
                 tqdm_object = tqdm(enumerate(self.ispacetrainloader), total = len(self.ispacetrainloader), desc = "[{}] | IS Epoch {}/{}".format(os.getpid(), epoch+1, self.parameters['num_epochs_total']), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
             else:
                 tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | KS Epoch {}/{}".format(os.getpid(), epoch+1, self.parameters['num_epochs_total']), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
         else:
-            if self.ispace_mode and not self.kspace_mode:
+            if self.unet_mode and not self.recurrent_mode:
                 tqdm_object = enumerate(self.ispacetrainloader)
             else:
                 tqdm_object = enumerate(self.trainloader)
         for i, data_instance in tqdm_object:
-            if self.kspace_mode:
+            if self.recurrent_mode:
                 (indices, masks, og_video, coilwise_targets, undersampled_fts, coils_used, periods) = data_instance
                 skip_kspace = False
             else:
@@ -282,9 +343,9 @@ class Trainer(nn.Module):
                     targ_vid = targ_vid.to(self.device)
 
             if not skip_kspace:
-                with torch.set_grad_enabled(self.kspace_mode):
-                    if self.kspace_mode:
-                        self.kspace_optim.zero_grad(set_to_none=True)
+                with torch.set_grad_enabled(self.recurrent_mode):
+                    if self.recurrent_mode:
+                        self.recurrent_optim.zero_grad(set_to_none=True)
 
                     batch, num_frames, chan, numr, numc = undersampled_fts.shape
                     og_coiled_vids = coilwise_targets.to(self.device)
@@ -294,13 +355,13 @@ class Trainer(nn.Module):
                     inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
                     
                     if not (self.parameters['skip_kspace_rnn'] and (not self.parameters['image_lstm'])):
-                        if self.kspace_mode:
-                            self.kspace_model.train()
+                        if self.recurrent_mode:
+                            self.recurrent_model.train()
                         else:
-                            self.kspace_model.eval()
+                            self.recurrent_model.eval()
 
                     if not (self.parameters['skip_kspace_rnn'] and (not self.parameters['image_lstm'])):
-                        predr, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video, epoch = epoch)
+                        predr, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.recurrent_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video, epoch = epoch)
 
                         predr_sos = ((predr**2).sum(2, keepdim = True) ** 0.5)[:,kspace_skip_frames_loss:]
                         targ_vid = og_video.to(self.device)[:,kspace_skip_frames_loss:]
@@ -317,9 +378,9 @@ class Trainer(nn.Module):
                         if self.parameters['lstm_input_gate_loss']:
                             loss += loss_input_gate * 18
 
-                        if self.kspace_mode:
+                        if self.recurrent_mode:
                             loss.backward()
-                            self.kspace_optim.step()
+                            self.recurrent_optim.step()
 
                         del loss
                         avgkspacelossphase += float(loss_phase.cpu().item()/(len(dloader)))
@@ -363,22 +424,22 @@ class Trainer(nn.Module):
                 else:
                     predr = predr[:,kspace_skip_frames_loss:]
 
-                if self.ispace_mode and self.parameters['memoise_ispace'] and not self.args.eval and not self.args.eval_on_real and not self.kspace_mode:
+                if self.unet_mode and self.parameters['memoise_ispace'] and not self.args.eval and not self.args.eval_on_real and not self.recurrent_mode:
                     self.ispace_trainset.bulk_set_data(indices[:,0], indices[:,1], predr, targ_vid)
 
             
-            with torch.set_grad_enabled(self.ispace_mode):
+            with torch.set_grad_enabled(self.unet_mode):
 
                 batch, num_frames, chan, numr, numc = predr.shape
 
-                if self.ispace_mode:
-                    self.ispace_optim.zero_grad(set_to_none=True)
+                if self.unet_mode:
+                    self.unet_optim.zero_grad(set_to_none=True)
                 
                 predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
                 
                 targ_vid = targ_vid.reshape(batch*num_frames,1, numr, numc).to(self.device)
                 
-                outp = self.ispace_model(predr.detach())
+                outp = self.coil_combine_unet(predr.detach())
 
 
                 if self.parameters['center_weighted_loss']:
@@ -389,13 +450,13 @@ class Trainer(nn.Module):
                 mask = torch.FloatTensor(mask).to(outp.device)
 
 
-                if self.ispace_mode:
+                if self.unet_mode:
                     loss_ss1 = self.msssim_loss(outp.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
                     loss = 0.2*loss_ss1
                     loss += self.l2loss(outp*mask, targ_vid*mask)
 
                     loss.backward()
-                    self.ispace_optim.step()
+                    self.unet_optim.step()
                     avgispacelossreal += float(loss.cpu().item()/(len(dloader)))
 
 
@@ -411,35 +472,46 @@ class Trainer(nn.Module):
 
 
             if self.parameters['scheduler'] == 'CyclicLR':
-                if self.kspace_mode:
+                if self.recurrent_mode:
                     if not (self.parameters['skip_kspace_rnn'] and (not self.parameters['image_lstm'])):
-                        if self.kspace_scheduler is not None:
-                            self.kspace_scheduler.step()
+                        if self.recurrent_scheduler is not None:
+                            self.recurrent_scheduler.step()
 
-                if self.ispace_mode:
-                    if self.ispace_scheduler is not None and (self.ispace_mode):
-                        self.ispace_scheduler.step()
+                if self.unet_mode:
+                    if self.unet_scheduler is not None and (self.unet_mode):
+                        self.unet_scheduler.step()
         
         if not self.parameters['scheduler'] == 'CyclicLR':
-            if self.kspace_mode:
+            if self.recurrent_mode:
                 if not (self.parameters['skip_kspace_rnn'] and (not self.parameters['image_lstm'])):
-                    if self.kspace_scheduler is not None:
-                        self.kspace_scheduler.step()
-            if self.ispace_mode:
-                if self.ispace_scheduler is not None:
-                    self.ispace_scheduler.step()
+                    if self.recurrent_scheduler is not None:
+                        self.recurrent_scheduler.step()
+            if self.unet_mode:
+                if self.unet_scheduler is not None:
+                    self.unet_scheduler.step()
 
         return avgkspacelossmag, avgkspacelossphase, avgkspacelossreal,avgkspacelossforget_gate, avgkspacelossinput_gate, kspacessim_score, avgkspace_l1_loss, avgkspace_l2_loss, sosssim_score, avgsos_l1_loss, avgsos_l2_loss, avgispacelossreal, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss
 
     def evaluate(self, epoch, train = False, print_loss = False):
+        """
+        Evaluates the model after training for one epoch.
+
+        Parameters:
+        epoch (int): The current epoch number.
+        train (bool): Whether to evaluate on the training set. Default is False.
+        print_loss (bool): Whether to print the loss values. Default is False.
+
+        Returns:
+        tuple: Averaged losses and scores for the evaluation.
+        """
         if epoch < self.parameters['num_epochs_recurrent']:
-            self.kspace_mode = True
+            self.recurrent_mode = True
         else:
-            self.kspace_mode = False
+            self.recurrent_mode = False
         if epoch >= (self.parameters['num_epochs_total'] - self.parameters['num_epochs_unet']):
-            self.ispace_mode = True
+            self.unet_mode = True
         else:
-            self.ispace_mode = False
+            self.unet_mode = False
             
         avgkspacelossphase = 0.
         avgkspacelossreal = 0.
@@ -464,7 +536,7 @@ class Trainer(nn.Module):
             kspace_skip_frames_loss = self.parameters['init_skip_frames']
         else:
             dstr = 'Test'
-            if self.ispace_mode and (not self.args.eval) and (not self.args.eval_on_real) and not self.kspace_mode:
+            if self.unet_mode and (not self.args.eval) and (not self.args.eval_on_real) and not self.recurrent_mode:
                 self.ispacetestloader.sampler.set_epoch(epoch)
                 dloader = self.ispacetestloader
                 dset = self.ispace_testset
@@ -482,7 +554,7 @@ class Trainer(nn.Module):
         with torch.no_grad():
 
             for i, data_instance in tqdm_object:
-                if self.kspace_mode or self.args.eval or self.args.eval_on_real:
+                if self.recurrent_mode or self.args.eval or self.args.eval_on_real:
                     (indices, masks, og_video, coilwise_targets, undersampled_fts, coils_used, periods) = data_instance
                     skip_kspace = False
                 else:
@@ -507,8 +579,8 @@ class Trainer(nn.Module):
                     
                     if not (self.parameters['skip_kspace_rnn'] and (not self.parameters['image_lstm'])):
                         if not self.parameters['kspace_architecture'] == 'MDCNN':
-                            self.kspace_model.eval()
-                        predr, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.kspace_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
+                            self.recurrent_model.eval()
+                        predr, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.recurrent_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video)
                         avgkspacelossphase += float(loss_phase.item()/(len(dloader)))
                         avgkspacelossmag += float(loss_mag.item()/(len(dloader)))
                         avgkspacelossforget_gate += float(loss_forget_gate.item()/(len(dloader)))
@@ -540,7 +612,6 @@ class Trainer(nn.Module):
                     loss_l1_sos = (predr_sos - targ_vid).reshape(predr_sos.shape[0]*predr_sos.shape[1], predr_sos.shape[3]*predr_sos.shape[4]).abs().mean(1).sum().detach().cpu()
                     loss_l2_sos = (((predr_sos - targ_vid).reshape(predr_sos.shape[0]*predr_sos.shape[1], predr_sos.shape[3]*predr_sos.shape[4]) ** 2).mean(1).sum()).detach().cpu()
                     ss1_sos = self.SSIM(predr_sos.reshape(predr_sos.shape[0]*predr_sos.shape[1],1,*predr_sos.shape[3:]), targ_vid.reshape(predr_sos.shape[0]*predr_sos.shape[1],1,*predr_sos.shape[3:]))
-                    # ss1_sos = self.SSIM(targ_vid.reshape(targ_vid.shape[0]*predr_sos.shape[1],1,*predr_sos.shape[3:]), targ_vid.reshape(predr_sos.shape[0]*predr_sos.shape[1],1,*predr_sos.shape[3:]))
                     ss1_sos = ss1_sos.reshape(ss1_sos.shape[0],-1)
                     loss_ss1_sos = ss1_sos.mean(1).sum().detach().cpu()
                     sosssim_score += float(loss_ss1_sos.cpu().item()/(dset.total_unskipped_frames/self.parameters['num_coils']))*len(self.args.gpu)
@@ -554,7 +625,7 @@ class Trainer(nn.Module):
                     else:
                         predr = predr[:,kspace_skip_frames_loss:]
 
-                    if self.ispace_mode and (not self.args.eval) and (not self.args.eval_on_real) and self.parameters['memoise_ispace'] and not self.kspace_mode:
+                    if self.unet_mode and (not self.args.eval) and (not self.args.eval_on_real) and self.parameters['memoise_ispace'] and not self.recurrent_mode:
                         self.ispace_testset.bulk_set_data(indices[:,0], indices[:,1], predr, targ_vid)
 
                 batch, num_frames, chan, numr, numc = predr.shape
@@ -563,8 +634,8 @@ class Trainer(nn.Module):
                 targ_vid = targ_vid.reshape(batch*num_frames,1, numr, numc).to(self.device)
                 
                 if not self.parameters['kspace_architecture'] == 'MDCNN':
-                    self.ispace_model.eval()
-                outp = self.ispace_model(predr.detach())
+                    self.coil_combine_unet.eval()
+                outp = self.coil_combine_unet(predr.detach())
 
                 loss = self.l1loss(outp, targ_vid)
 
@@ -589,18 +660,33 @@ class Trainer(nn.Module):
         return avgkspacelossmag, avgkspacelossphase, avgkspacelossreal, avgkspacelossforget_gate, avgkspacelossinput_gate, kspacessim_score, avgkspace_l1_loss, avgkspace_l2_loss, sosssim_score, avgsos_l1_loss, avgsos_l2_loss, avgispacelossreal, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss
 
     def time_analysis(self):
+         """
+        Analyzes and prints the average time per frame for the model inference.
+
+        Returns:
+        None
+        """
         tqdm_object = tqdm(enumerate(self.testloader), total = len(self.testloader))
         times = []
         with torch.no_grad():
             for i, (indices, masks, og_video, coilwise_targets, undersampled_fts, coils_used, periods) in tqdm_object:
-                self.kspace_model.eval()
-                times += self.kspace_model.module.time_analysis(undersampled_fts, self.device, periods[0:1].clone(), self.ispace_model)
+                self.recurrent_model.eval()
+                times += self.recurrent_model.module.time_analysis(undersampled_fts, self.device, periods[0:1].clone(), self.coil_combine_unet)
         print('Average Time Per Frame = {} +- {}'.format(np.mean(times), np.std(times)), flush = True)
         scipy.io.savemat(os.path.join(self.save_path, 'fps.mat'), {'times': times})
         return
 
 
     def visualise_on_real(self,epoch):
+        """
+        Visualizes the model predictions on actual data and saves the plots.
+
+        Parameters:
+        epoch (int): The current epoch number.
+
+        Returns:
+        None
+        """
         print('Saving plots for actual data', flush = True)
         path = os.path.join(self.save_path, 'images/actual_data')
         os.makedirs(path, exist_ok=True)
@@ -611,7 +697,7 @@ class Trainer(nn.Module):
             batch, num_frames, chan, numr, numc = actual_data.shape
 
             if not (self.parameters['skip_kspace_rnn'] and (not self.parameters['image_lstm'])):
-                predr, predr_kspace, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(actual_data, None, self.device, None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
+                predr, predr_kspace, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.recurrent_model(actual_data, None, self.device, None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
             else:
                 predr = torch.fft.ifft2(torch.fft.ifftshift(actual_data, dim = (-2,-1))).abs().to(self.device)
                 predr_kspace = predr
@@ -634,7 +720,7 @@ class Trainer(nn.Module):
                 chan = 1
             
             ispace_input = ispace_input.reshape(batch*num_frames,chan,numr, numc).to(self.device)
-            ispace_outp = self.ispace_model(ispace_input).cpu().reshape(batch,num_frames,numr,numc)
+            ispace_outp = self.coil_combine_unet(ispace_input).cpu().reshape(batch,num_frames,numr,numc)
             ispace_outp = ispace_outp.clip(0,1)
 
             predr = predr.reshape(batch,num_frames,chan,numr, numc).to(self.device)
@@ -709,7 +795,17 @@ class Trainer(nn.Module):
 
 
     def visualise(self, epoch, train = False):
+        """
+        Visualizes and saves the model predictions on the training or testing data.
 
+        Parameters:
+        epoch (int): The current epoch number.
+        train (bool): Whether to visualize the training set. Default is False.
+
+        Returns:
+        None
+        """
+        
         if train:
             dloader = self.traintestloader
             dset = self.trainset
@@ -738,8 +834,8 @@ class Trainer(nn.Module):
                 inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
 
                 if not self.parameters['kspace_architecture'] == 'MDCNN':
-                    self.kspace_model.eval()
-                    self.ispace_model.eval()
+                    self.recurrent_model.eval()
+                    self.coil_combine_unet.eval()
 
                 batch, num_frames, chan, numr, numc = undersampled_fts.shape
                 
@@ -748,7 +844,7 @@ class Trainer(nn.Module):
                 batch = num_vids
                 num_plots = num_vids*num_frames
                 if not (self.parameters['skip_kspace_rnn'] and (not self.parameters['image_lstm'])):
-                    predr, predr_kspace, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.kspace_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
+                    predr, predr_kspace, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.recurrent_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
                     if predr_kspace is None:
                         predr_kspace = predr
                 else:
@@ -765,8 +861,6 @@ class Trainer(nn.Module):
                 if self.parameters['coil_combine'] == 'SOS':
                     ispace_input = (predr**2).sum(2, keepdim = True) ** 0.5
                     ispace_input = ispace_input.clip(0,1)
-                    # ispace_input = ispace_input - ispace_input.min(-1, keepdim = True)[0].min(-2, keepdim = True)[0]
-                    # ispace_input = ispace_input / (EPS + ispace_input.max(-1, keepdim = True)[0].max(-2, keepdim = True)[0])
                     chan = 1
                 else:
                     ispace_input = predr
@@ -776,7 +870,7 @@ class Trainer(nn.Module):
                 
                 ispace_input = ispace_input.reshape(batch*num_frames,chan,numr, numc).to(self.device)
                 targ_vid = og_video[:num_vids].reshape(batch*num_frames,1, numr, numc).to(self.device)                
-                ispace_outp = self.ispace_model(ispace_input).cpu().reshape(batch,num_frames,numr,numc)
+                ispace_outp = self.coil_combine_unet(ispace_input).cpu().reshape(batch,num_frames,numr,numc)
                 ispace_outp = ispace_outp.clip(0,1)
                 
 
