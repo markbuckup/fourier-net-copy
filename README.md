@@ -7,21 +7,34 @@
 The main.py takes an argument of "dataset_path", where it expects the path to  the data folder. Any dataset that needs to be trained on must replicate the preprocessing done for the ACDC dataset. 
 
 The directory structure of the dataset folder should be as follows
+```
+dataset_path
+└── radial_faster
+    └── 256_resolution_10_spokes 
+		├── metadic.pth
+		├── patient_1
+ 		├	├── vid_0.pth
+		├	├── vid_1.pth
+		├	├── .......
+		├	└── vid_10.pth
+		├
+		├── patient_2
+ 		├	├── vid_0.pth
+		├	├── vid_1.pth
+		├	├── .......
+		├	└── vid_11.pth
+		├
+		├── ..........
+		├
+		├
+		├
+		└── patient_150
+ 			├── vid_0.pth
+		 	├── vid_1.pth
+		 	├── .......
+		 	└── vid_15.pth
 
-|Folder pointed to by the argument|
-					|--------------radial_faster
-								     |-------------- 256_resolution_10_spokes
-														|-------------- patient_1-----------------------|-------vid_0.pth
-														|							        |-------vid_1.pth
-														|-------------- patient_2			     |.......
-														|								|-------vid_10.pth
-														|-------------- .......
-														|
-														|-------------- patient_150
-														|
-														|-------------- metadata.pth
-
-
+```
 
 The metadata.pth must be a .pth file stored by torch.save(.) and should contain a dictionary with the following keys:
 
