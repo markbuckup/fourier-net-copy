@@ -130,7 +130,6 @@ def train_paradigm(rank, world_size, args, parameters):
         ispace_model.load_state_dict(dic['ispace_model'])
         opt_dict_kspace = dic['kspace_optim']
         opt_dict_ispace = dic['ispace_optim']
-        # scaler_dict = dic['scaler']
         if parameters['scheduler'] != 'None':
             scheduler_dict_ispace = dic['ispace_scheduler']
             scheduler_dict_kspace = dic['kspace_scheduler']
@@ -149,7 +148,6 @@ def train_paradigm(rank, world_size, args, parameters):
         # ispace_model.load_state_dict(dic['ispace_model'])
         opt_dict_kspace = dic['kspace_optim']
         # opt_dict_ispace = dic['ispace_optim']
-        # scaler_dict = dic['scaler']
         if parameters['scheduler'] != 'None':
             scheduler_dict_ispace = dic['ispace_scheduler']
             scheduler_dict_kspace = dic['kspace_scheduler']
@@ -165,7 +163,6 @@ def train_paradigm(rank, world_size, args, parameters):
         test_losses = []
         opt_dict_kspace = None
         opt_dict_ispace = None
-        # scaler_dict = None
         scheduler_dict_ispace = None
         scheduler_dict_kspace = None
         if rank == 0:
@@ -184,7 +181,6 @@ def train_paradigm(rank, world_size, args, parameters):
         if not args.resume_kspace:
             trainer.ispace_optim.load_state_dict(opt_dict_ispace)
         trainer.kspace_optim.load_state_dict(opt_dict_kspace)
-        # trainer.scaler.load_state_dict(scaler_dict)
         if parameters['scheduler'] != 'None':
             if not args.resume_kspace:
                 trainer.ispace_scheduler.load_state_dict(scheduler_dict_ispace)
@@ -321,7 +317,6 @@ def train_paradigm(rank, world_size, args, parameters):
                 dic['kspace_scheduler'] = trainer.kspace_scheduler.state_dict()
             dic['losses'] = losses
             dic['test_losses'] = test_losses
-            # dic['scaler'] = trainer.scaler.state_dict()
             if (e+1) % SAVE_INTERVAL == 0:
                 if e > parameters['num_epochs_recurrent']:
                     model_state = 3
@@ -423,7 +418,6 @@ def test_paradigm(rank, world_size, args, parameters):
         pre_e = dic['e']
         kspace_model.load_state_dict(dic['kspace_model'])
         ispace_model.load_state_dict(dic['ispace_model'])
-        # scaler_dict = dic['scaler']
         if rank == 0:
             print('Loading kspace model after {} epochs'.format(dic['e']), flush = True)
         losses = dic['losses']
@@ -441,7 +435,6 @@ def test_paradigm(rank, world_size, args, parameters):
         pre_e = dic['e']
         kspace_model.load_state_dict(dic['kspace_model'])
         # ispace_model.load_state_dict(dic['ispace_model'])
-        # scaler_dict = dic['scaler']
         if rank == 0:
             print('Loading kspace model after {} epochs'.format(dic['e']), flush = True)
         losses = dic['losses']
@@ -454,7 +447,6 @@ def test_paradigm(rank, world_size, args, parameters):
         pre_e =0
         losses = []
         test_losses = []
-        # scaler_dict = None
         scheduler_dict = None
         if rank == 0:
             print('Starting Training', flush = True)
