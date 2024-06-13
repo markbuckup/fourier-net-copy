@@ -286,10 +286,10 @@ class ACDC_radial(Dataset):
         masks_applicable = dic['spoke_mask'].type(torch.float32)[:self.loop_videos,:,:,:]
         og_video = ((dic['targ_video']/255.)[:self.loop_videos,:,:,:])
         undersampled_fts = dic['coilwise_input'][:self.loop_videos,:,:,:]
-        if coilwise_targets not in dic:
-            og_coiled_vids = og_video * coils_used
-            temp = ((og_coiled_vids**2).sum(2)**0.5).max(-1)[0].max(-1)[0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
-            og_coiled_vids = og_coiled_vids / (1e-10 + temp)
+        if 'coilwise_targets' not in dic:
+            coilwise_targets = og_video * coils_used
+            temp = ((coilwise_targets**2).sum(2)**0.5).max(-1)[0].max(-1)[0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+            coilwise_targets = coilwise_targets / (1e-10 + temp)
         else:
             coilwise_targets = (dic['coilwise_targets']/255.)[:self.loop_videos,:,:,:]
 
