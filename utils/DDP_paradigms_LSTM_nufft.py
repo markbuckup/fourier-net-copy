@@ -129,13 +129,13 @@ def train_paradigm(rank, world_size, args, parameters):
                     project="fcrl/Cardiac-MRI-Reconstruction",
                     custom_run_id=run_id,
                     name = args.run_id,
-                    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZDU2NDJjMy1lNzczLTRkZDEtODAwYy01MWFlM2VmN2Q4ZTEifQ==",
+                    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJiNGY0MGNmMi05YWI0LTQ0MDMtYmYzMy04ODZjZDE0NTRmMzkifQ==",
                 )
             else:
                 run = neptune.init_run(
                     project="fcrl/Cardiac-MRI-Reconstruction",
                     name = args.run_id,
-                    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZDU2NDJjMy1lNzczLTRkZDEtODAwYy01MWFlM2VmN2Q4ZTEifQ==",
+                    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJiNGY0MGNmMi05YWI0LTQ0MDMtYmYzMy04ODZjZDE0NTRmMzkifQ==",
                 )
                 torch.save({'run_id': run["sys/id"].fetch()}, checkpoint_path + 'neptune_run.pth')
             run["parameters"] = parameters
