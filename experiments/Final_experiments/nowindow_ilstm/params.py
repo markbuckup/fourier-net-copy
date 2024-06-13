@@ -74,7 +74,7 @@ parameters['scheduler_params'] = {
     'verbose': True,
     'cycle_momentum': False,
 }
-parameters['ispace_scheduler_params'] = {
+parameters['unet_scheduler_params'] = {
     'base_lr': 4e-6,
     'max_lr': 4e-4,
     'step_size_up': 400,

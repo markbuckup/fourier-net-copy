@@ -99,7 +99,7 @@ def torch_trim(x):
         return x.reshape(B,C,row,col)
 
 def show_difference_image(im1, im2):
-     """
+    """
     Displays the absolute difference between two images.
 
     Parameters:
@@ -660,7 +660,7 @@ class Trainer(nn.Module):
         return avgkspacelossmag, avgkspacelossphase, avgkspacelossreal, avgkspacelossforget_gate, avgkspacelossinput_gate, kspacessim_score, avgkspace_l1_loss, avgkspace_l2_loss, sosssim_score, avgsos_l1_loss, avgsos_l2_loss, avgispacelossreal, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss
 
     def time_analysis(self):
-         """
+        """
         Analyzes and prints the average time per frame for the model inference.
 
         Returns:

@@ -252,7 +252,7 @@ class RecurrentModule(nn.Module):
         Various attributes for LSTM cell configuration.
     """
     def __init__(self, history_length = 0, num_coils = 8, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, rnn_input_mask = True, skip_connections = False, n_layers = 3, n_hidden = 12, n_rnn_cells = 1, coilwise = True, gate_cat_prev_output = False):
-         """
+        """
         Initializes the convLSTMcell_kspace module.
 
         Args:
@@ -285,8 +285,8 @@ class RecurrentModule(nn.Module):
         mag_cnn_func = nn.Conv2d
         mag_relu_func = nn.LeakyReLU
         
-        phase_cnn_func = cmplx_conv.ComplexConv2d
-        phase_relu_func = cmplx_activation.CReLU
+        phase_cnn_func = nn.Conv2d
+        phase_relu_func = nn.LeakyReLU
 
         self.phase_activation = lambda x: x
         self.input_gate_output_size = self.num_coils
@@ -462,8 +462,8 @@ class convLSTMcell(nn.Module):
     Attributes:
         Various attributes for LSTM cell configuration.
     """
-    def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, real_mode = False,, ilstm_gate_cat_prev_output = False):
-         """
+    def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, real_mode = False, ilstm_gate_cat_prev_output = False):
+        """
         Initializes the convLSTMcell module.
 
         Args:
@@ -609,105 +609,105 @@ class convLSTM_Kspace1(nn.Module):
         mask = (1-mask).unsqueeze(0).unsqueeze(0).unsqueeze(0)
         self.predr_mask = torch.FloatTensor(mask).to(proc_device)
 
-    # def time_analysis(self, fft_exp, device, periods, ispace_model):
-    #     times = []
-    #     with torch.no_grad():
-    #         prev_outputs1 = None
-    #         prev_outputs2 = None
-    #         prev_state3 = None
-    #         prev_output3 = None
-    #         mag_gates_remember = None
-    #         phase_gates_remember = None
+    def time_analysis(self, fft_exp, device, periods, ispace_model):
+        times = []
+        with torch.no_grad():
+            prev_outputs1 = None
+            prev_outputs2 = None
+            prev_state3 = None
+            prev_output3 = None
+            mag_gates_remember = None
+            phase_gates_remember = None
 
-    #         predr = torch.zeros(fft_exp.shape)
+            predr = torch.zeros(fft_exp.shape)
 
-    #         length = fft_exp.shape[-1]
-    #         x_size, y_size = length, length
-    #         x_arr, y_arr = np.mgrid[0:x_size, 0:y_size]
-    #         cell = (length//2, length//2)
-    #         dists = ((x_arr - cell[0])**2 + (y_arr - cell[1])**2)**0.22
-    #         dists = torch.FloatTensor(dists+1).to(device).unsqueeze(0).unsqueeze(0)
-    #         if not self.param_dic['center_weighted_loss']:
-    #             dists = torch.ones_like(dists, device = device).unsqueeze(0).unsqueeze(0)
-    #         cycle_mask = ((x_arr - cell[0])**2 + (y_arr - cell[1])**2)**2
-    #         cycle_mask[cycle_mask > cycle_mask[0,x_size//2]] = -1
-    #         cycle_mask[cycle_mask > -1] = 1
-    #         cycle_mask[cycle_mask == -1] = 0
-    #         cycle_mask = torch.FloatTensor(cycle_mask).to(device).unsqueeze(0).unsqueeze(0)
+            length = fft_exp.shape[-1]
+            x_size, y_size = length, length
+            x_arr, y_arr = np.mgrid[0:x_size, 0:y_size]
+            cell = (length//2, length//2)
+            dists = ((x_arr - cell[0])**2 + (y_arr - cell[1])**2)**0.22
+            dists = torch.FloatTensor(dists+1).to(device).unsqueeze(0).unsqueeze(0)
+            if not self.param_dic['center_weighted_loss']:
+                dists = torch.ones_like(dists, device = device).unsqueeze(0).unsqueeze(0)
+            cycle_mask = ((x_arr - cell[0])**2 + (y_arr - cell[1])**2)**2
+            cycle_mask[cycle_mask > cycle_mask[0,x_size//2]] = -1
+            cycle_mask[cycle_mask > -1] = 1
+            cycle_mask[cycle_mask == -1] = 0
+            cycle_mask = torch.FloatTensor(cycle_mask).to(device).unsqueeze(0).unsqueeze(0)
 
             
-    #         for ti in range(fft_exp.shape[1]):
-    #             start1 = time.time()
-    #             hist_ind = (torch.arange(self.history_length+1).repeat(fft_exp.shape[0],1) - self.history_length)
-    #             hist_ind = hist_ind * periods.reshape(-1,1).cpu()
-    #             hist_ind += ti
-    #             temp1 = hist_ind.clone()
-    #             temp1[temp1 < 0] = 9999999999
-    #             min_vals = temp1.min(1)[0]
-    #             base = torch.zeros(temp1.shape) + min_vals.reshape(-1,1)
+            for ti in range(fft_exp.shape[1]):
+                start1 = time.time()
+                hist_ind = (torch.arange(self.history_length+1).repeat(fft_exp.shape[0],1) - self.history_length)
+                hist_ind = hist_ind * periods.reshape(-1,1).cpu()
+                hist_ind += ti
+                temp1 = hist_ind.clone()
+                temp1[temp1 < 0] = 9999999999
+                min_vals = temp1.min(1)[0]
+                base = torch.zeros(temp1.shape) + min_vals.reshape(-1,1)
 
-    #             hist_ind = hist_ind - base
-    #             hist_ind[hist_ind < 0] = 0
-    #             hist_ind = (hist_ind + base).long()
+                hist_ind = hist_ind - base
+                hist_ind[hist_ind < 0] = 0
+                hist_ind = (hist_ind + base).long()
 
-    #             mult = (torch.arange(fft_exp.shape[0])*fft_exp.shape[1]).reshape(-1,1)
-    #             hist_ind = hist_ind + mult
-    #             hist_fft = fft_exp.reshape(-1, *fft_exp.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *fft_exp.shape[3:]).to(device)
-    #             hist_mag = mylog((hist_fft.abs()+EPS), base = self.param_dic['logarithm_base'])
-    #             hist_phase = hist_fft / (self.param_dic['logarithm_base']**hist_mag)
-    #             hist_phase = torch.stack((hist_phase.real, hist_phase.imag), -1)
+                mult = (torch.arange(fft_exp.shape[0])*fft_exp.shape[1]).reshape(-1,1)
+                hist_ind = hist_ind + mult
+                hist_fft = fft_exp.reshape(-1, *fft_exp.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *fft_exp.shape[3:]).to(device)
+                hist_mag = mylog((hist_fft.abs()+EPS), base = self.param_dic['logarithm_base'])
+                hist_phase = hist_fft / (self.param_dic['logarithm_base']**hist_mag)
+                hist_phase = torch.stack((hist_phase.real, hist_phase.imag), -1)
 
-#                 background = ((hist_phase[:,:,:,:,1].abs() + hist_phase[:,:,:,:,0].abs()) < 1)
-#                 hist_phase = torch.atan2(hist_phase[:,:,:,:,1]+EPS,hist_phase[:,:,:,:,0]) + 4
-#                 hist_phase[background] = 0
-#                 hist_mag[background] = 0
+                background = ((hist_phase[:,:,:,:,1].abs() + hist_phase[:,:,:,:,0].abs()) < 1)
+                hist_phase = torch.atan2(hist_phase[:,:,:,:,1]+EPS,hist_phase[:,:,:,:,0]) + 4
+                hist_phase[background] = 0
+                hist_mag[background] = 0
     
-    #             if prev_outputs2 is not None:
-    #                 prev_outputs2 = [(x + 5) for x in prev_outputs2]
-    #                 prev_outputs1 = [x + 4 for x in prev_outputs1]
+                if prev_outputs2 is not None:
+                    prev_outputs2 = [(x + 5) for x in prev_outputs2]
+                    prev_outputs1 = [x + 4 for x in prev_outputs1]
 
-    #             curr_mask = None
-    #             random_window_size = np.random.choice(self.param_dic['window_size'])
-    #             prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(
-    #                                                                                                                                                     hist_mag,
-    #                                                                                                                                                     hist_phase,
-    #                                                                                                                                                     background = background,
-    #                                                                                                                                                     gt_mask = curr_mask,
-    #                                                                                                                                                     mag_prev_outputs = prev_outputs2,
-    #                                                                                                                                                     phase_prev_outputs = prev_outputs1,
-    #                                                                                                                                                     window_size = random_window_size,
-    #                                                                                                                                                     mag_gates_remember = mag_gates_remember,
-    #                                                                                                                                                     phase_gates_remember = phase_gates_remember,
-    #                                                                                                                                                     eval = True
-    #                                                                                                                                                 )
+                curr_mask = None
+                random_window_size = np.random.choice(self.param_dic['window_size'])
+                prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(
+                                                                                                                                                        hist_mag,
+                                                                                                                                                        hist_phase,
+                                                                                                                                                        background = background,
+                                                                                                                                                        gt_mask = curr_mask,
+                                                                                                                                                        mag_prev_outputs = prev_outputs2,
+                                                                                                                                                        phase_prev_outputs = prev_outputs1,
+                                                                                                                                                        window_size = random_window_size,
+                                                                                                                                                        mag_gates_remember = mag_gates_remember,
+                                                                                                                                                        phase_gates_remember = phase_gates_remember,
+                                                                                                                                                        eval = True
+                                                                                                                                                    )
 
-    #             prev_outputs2 = [(x - 5)*cycle_mask for x in prev_outputs2]
-    #             prev_outputs1 = [(x - 4)*cycle_mask for x in prev_outputs1]
+                prev_outputs2 = [(x - 5)*cycle_mask for x in prev_outputs2]
+                prev_outputs1 = [(x - 4)*cycle_mask for x in prev_outputs1]
      
                 
-#                 phase_ti = torch.complex(torch.cos(prev_outputs1[-1]), torch.sin(prev_outputs1[-1]))
+                phase_ti = torch.complex(torch.cos(prev_outputs1[-1]), torch.sin(prev_outputs1[-1]))
 
-    #             lstm_predicted_fft = (self.param_dic['logarithm_base']**prev_outputs2[-1])*phase_ti
-    #             predr_ti = torch.fft.ifft2(torch.fft.ifftshift(lstm_predicted_fft, dim = (-2,-1)))
-    #             predr_ti = predr_ti.abs().clip(-10,10)
+                lstm_predicted_fft = (self.param_dic['logarithm_base']**prev_outputs2[-1])*phase_ti
+                predr_ti = torch.fft.ifft2(torch.fft.ifftshift(lstm_predicted_fft, dim = (-2,-1)))
+                predr_ti = predr_ti.abs().clip(-10,10)
                 
-    #             if self.param_dic['image_lstm']:
-    #                 B,C,numr, numc = predr_ti.shape
-    #                 predr_ti = predr_ti.reshape(B*C, 1, numr, numc)
-    #                 if prev_output3 is not None:
-    #                     prev_output3 = prev_output3.reshape(B*C, 1, numr, numc)
-    #                 prev_state3, prev_output3 = self.ispacem(predr_ti, prev_state3, prev_output3)
-    #                 prev_output3 = prev_output3.reshape(B, C, numr, numc)
-    #                 predr_ti = predr_ti.reshape(B, C, numr, numc)
-    #             else:
-    #                 prev_output3 = predr_ti
+                if self.param_dic['image_lstm']:
+                    B,C,numr, numc = predr_ti.shape
+                    predr_ti = predr_ti.reshape(B*C, 1, numr, numc)
+                    if prev_output3 is not None:
+                        prev_output3 = prev_output3.reshape(B*C, 1, numr, numc)
+                    prev_state3, prev_output3 = self.ispacem(predr_ti, prev_state3, prev_output3)
+                    prev_output3 = prev_output3.reshape(B, C, numr, numc)
+                    predr_ti = predr_ti.reshape(B, C, numr, numc)
+                else:
+                    prev_output3 = predr_ti
                 
-    #             predr[:,ti,:,:,:] = ispace_model(prev_output3).cpu()
+                predr[:,ti,:,:,:] = ispace_model(prev_output3).cpu()
                 
-    #             times.append(time.time() - start1)
+                times.append(time.time() - start1)
 
 
-    #     return times
+        return times
 
 
     def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None, epoch = np.inf):

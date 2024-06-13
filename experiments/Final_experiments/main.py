@@ -128,7 +128,7 @@ assert(not (args.visualise_only and args.numbers_only))
 # Currently not supported on cpu
 assert(args.gpu != [-1])
 if args.eval:
-    len(args.gpu == 1)
+    assert(len(args.gpu) == 1)
 
 
 if args.run_id[-1] == '/':
@@ -138,9 +138,6 @@ sys.path.append('./{}/'.format(args.run_id))
 
 # Import the parameters from the params.py
 from params import parameters
-if parameters['dataset'] == 'acdc':
-    from utils.myDatasets.ACDC_radial import ACDC_radial as dataset
-    
 
 # If evaluating, then just compute the L1/L2/SSIM numbers on the last 30 frames
 if args.eval:
