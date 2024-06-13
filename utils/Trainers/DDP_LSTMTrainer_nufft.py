@@ -144,7 +144,6 @@ class Trainer(nn.Module):
         self.parameters = parameters
         self.device = device
         self.ddp_rank = ddp_rank
-        self.histogram_target = (self.trainset[0][2][0,0,:,:]).unsqueeze(0).unsqueeze(0).to(device)
         self.ddp_world_size = ddp_world_size
         self.args = args
         temp = os.getcwd().split('/')
@@ -152,13 +151,14 @@ class Trainer(nn.Module):
         self.save_path = os.path.join(self.parameters['save_folder'], '/'.join(temp))
         self.save_path = os.path.join(self.save_path, self.args.run_id)
         del temp
-        self.train_sampler = DistributedSampler(
-                                self.trainset, 
-                                num_replicas=self.ddp_world_size, 
-                                rank=self.ddp_rank, 
-                                shuffle=True, 
-                                drop_last=False
-                            )
+        if not args.eval_on_real:
+            self.train_sampler = DistributedSampler(
+                                    self.trainset, 
+                                    num_replicas=self.ddp_world_size, 
+                                    rank=self.ddp_rank, 
+                                    shuffle=True, 
+                                    drop_last=False
+                                )
         if not args.eval and (not ispace_trainset is None) and not self.args.eval_on_real:
             self.ispace_train_sampler = DistributedSampler(
                                     self.ispace_trainset, 
@@ -174,29 +174,30 @@ class Trainer(nn.Module):
                                     shuffle=False, 
                                     drop_last=False
                                 )
-        self.train_test_sampler = DistributedSampler(
-                                self.trainset, 
-                                num_replicas=self.ddp_world_size, 
-                                rank=self.ddp_rank, 
-                                shuffle=False, 
-                                drop_last=False
+        if not args.eval_on_real:
+            self.train_test_sampler = DistributedSampler(
+                                    self.trainset, 
+                                    num_replicas=self.ddp_world_size, 
+                                    rank=self.ddp_rank, 
+                                    shuffle=False, 
+                                    drop_last=False
+                                )
+            self.test_sampler = DistributedSampler(
+                                    self.testset, 
+                                    num_replicas=self.ddp_world_size, 
+                                    rank=self.ddp_rank, 
+                                    shuffle=False, 
+                                    drop_last=False
+                                )
+            self.trainloader = torch.utils.data.DataLoader(
+                                self.trainset,
+                                batch_size=self.parameters['train_batch_size'], 
+                                shuffle = False,
+                                num_workers = self.parameters['dataloader_num_workers'],
+                                pin_memory = False,
+                                drop_last = False,
+                                sampler = self.train_sampler
                             )
-        self.test_sampler = DistributedSampler(
-                                self.testset, 
-                                num_replicas=self.ddp_world_size, 
-                                rank=self.ddp_rank, 
-                                shuffle=False, 
-                                drop_last=False
-                            )
-        self.trainloader = torch.utils.data.DataLoader(
-                            self.trainset,
-                            batch_size=self.parameters['train_batch_size'], 
-                            shuffle = False,
-                            num_workers = self.parameters['dataloader_num_workers'],
-                            pin_memory = False,
-                            drop_last = False,
-                            sampler = self.train_sampler
-                        )
         if not args.eval and (not ispace_trainset is None) and not self.args.eval_on_real:
             self.ispacetrainloader = torch.utils.data.DataLoader(
                                 self.ispace_trainset,
@@ -216,25 +217,25 @@ class Trainer(nn.Module):
                                 drop_last = False,
                                 sampler = self.ispace_test_sampler
                             )
-
-        self.traintestloader = torch.utils.data.DataLoader(
-                            self.trainset,
-                            batch_size=self.parameters['test_batch_size'], 
-                            shuffle = False,
-                            num_workers = self.parameters['dataloader_num_workers'],
-                            pin_memory = False,
-                            drop_last = False,
-                            sampler = self.train_test_sampler
-                        )
-        self.testloader = torch.utils.data.DataLoader(
-                            self.testset,
-                            batch_size=self.parameters['test_batch_size'], 
-                            shuffle = False,
-                            num_workers = self.parameters['dataloader_num_workers'],
-                            pin_memory = False,
-                            drop_last = False,
-                            sampler = self.test_sampler
-                        )
+        if not args.eval_on_real:
+            self.traintestloader = torch.utils.data.DataLoader(
+                                self.trainset,
+                                batch_size=self.parameters['test_batch_size'], 
+                                shuffle = False,
+                                num_workers = self.parameters['dataloader_num_workers'],
+                                pin_memory = False,
+                                drop_last = False,
+                                sampler = self.train_test_sampler
+                            )
+            self.testloader = torch.utils.data.DataLoader(
+                                self.testset,
+                                batch_size=self.parameters['test_batch_size'], 
+                                shuffle = False,
+                                num_workers = self.parameters['dataloader_num_workers'],
+                                pin_memory = False,
+                                drop_last = False,
+                                sampler = self.test_sampler
+                            )
 
         if self.parameters['optimizer'] == 'Adam':
             if self.parameters['image_lstm']:
