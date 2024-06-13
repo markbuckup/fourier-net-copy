@@ -44,14 +44,12 @@ The vid_i.pth for each patient should contain the following keys
 Post training, the fourier-net can be evaluated using the following commands:
 
 ``````bash
-python3 main.py --run_id <run_id> --gpu <GPU IDs> --dataset_path <path_to_data>							# Start Training
+python3 main.py --run_id <run_id> --gpu <GPU IDs> --dataset_path <path_to_data>					 	# Start Training
 python3 main.py --run_id <run_id> --gpu <GPU IDs> --dataset_path <path_to_data> --resume				# Resume Training
-python3 main.py --run_id <run_id> --gpu <GPU IDs> --dataset_path <path_to_data> --resume --eval			# Evaluate Training - 																												Save predicted frames 																											  Print L1/L2/SSIM
-python3 main.py --run_id <run_id> --gpu <GPU IDs> --dataset_path <path_to_data> \
-				--resume --eval --visualise_only														# Save predicted frames
+python3 main.py --run_id <run_id> --gpu <GPU IDs> --dataset_path <path_to_data> --resume --eval				# Evaluate Training - Save predicted frames & Print L1/L2/SSIM
 
-python3 main.py --run_id <run_id> --gpu <GPU IDs> --dataset_path <path_to_data> \
-				--resume --eval --numbers_only															# Print L1/L2/SSIM
+python3 main.py --run_id <run_id> --gpu <GPU IDs> --dataset_path <path_to_data> --resume --eval --visualise_only	# Save predicted frames
+python3 main.py --run_id <run_id> --gpu <GPU IDs> --dataset_path <path_to_data> --resume --eval --numbers_only		# Print L1/L2/SSIM
 ``````
 
 
