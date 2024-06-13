@@ -798,7 +798,7 @@ class Trainer(nn.Module):
                     if f_num < self.parameters['init_skip_frames']:
                         spec = 'Loss Skipped'
 
-                    if not self.args.ispace_visual_only:
+                    if not self.args.unet_visual_only:
                         fig = plt.figure(figsize = (22,4*kspace_out_size))
                         
                         # plt.subplot(kspace_out_size,7,(((kspace_out_size//2))*7)+1)
@@ -1067,7 +1067,7 @@ class Trainer(nn.Module):
                             if f_num < self.parameters['init_skip_frames']:
                                 spec = 'Loss Skipped'
 
-                            if not self.args.ispace_visual_only:
+                            if not self.args.unet_visual_only:
 
                                 if self.args.raw_visual_only:
                                     for c_num in range(kspace_out_size):
