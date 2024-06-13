@@ -751,7 +751,7 @@ class convLSTM_Kspace1(nn.Module):
                 curr_mask = None
             else:
                 curr_mask = gt_masks[:,ti,:,:,:]
-            if epoch < parameters['num_epochs_recurrent'] - parameters['num_epochs_windowed']:
+            if epoch < self.param_dic['num_epochs_recurrent'] - self.param_dic['num_epochs_windowed']:
                 random_window_size = np.inf
             else:
                 random_window_size = np.random.choice(self.param_dic['window_size'])
@@ -814,18 +814,18 @@ class convLSTM_Kspace1(nn.Module):
                         # targ_now = targ_now / (EPS + targ_now.max(3)[0].max(2)[0].unsqueeze(2).unsqueeze(2).detach())
 
                         if prev_output3 is not None:
-                            if epoch < parameters['num_epochs_recurrent'] - parameters['num_epochs_ilstm']:
+                            if epoch < self.param_dic['num_epochs_recurrent'] - self.param_dic['num_epochs_ilstm']:
                                 loss_real += 1e-10*criterionL2(prev_output3*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_rnn_cells'])
                             else:
                                 loss_real += 8*criterionL2(prev_output3*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_rnn_cells'])
                         loss_real += criterionL2(predr_ti*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_rnn_cells'])
                 
-                    with torch.no_grad():
-                        loss_l1 += (predr_ti- targ_now).reshape(predr_ti.shape[0]*predr_ti.shape[1], -1).abs().mean(1).sum().detach().cpu()/self.param_dic['n_rnn_cells']
-                        loss_l2 += (((predr_ti- targ_now).reshape(predr_ti.shape[0]*predr_ti.shape[1], -1) ** 2).mean(1).sum()).detach().cpu()/self.param_dic['n_rnn_cells']
-                        ss1 = self.SSIM(predr_ti.reshape(predr_ti.shape[0]*predr_ti.shape[1],1,self.param_dic['image_resolution'],self.param_dic['image_resolution']), targ_now.reshape(predr_ti.shape[0]*predr_ti.shape[1],1,self.param_dic['image_resolution'],self.param_dic['image_resolution']))
-                        ss1 = ss1.reshape(ss1.shape[0],-1)
-                        loss_ss1 += ss1.mean(1).sum().detach().cpu() / (self.param_dic['n_rnn_cells'])
+                        with torch.no_grad():
+                            loss_l1 += (predr_ti- targ_now).reshape(predr_ti.shape[0]*predr_ti.shape[1], -1).abs().mean(1).sum().detach().cpu()/self.param_dic['n_rnn_cells']
+                            loss_l2 += (((predr_ti- targ_now).reshape(predr_ti.shape[0]*predr_ti.shape[1], -1) ** 2).mean(1).sum()).detach().cpu()/self.param_dic['n_rnn_cells']
+                            ss1 = self.SSIM(predr_ti.reshape(predr_ti.shape[0]*predr_ti.shape[1],1,self.param_dic['image_resolution'],self.param_dic['image_resolution']), targ_now.reshape(predr_ti.shape[0]*predr_ti.shape[1],1,self.param_dic['image_resolution'],self.param_dic['image_resolution']))
+                            ss1 = ss1.reshape(ss1.shape[0],-1)
+                            loss_ss1 += ss1.mean(1).sum().detach().cpu() / (self.param_dic['n_rnn_cells'])
 
             
             if self.param_dic['image_lstm']:
