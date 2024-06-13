@@ -29,7 +29,6 @@ def images2video(images, out_path, fps = 30, video_codec = 'libx264', repeat = 1
 
 sys.path.append('../../')
 os.environ['display'] = 'localhost:14.0'
-from utils.DDP_paradigms_LSTM_nufft import train_paradigm, test_paradigm
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--run_id', type = str, required = True)

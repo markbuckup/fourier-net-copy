@@ -14,13 +14,6 @@ import kornia
 from kornia.utils import draw_line
 from torch import nn, optim
 import utils
-from utils.watsonLoss.watson_fft import WatsonDistanceFft
-from utils.watsonLoss.shift_wrapper import ShiftWrapper
-from utils.watsonLoss.color_wrapper import ColorWrapper
-from utils.models.complexCNNs.polar_transforms import (
-    convert_cylindrical_to_polar,
-    convert_polar_to_cylindrical,
-)
 
 EPS = 1e-10
 GR = (1 + (5**0.5))/2
@@ -36,10 +29,6 @@ def get_golden_bars(num_bars = 376, resolution = 128):
 
 
 def fetch_loss_function(loss_str, device, loss_params):
-    def load_state_dict(filename):
-        current_dir = os.path.dirname(__file__)
-        path = os.path.join(current_dir, 'watsonLoss/weights', filename)
-        return torch.load(path, map_location='cpu')
     if loss_str == 'None':
         return None
     elif loss_str == 'Cosine':
@@ -48,30 +37,6 @@ def fetch_loss_function(loss_str, device, loss_params):
         return nn.L1Loss().to(device)
     elif loss_str == 'L2':
         return nn.MSELoss().to(device)
-    elif loss_str == 'Cosine-Watson':
-        reduction = 'mean'
-        if loss_params['grayscale']:
-            if loss_params['deterministic']:
-                loss = WatsonDistanceFft(reduction=reduction).to(device)
-                if loss_params['watson_pretrained']: 
-                    loss.load_state_dict(load_state_dict('gray_watson_fft_trial0.pth'))
-            else:
-                loss = ShiftWrapper(WatsonDistanceFft, (), {'reduction': reduction}).to(device)
-                if loss_params['watson_pretrained']: 
-                    loss.loss.load_state_dict(load_state_dict('gray_watson_fft_trial0.pth'))
-        else:
-            if loss_params['deterministic']:
-                loss = ColorWrapper(WatsonDistanceFft, (), {'reduction': reduction}).to(device)
-                if loss_params['watson_pretrained']: 
-                    loss.load_state_dict(load_state_dict('rgb_watson_fft_trial0.pth'))
-            else:
-                loss = ShiftWrapper(ColorWrapper, (WatsonDistanceFft, (), {'reduction': reduction}), {}).to(device)
-                if loss_params['watson_pretrained']: 
-                    loss.loss.load_state_dict(load_state_dict('rgb_watson_fft_trial0.pth'))
-        if loss_params['watson_pretrained']: 
-            for param in loss.parameters():
-                param.requires_grad = False
-        return loss
     elif loss_str == 'SSIM':
         return kornia.losses.SSIMLoss(loss_params['SSIM_window']).to(device)
     elif loss_str == 'MS_SSIM':
@@ -217,25 +182,3 @@ def save_coils(theta_init, n_coils = 4):
     coils = get_coil_mask(theta_init = theta_init, n_coils = n_coils)
     for ci in range(coils.shape[0]):
         plt.imsave('Coil_{}.png'.format(ci), coils[ci,:,:], cmap = 'gray')
-
-# x1 = torch.randn(10,3,128,128)
-# fx1 = torch.randn(10,1,128,128,2)
-# mydic = {
-#      'SSIM_window': 11,
-#      'alpha_phase': 1,
-#      'alpha_amp': 1,
-#      'grayscale': False,
-#      'deterministic': False,
-#      'watson_pretrained': True,
-# } 
-# print(fetch_loss_function('None', torch.device('cpu'), mydic))
-# print(fetch_loss_function('Cosine', torch.device('cpu'), mydic)(x1,x1))
-# print(fetch_loss_function('L1', torch.device('cpu'), mydic)(x1,x1))
-# print(fetch_loss_function('L2', torch.device('cpu'), mydic)(x1,x1))
-# print(fetch_loss_function('SSIM', torch.device('cpu'), mydic)(x1,x1))
-# print(fetch_loss_function('MS_SSIM', torch.device('cpu'), mydic)(x1,x1))
-# print(fetch_loss_function('Cosine-Watson', torch.device('cpu'), mydic)(x1,x1))
-# print(fetch_loss_function('Cosine-L1', torch.device('cpu'), mydic)(fx1,fx1))
-# print(fetch_loss_function('Cosine-L2', torch.device('cpu'), mydic)(fx1,fx1))
-# print(fetch_loss_function('Cosine-SSIM', torch.device('cpu'), mydic)(fx1,fx1))
-# print(fetch_loss_function('Cosine-MS_SSIM', torch.device('cpu'), mydic)(fx1,fx1))
