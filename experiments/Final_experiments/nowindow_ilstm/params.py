@@ -11,8 +11,11 @@ parameters = {}
 
 parameters['save_folder'] = '/Data/ContijochLab/projects/cineMRIRecon'
 parameters['image_resolution'] = 256
-parameters['kspace_architecture'] = 'KLSTM1'
+parameters['kspace_architecture'] = 'KSpace_RNN'
+assert(parameters['kspace_architecture'] in ['KSpace_RNN', 'MDCNN'])
 parameters['ispace_architecture'] = 'ILSTM1'
+if parameters['kspace_architecture'] == 'MDCNN':
+    assert(parameters['ispace_architecture'] == 'Identity')
 parameters['dataset'] = 'acdc'
 
 ########################################################################################################################################################

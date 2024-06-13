@@ -87,14 +87,10 @@ def fetch_lstm_type(parameters):
     kspace_name = parameters['kspace_architecture']
     if ispace_name == 'ILSTM1':
         im = ImageSpaceModel1
-    elif ispace_name == 'ILSTM2':
-        im = ImageSpaceModel2
-    elif ispace_name == 'ILSTM3':
-        im = convLSTM_Ispace1
     elif ispace_name == 'Identity':
         im = Identity_param
 
-    if kspace_name == 'KLSTM1':
+    if kspace_name == 'KSpace_RNN':
         km = convLSTM_Kspace1
     if kspace_name == 'MDCNN':
         from utils.models.MDCNN import MDCNN
