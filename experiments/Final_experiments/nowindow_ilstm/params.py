@@ -207,7 +207,6 @@ parameters['dataloader_num_workers'] = 8
 # Applies a gaussian weight to the real predictions
 # Higher weight for the center - should reduce the lag!
 parameters['center_weighted_loss'] = False
-parameters['lstm_input_proc_identity'] = False
 parameters['lstm_forget_gate_loss'] = True
 parameters['lstm_input_gate_loss'] = True
 
