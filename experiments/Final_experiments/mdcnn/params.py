@@ -11,9 +11,9 @@ parameters = {}
 
 parameters['save_folder'] = '/Data/ContijochLab/projects/cineMRIRecon'
 parameters['image_resolution'] = 256
-parameters['kspace_architecture'] = 'KSpace_RNN'
+parameters['kspace_architecture'] = 'MDCNN'
 assert(parameters['kspace_architecture'] in ['KSpace_RNN', 'MDCNN'])
-parameters['ispace_architecture'] = 'ILSTM1'
+parameters['ispace_architecture'] = 'Identity'
 if parameters['kspace_architecture'] == 'MDCNN':
     assert(parameters['ispace_architecture'] == 'Identity')
 parameters['dataset'] = 'acdc'
@@ -34,7 +34,7 @@ parameters['test_batch_size'] = 1
 parameters['lr_kspace'] = 1e-5
 parameters['lr_ispace'] = 1e-5
 #Total Number of Epochs
-parameters['num_epochs_total'] = 600
+parameters['num_epochs_total'] = 400
 # Out of the total epochs, we first train the recurrent subnetwork as follows:
 # We train the k-space RNN for epochs = parameters['num_epochs_recurrent']
 # We train the image LSTM for epochs = parameters['num_epochs_ilstm']
@@ -51,10 +51,10 @@ parameters['num_epochs_total'] = 600
 # Epochs 100-200      ->  K-Space RNN + Image LSTM Training
 # Epochs 200-300      ->  K-Space RNN + Image LSTM Training in windowed mode
 # Epochs 300-600      ->  UNet Training
-parameters['num_epochs_recurrent'] = 300
-parameters['num_epochs_ilstm'] = 200
-parameters['num_epochs_windowed'] = 100
-parameters['num_epochs_unet'] = 300
+parameters['num_epochs_recurrent'] = 400
+parameters['num_epochs_ilstm'] = 0
+parameters['num_epochs_windowed'] = 0
+parameters['num_epochs_unet'] = 0
 
 assert(parameters['num_epochs_ilstm'] < parameters['num_epochs_recurrent'])
 assert(parameters['num_epochs_windowed'] < parameters['num_epochs_recurrent'])
@@ -139,7 +139,7 @@ parameters['coilwise'] = True
 parameters['window_size'] = [np.inf]
 
 # Disables/Enables the image lstm | Preferred True
-parameters['image_lstm'] = True
+parameters['image_lstm'] = False
 parameters['unet_instead_of_ilstm'] = False
 if parameters['unet_instead_of_ilstm']:
     assert(parameters['image_lstm'])
@@ -172,7 +172,7 @@ assert(parameters['final_prediction_real'])
 ########################################################################################################################################################
 
 # Mini version of the ACDC dataset - using only one slice of every patient
-parameters['acdc_debug_mini'] = True
+parameters['acdc_debug_mini'] = False
 # Memoises the recurrent network outputs for a fast UNet training
 # avoids repetetive forwards passes of the recurrent subnetwork 
 # the UNet and the K-space RNN are not trained together
