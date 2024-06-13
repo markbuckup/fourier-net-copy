@@ -171,7 +171,6 @@ def train_paradigm(rank, world_size, args, parameters):
         if rank == 0:
             print('Starting Training', flush = True)
 
-    # kspace_model = DDP(kspace_model, device_ids = None, output_device = None, find_unused_parameters = False)
     kspace_model = DDP(kspace_model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
     ispace_model = DDP(ispace_model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
     trainer = Trainer(kspace_model, ispace_model, ispace_trainset, ispace_testset, trainset, testset, parameters, proc_device, rank, world_size, args)

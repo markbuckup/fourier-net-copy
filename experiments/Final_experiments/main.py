@@ -125,7 +125,10 @@ if args.unet_visual_only:
 if args.state != -1:
     assert(args.resume)
 assert(not (args.visualise_only and args.numbers_only))
-
+# Currently not supported on cpu
+assert(args.gpu != [-1])
+if args.eval:
+    len(args.gpu == 1)
 
 
 if args.run_id[-1] == '/':
