@@ -386,8 +386,7 @@ class Trainer(nn.Module):
                         avgkspacelossphase += float(loss_phase.cpu().item()/(len(dloader)))
                         avgkspacelossmag += float(loss_mag.cpu().item()/(len(dloader)))
                         avgkspacelossforget_gate += float(loss_forget_gate.cpu().item()/(len(dloader)))
-                        if not self.parameters['lstm_input_proc_identity']:
-                            avgkspacelossinput_gate += float(loss_input_gate.cpu().item()/(len(dloader)))
+                        avgkspacelossinput_gate += float(loss_input_gate.cpu().item()/(len(dloader)))
                         del loss_phase
                         del loss_mag
                     else:
@@ -584,8 +583,7 @@ class Trainer(nn.Module):
                         avgkspacelossphase += float(loss_phase.item()/(len(dloader)))
                         avgkspacelossmag += float(loss_mag.item()/(len(dloader)))
                         avgkspacelossforget_gate += float(loss_forget_gate.item()/(len(dloader)))
-                        if not self.parameters['lstm_input_proc_identity']:
-                            avgkspacelossinput_gate += float(loss_input_gate.item()/(len(dloader)))
+                        avgkspacelossinput_gate += float(loss_input_gate.item()/(len(dloader)))
                     else:
                         predr = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts, dim = (-2,-1))).abs().to(self.device)
                         loss_real = (predr- (og_coiled_vids)).reshape(predr.shape[0]*predr.shape[1]*predr.shape[2], predr.shape[3]*predr.shape[4]).abs().detach().cpu().mean(1).sum()

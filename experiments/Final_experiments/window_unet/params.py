@@ -136,11 +136,11 @@ parameters['coilwise'] = True
 # Window size - Do not remember frames before this window in the k-space RNN Cell state
 # np.inf for no window
 # Even when the window size is finite, the training might not happen for the first few epochs according to the number of epochs
-parameters['window_size'] = [np.inf]
+parameters['window_size'] = [2]
 
 # Disables/Enables the image lstm | Preferred True
 parameters['image_lstm'] = True
-parameters['unet_instead_of_ilstm'] = False
+parameters['unet_instead_of_ilstm'] = True
 if parameters['unet_instead_of_ilstm']:
     assert(parameters['image_lstm'])
 

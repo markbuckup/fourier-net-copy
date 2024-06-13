@@ -378,7 +378,7 @@ class MDCNN(nn.Module):
         return times
 
 
-    def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None):
+    def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None, epoch = np.inf):
         fft_log = (fft_exp+CEPS).log()
         fft_log = torch.stack((fft_log.real, fft_log.imag), -1)
         # FT data - b_num, num_coils, num_windows, 256, 256
@@ -414,11 +414,11 @@ class MDCNN(nn.Module):
                 # plt.imsave('ans.jpg', ans.cpu().detach()[0,0], cmap = 'gray')
 
                 loss_real += self.criterionL1(ans, targ_now.to(device))
-                loss_l1 += (ans - targ_now).reshape(ans .shape[0]*ans .shape[1], -1).abs().mean(1).sum().detach().cpu()/self.param_dic['n_lstm_cells']
-                loss_l2 += (((ans - targ_now).reshape(ans .shape[0]*ans .shape[1], -1) ** 2).mean(1).sum()).detach().cpu()/self.param_dic['n_lstm_cells']
+                loss_l1 += (ans - targ_now).reshape(ans .shape[0]*ans .shape[1], -1).abs().mean(1).sum().detach().cpu()
+                loss_l2 += (((ans - targ_now).reshape(ans .shape[0]*ans .shape[1], -1) ** 2).mean(1).sum()).detach().cpu()
                 ss1 = self.SSIM(ans .reshape(ans .shape[0]*ans .shape[1],1,self.param_dic['image_resolution'],self.param_dic['image_resolution']), targ_now.reshape(ans .shape[0]*ans .shape[1],1,self.param_dic['image_resolution'],self.param_dic['image_resolution']))
                 ss1 = ss1.reshape(ss1.shape[0],-1)
-                loss_ss1 += ss1.mean(1).sum().detach().cpu() / (self.param_dic['n_lstm_cells'])
+                loss_ss1 += ss1.mean(1).sum().detach().cpu()
 
             predr[:,ti] = ans.detach()
 

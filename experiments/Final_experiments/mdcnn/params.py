@@ -179,7 +179,7 @@ parameters['acdc_debug_mini'] = False
 parameters['memoise_ispace'] = True
 
 # Number of frames used for training the K-space RNN - purely based on GPU contraints
-parameters['loop_videos'] = 30
+parameters['loop_videos'] = 18
 # If history length is k, the appends k frames from the previous cardiac cycles at the same phase to the input (as channels)
 parameters['history_length'] = 0
 
@@ -189,7 +189,7 @@ parameters['kspace_num_spokes'] = 10
 parameters['num_coils'] = 8
 
 # 6/8 is a sweet spot
-parameters['dataloader_num_workers'] = 8
+parameters['dataloader_num_workers'] = 6
 
 
 ########################################################################################################################################################
@@ -211,7 +211,7 @@ parameters['lstm_forget_gate_loss'] = True
 parameters['lstm_input_gate_loss'] = True
 
 # Since the initial prediction by RNNs is very bad, we skip the first few frames from the loss
-parameters['init_skip_frames'] = 8
+parameters['init_skip_frames'] = 2
 
 parameters['loss_params'] = {
     'SSIM_window': 11,
