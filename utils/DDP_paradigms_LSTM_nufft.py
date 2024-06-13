@@ -33,7 +33,7 @@ def setup(rank, world_size, args):
 def cleanup():
     dist.destroy_process_group()
 
-sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
+sys.path.append('../')
 
 SAVE_INTERVAL = 1
 

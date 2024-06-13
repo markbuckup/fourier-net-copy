@@ -3,7 +3,7 @@ import torchvision
 import os
 import PIL
 import sys
-sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
+sys.path.append('../')
 import numpy as np
 from tqdm import tqdm
 import kornia

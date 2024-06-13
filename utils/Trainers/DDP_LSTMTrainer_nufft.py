@@ -29,7 +29,7 @@ EPS = 1e-10
 CEPS = torch.complex(torch.tensor(EPS),torch.tensor(EPS)).exp()
 
 import sys
-sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
+sys.path.append('../../')
 
 from utils.functions import fetch_loss_function
 from utils.models.periodLSTM import gaussian_2d, mylog

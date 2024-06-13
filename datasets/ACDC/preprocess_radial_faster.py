@@ -299,9 +299,9 @@ if not args.metadata_only:
                 # print(myfft_interp_full.real.min(), myfft_interp_full.real.max())
                 # print(myfft_interp_full.imag.min(), myfft_interp_full.imag.max(), '\n')
 
-                interp_full_inverse = dic['coilwise_target'][fi]
-                interp_full_inverse = interp_full_inverse / 255.
-                interp_full_inverse = torch.fft.fftshift(torch.fft.fft2(interp_full_inverse), dim = (-2,-1))
+                # interp_full_inverse = dic['coilwise_target'][fi]
+                # interp_full_inverse = interp_full_inverse / 255.
+                # interp_full_inverse = torch.fft.fftshift(torch.fft.fft2(interp_full_inverse), dim = (-2,-1))
 
                 # print(interp_full_inverse.abs()[0,126:130,126:130])
                 # print(interp_full_inverse.abs().min(), interp_full_inverse.abs().max())
@@ -314,8 +314,8 @@ if not args.metadata_only:
                 # print(og_fft.imag.min(), og_fft.imag.max(), '\n\n\n')
 
 
-                inverse_interp = torch.fft.ifft2(torch.fft.ifftshift(myfft_interp, dim = (-2,-1)))
-                inverse_interp_full = torch.fft.ifft2(torch.fft.ifftshift(myfft_interp_full, dim = (-2,-1)))
+                # inverse_interp = torch.fft.ifft2(torch.fft.ifftshift(myfft_interp, dim = (-2,-1)))
+                # inverse_interp_full = torch.fft.ifft2(torch.fft.ifftshift(myfft_interp_full, dim = (-2,-1)))
                 # for coil in range(curr_coil.shape[0]):
                 #     plt.imsave('coil_{}_inverse_interp_gt.jpg'.format(coil), input_frame[coil], cmap = 'gray')
                 #     plt.imsave('coil_{}_inverse_interp_full.jpg'.format(coil), inverse_interp_full.abs()[coil], cmap = 'gray')

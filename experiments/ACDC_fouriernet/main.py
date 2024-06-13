@@ -23,7 +23,7 @@ from torchvision import transforms, models, datasets
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
+sys.path.append('../../')
 os.environ['display'] = 'localhost:14.0'
 from utils.DDP_paradigms_LSTM_nufft import train_paradigm, test_paradigm
 

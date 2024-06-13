@@ -16,7 +16,7 @@ import utils.models.complexCNNs.cmplx_activation as cmplx_activation
 import utils.models.complexCNNs.radial_bn as radial_bn
 
 import sys
-sys.path.append('/root/Cardiac-MRI-Reconstrucion/')
+sys.path.append('../../')
 
 from utils.functions import fetch_loss_function
 
