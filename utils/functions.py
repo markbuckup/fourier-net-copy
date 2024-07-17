@@ -154,21 +154,39 @@ def fspecial_gauss(size, sigma):
     g = np.exp(-((x**2 + y**2)/(2.0*sigma**2)))
     return torch.FloatTensor(g/g.sum())
 
+# AERS: get_coil_mask data gets stored somewhere (metadata?) else so that they are always the same for each patient
 def get_coil_mask(theta_init = 0, n_coils = 8, resolution = 128):
+    # AERS: 
+    # theta_init: location of where coils start
+    # n_coils: number of coils
+    # resolution: matrix size
+  
     # assert(len(centres) == n_coils)
+
+    # AERS: Selects center pixel
     centrex, centrey = 2*resolution, 2*resolution
+
+    # AERS: Sigma and radius control the coil coverage
     sigma = resolution/(2.5)
     radius = resolution//2
-    
+
+    # AERS: Creates the Gaussian filter
     filter = fspecial_gauss(2*resolution, sigma)
     ans = torch.zeros(n_coils, resolution, resolution)
 
+    # AERS: Get Gaussian mask centered at given coordinates centre_g_x and centre_g_y
     for i in range(n_coils):
+        # Coils are evenly distributed around 2π
         theta = theta_init + ((i/n_coils)*((2*np.pi)))
+
+        # AERS: Estimates the coordinates of the center of the coil based on theta and radius
         x_delta = int(radius*np.cos(theta))
         y_delta = int(radius*np.sin(theta))
         centre_g_x = centrex + x_delta
         centre_g_y = centrey + y_delta
+
+        # AERS: Places the mask in a large grid, then extracts the subregion that first the original size and centers (based on radius)
+        # Final coil mask is normalized 0 to 1        
         big_ans = torch.zeros((4*resolution,4*resolution))
         big_ans[centre_g_x-resolution:centre_g_x+resolution, centre_g_y-resolution:centre_g_y+resolution] = filter
         ans[i,:,:] = big_ans[centrex-radius:centrex+radius, centrey-radius:centrey+radius]
