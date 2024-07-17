@@ -19,13 +19,14 @@ EPS = 1e-10
 GR = (1 + (5**0.5))/2
 GA = np.pi/GR
 
+# AERS: Generates GA masks for a finite number of GAs (n=376), because GA of n=0 and n=377 are very similar.
 def get_golden_bars(num_bars = 376, resolution = 128):
     ans = mask_theta(90, (1,resolution, resolution))
     angle = 90
     for i in range(1,num_bars):
         angle = (angle + (360*(GA))/(2*np.pi)) 
         ans = torch.cat((ans,mask_theta(angle, (1,resolution, resolution))))
-    return ans
+    return ans # AERS: ans dimentions are 376 x resolution x resolution
 
 
 def fetch_loss_function(loss_str, device, loss_params):
