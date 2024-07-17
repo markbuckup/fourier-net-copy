@@ -18,6 +18,10 @@ import numpy as np
 import nibabel as nib
 from skimage.exposure import match_histograms
 
+#######################################################################################################
+#   AERS: Important! To preprocess data different than ACDC, edit line 107-112 and paths throughout   #
+#######################################################################################################
+
 import torchkbnufft as tkbn
 
 from utils.functions import get_window_mask, get_coil_mask
@@ -86,14 +90,19 @@ def read_nib_preprocess(path, heq = True):
                 img[:,:,i,j] = img[:,:,i,j] / img[:,:,i,j].max()
     return img, flag, tot
 
+# AERS: When passes the patient index, it returns the patient path
 def num_to_str(num):
     x = str(num)
     while len(x) < 3:
         x = '0' + x
     return './raw/patient{}/patient{}_4d.nii.gz'.format(x,x)
 
+# AERS: Defines GAs
 GR = (1 + (5**0.5))/2
 GA = np.pi/GR
+
+#######################################################################################################
+# AERS: Important! Parameters for ACDC data. Needs to be changed for othe datasets.
 
 NUM_PATIENTS = 150
 RES=args.resolution
@@ -101,10 +110,12 @@ NUM_SPOKES = 10
 N_COILS_VARIANTS = 100
 N_COILS = 8
 LOOP_FRAMES = 120
+#######################################################################################################
+
 
 # NRM: Define the Gridding and reverse gridding operations
-kb_ob = tkbn.KbInterp(im_size=(512,512), grid_size = (1024,1024), numpoints = 6, kbwidth = 19.34, device = device)
-kbinterp = tkbn.KbInterpAdjoint(im_size=(256,256), grid_size = (256,256), numpoints = 3, kbwidth = 2.34, device = device)
+kb_ob = tkbn.KbInterp(im_size=(512,512), grid_size = (1024,1024), numpoints = 6, kbwidth = 19.34, device = device)    # AERS: higher kbwidth is a smaller/sharper kernel
+kbinterp = tkbn.KbInterpAdjoint(im_size=(256,256), grid_size = (256,256), numpoints = 6, kbwidth = 2.34, device = device) # AERS: In video, Niraj says that the number of points should be 6 for both lines, but it was originally 3.
 recon_im_size = (256,256)
 recon_grid_size = (1024,1024)
 recon_num_points = 8
