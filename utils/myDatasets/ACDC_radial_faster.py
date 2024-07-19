@@ -52,13 +52,16 @@ class ACDC_radial_ispace(Dataset):
     __len__(): Returns the length of the dataset.
     """
 
+    # AERS: These class variables are created outside the functions, and each instance of the ACDC_radial_ispace class will have access to these variable (basically like global variables). 
+    # This way, all dataloader workers (n=8/GPU in params.py) can access the memoized data without creating individual datasets (so memory doesn't run out.)
+    # These variables are initialized in data_init class method
 
     mem_inputs = []
     mem_inputs_min = []
     mem_inputs_max = []
     mem_gts = []
     mem_stored_bool = []
-    data_init_done = False
+    data_init_done = False   # AERS: To avoid loading the data more than once, data_init_done is set to False. Then, once it is initialized and data are loaded, the data_init_done is set to True. Won't be repeated.
     
     @classmethod
     def set_data(cls, input, gt, pat_id, vid_id):
@@ -89,7 +92,7 @@ class ACDC_radial_ispace(Dataset):
         return ret_inp, ret_gt
 
     @classmethod
-    def check_data(cls, pat_id, vid_id):
+    def check_data(cls, pat_id, vid_id):          # AERS: checks if these data are stored yet?
         # print('checking', pat_id, vid_id)
         return cls.mem_stored_bool[pat_id][vid_id] == 1
 
@@ -102,12 +105,12 @@ class ACDC_radial_ispace(Dataset):
             # GT shape = B, 120, 1, 256, 256
             cls.set_data(inputs.cpu()[i], gts.cpu()[i], pnum, vnum)
 
-    @classmethod
+    @classmethod            # AERS: class methods is used here because for image space data, each GPU will have a separate copy
     def data_init(cls, whole_num_vids_per_patient, parameters):
         if cls.data_init_done:
             return
-        for n_vids in whole_num_vids_per_patient:
-            cls.mem_inputs.append([])
+        for n_vids in whole_num_vids_per_patient:  # AERS: Load all data for training or testing
+            cls.mem_inputs.append([])              # AERS: Data initialization with zeros below. This needs to be modified if we want the image output to remain complex (not just the mag of complex data).
             cls.mem_inputs_max.append([])
             cls.mem_inputs_min.append([])
             cls.mem_gts.append([])
@@ -125,7 +128,7 @@ class ACDC_radial_ispace(Dataset):
                     cls.mem_gts[-1].append(torch.zeros(cls.max_frames - parameters['init_skip_frames'],1,parameters['image_resolution'],parameters['image_resolution']))
                 cls.mem_stored_bool[-1].append(torch.zeros(1))
 
-            [x.share_memory_() for x in cls.mem_inputs[-1]]
+            [x.share_memory_() for x in cls.mem_inputs[-1]]         # AERS: Shares data to all workers
             [x.share_memory_() for x in cls.mem_gts[-1]]
             [x.share_memory_() for x in cls.mem_stored_bool[-1]]
 
@@ -151,11 +154,12 @@ class ACDC_radial_ispace(Dataset):
         self.parameters = parameters.copy()
         self.parameters['loop_videos'] = ACDC_radial_ispace.max_frames
         self.parameters['init_skip_frames'] = 90
-        self.orig_dataset = ACDC_radial(path, self.parameters, device, train = train, visualise_only = visualise_only)
+        # AERS: Creates ACDC_radial as a subvariable used to speed up training by not generating multi-coil output again and again. This class stores those multi-coil outputs. 
+        self.orig_dataset = ACDC_radial(path, self.parameters, device, train = train, visualise_only = visualise_only)        
         self.total_unskipped_frames = self.parameters['num_coils']*((ACDC_radial_ispace.max_frames - self.parameters['init_skip_frames'])*self.orig_dataset.num_vids_per_patient).sum()
 
 
-    def __getitem__(self, i):
+    def __getitem__(self, i): # AERS: Only image space data are memoized
         """
         Retrieves an item from the dataset.
 
@@ -165,7 +169,7 @@ class ACDC_radial_ispace(Dataset):
         Returns:
         tuple: A tuple containing the memory flag, data, and ground truth.
         """
-        if not ACDC_radial_ispace.data_init_done:
+        if not ACDC_radial_ispace.data_init_done:                  # AERS: First thing it does is to make sure that the initialization is done
             ACDC_radial_ispace.data_init(self.orig_dataset.whole_num_vids_per_patient, self.parameters)
         pat_id, vid_id = self.orig_dataset.index_to_location(i)
         pat_id += self.orig_dataset.offset
@@ -174,13 +178,14 @@ class ACDC_radial_ispace(Dataset):
         else:
             assert(pat_id >= 120)
 
-        if ACDC_radial_ispace.check_data(pat_id, vid_id):
+        if ACDC_radial_ispace.check_data(pat_id, vid_id):          # AERS: Checks if data are stored in memory
             mem = torch.tensor(1)
-            data, gt = ACDC_radial_ispace.get_data(pat_id, vid_id)
+            data, gt = ACDC_radial_ispace.get_data(pat_id, vid_id) # AERS: If yes, get those data
             return mem, data, gt
         else:
-            mem = torch.tensor(0)
-            return mem, *self.orig_dataset[i]
+            mem = torch.tensor(0)                                  # AERS: If not, it will return mem and the original input from the original dataset
+            return mem, *self.orig_dataset[i]                      # AERS: If mem = 0, expects huge dataset. If mem = 1, it expects data and gt. Calls the get item of the ACDC_radial class.
+                                                                   # AERS: set_data is called from the training script, not here (actually uses bulk_set_data).
 
     def __len__(self):
         """
@@ -201,7 +206,9 @@ class ACDC_radial(Dataset):
     __getitem__(i): Retrieves an item from the dataset.
     __len__(): Returns the length of the dataset.
     """
-    def __init__(self, path, parameters, device, train = True, visualise_only = False):
+    def __init__(self, path, parameters, device, train = True, visualise_only = False): # AERS: Each video has 150 frames, 120 are used in training and 30 are used in testing. 
+        # AERS: ACTUALLY, as per Niraj, June 7th 11:30AM video 53:07. He doesn't use 120 frames for training because the memory runs out, so he used 32 defined in params.py 'loop_videos'
+    
         """
         Initializes the ACDC_radial dataset.
 
@@ -234,6 +241,7 @@ class ACDC_radial(Dataset):
         
         self.data_path = os.path.join(self.path, 'radial_faster/{}_resolution_{}_spokes'.format(self.final_resolution, self.ft_num_radial_views))
 
+        # AERS: Loads metadata and all relevant info to ACDC data
         metadic = torch.load(os.path.join(self.data_path, 'metadata.pth'))
         
         self.num_patients = metadic['num_patients']
@@ -276,7 +284,7 @@ class ACDC_radial(Dataset):
         self.total_unskipped_frames = self.parameters['num_coils']*((self.frames_per_vid_per_patient-self.parameters['init_skip_frames'])*self.num_vids_per_patient).sum()
 
 
-    def index_to_location(self, i):
+    def index_to_location(self, i): # AERS: See comment in getitem. i returns the patient number and video number
         """
         Converts a flat index to patient and video IDs.
 
@@ -294,7 +302,7 @@ class ACDC_radial(Dataset):
 
         return p_num, v_num
 
-    def __getitem__(self, i):
+    def __getitem__(self, i): # AERS: i indexes the video number for each patient. There is a cummulative sum of the number of videos for each patient (index_to_location). 
         """
         Retrieves an item from the dataset.
 
@@ -306,19 +314,18 @@ class ACDC_radial(Dataset):
         """
 
         p_num, v_num = self.index_to_location(i)
-        actual_pnum = self.offset + p_num
+        actual_pnum = self.offset + p_num  # There is an offset to index the video frames. If we are training the network, the offset is 0. If we are testing the network, the offset is 120. 
         index_coils_used = self.coil_variant_per_patient_per_video[p_num][v_num]
         coils_used = torch.flip(self.coil_masks[index_coils_used].unsqueeze(0), dims = (-2,-1))
 
         GAs_used = self.GAs_per_patient_per_video[p_num][v_num][:self.loop_videos,:]
 
-        dic_path = os.path.join(self.data_path, 'patient_{}/vid_{}.pth'.format(actual_pnum+1, v_num))
-
-
-        dic = torch.load(dic_path, map_location = torch.device('cpu'))
-        masks_applicable = dic['spoke_mask'].type(torch.float32)[:self.loop_videos,:,:,:]
+        dic_path = os.path.join(self.data_path, 'patient_{}/vid_{}.pth'.format(actual_pnum+1, v_num))  # AERS: Sets the path where data are stored
+        dic = torch.load(dic_path, map_location = torch.device('cpu'))                                 # AERS: Loads dictionary data, masks, ground truth and coilwise inputs, orignal number of frames (period)
+        masks_applicable = dic['spoke_mask'].type(torch.float32)[:self.loop_videos,:,:,:]              # AERS: Note that this is loading the first 'loop_videos' as defined in params.py
         og_video = ((dic['targ_video']/255.)[:self.loop_videos,:,:,:])
         undersampled_fts = dic['coilwise_input'][:self.loop_videos,:,:,:]
+
         if 'coilwise_targets' not in dic:
             coilwise_targets = og_video * coils_used
             temp = ((coilwise_targets**2).sum(2)**0.5).max(-1)[0].max(-1)[0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
@@ -338,4 +345,4 @@ class ACDC_radial(Dataset):
         Returns:
         int: The length of the dataset.
         """
-        return self.num_videos
+        return self.num_videos 

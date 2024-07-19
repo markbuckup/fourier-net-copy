@@ -22,7 +22,7 @@ from torchvision import transforms, models, datasets
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-def setup(rank, world_size, args):
+def setup(rank, world_size, args):                                             # AERS: rank is the process number (child #1, child #2, etc). 
     """
     Sets up the process group for distributed training.
 
@@ -35,7 +35,7 @@ def setup(rank, world_size, args):
     based on the GPU configuration provided in args. It also sets the master address
     and port for communication.
     """
-    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_ADDR'] = 'localhost'                                    # AERS: Initializes the process group. Standard code from pyTorch documentation.
     os.environ['MASTER_PORT'] = '{}'.format(args.port)
     if args.gpu[0] == -1:
         dist.init_process_group("gloo", rank=rank, world_size=world_size)
@@ -70,25 +70,25 @@ def train_paradigm(rank, world_size, args, parameters):
     validation losses are logged, and model checkpoints are saved periodically.
     """
     torch.cuda.set_device(args.gpu[rank])
-    setup(rank, world_size, args)
+    setup(rank, world_size, args)                                               # AERS: Standard syntax for multi-GPU processes
     proc_device = torch.device('cuda:{}'.format(args.gpu[rank]))
     
     if parameters['dataset'] == 'acdc':
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial as dataset
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial_ispace as dataset_ispace
     from utils.models.periodLSTM import fetch_models as rnn_func
-    Model_Kspace, Model_Ispace = rnn_func(parameters)
-    from utils.Trainers.DDP_LSTMTrainer_nufft import Trainer
+    Model_Kspace, Model_Ispace = rnn_func(parameters)                           # AERS: Importa references of the  k-space and image model classes 
+    from utils.Trainers.DDP_LSTMTrainer_nufft import Trainer                    # AERS: Imports Trainer
 
-    temp = os.getcwd().split('/')
+    temp = os.getcwd().split('/')                                               # AERS: Creates experiment folder on the NAS (as defined in params.py normally)
     temp = temp[temp.index('experiments'):]
     save_path = os.path.join(parameters['save_folder'], '/'.join(temp))
     save_path = os.path.join(save_path, args.run_id)
 
-    trainset = dataset(
-                        args.dataset_path, 
-                        parameters.copy(),
-                        proc_device,
+    trainset = dataset(                                                         # AERS: ACDC_radial
+                        args.dataset_path,                                      # AERS: dataset location
+                        parameters.copy(),                                      # AERS: pass a COPY of the parameters, so they don't get changed during processing
+                        proc_device,                                            # AERS: Niraj said he was going to delete this but didn't. It doesn't get used inside ACDC_radial_faster.py
                         train = True, 
                     )
     testset = dataset(
@@ -97,11 +97,13 @@ def train_paradigm(rank, world_size, args, parameters):
                         proc_device,
                         train = False, 
                     )
+    
+    # AERS: If training for image space, you can change if we want to memoize it in params.py. BUT YOU SHOULD!
     if parameters['num_epochs_unet'] == 0 or (not parameters['memoise_ispace']):
         ispace_trainset = None
         ispace_testset = None
     else:
-        ispace_trainset = dataset_ispace(
+        ispace_trainset = dataset_ispace(                                       # AERS: ACDC_radial_ispace
                             args.dataset_path, 
                             parameters.copy(),
                             proc_device,
@@ -367,7 +369,7 @@ def train_paradigm(rank, world_size, args, parameters):
         with open(os.path.join(args.run_id, 'status.txt'), 'w') as f:
             f.write('1')
 
-    cleanup()
+    cleanup()                           # AERS: Kills all the processes at the end.
 
 """
     Tests a distributed model for cardiac MRI reconstruction using DDP.

@@ -41,7 +41,7 @@ def seed_torch(seed=0):
 
 # Manual CROP
 class ACDC_radial(Dataset):
-
+# AERS: Initialization saves training parameters from params.py
     def __init__(self, path, parameters, device, train = True):
         super(ACDC_radial, self).__init__()
         
