@@ -19,7 +19,7 @@ from torch import nn, optim
 from neptune.types import File
 from torch.nn import functional as F
 from torchvision import transforms, models, datasets
-from torch.utils.data.distributed import DistributedSampler
+from torch.utils.data.distributed import DistributedSampler                    # AERS: This is the library that calls for a pause/wait untiil all processes reach a certain point. This is what collected the multi-processes data from the several GPUs.
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 def setup(rank, world_size, args):                                             # AERS: rank is the process number (child #1, child #2, etc). 
@@ -77,7 +77,7 @@ def train_paradigm(rank, world_size, args, parameters):
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial as dataset
         from utils.myDatasets.ACDC_radial_faster import ACDC_radial_ispace as dataset_ispace
     from utils.models.periodLSTM import fetch_models as rnn_func
-    Model_Kspace, Model_Ispace = rnn_func(parameters)                           # AERS: Importa references of the  k-space and image model classes 
+    Model_Kspace, Model_Ispace = rnn_func(parameters)                           # AERS: Imports references of the  k-space and image model classes 
     from utils.Trainers.DDP_LSTMTrainer_nufft import Trainer                    # AERS: Imports Trainer
 
     temp = os.getcwd().split('/')                                               # AERS: Creates experiment folder on the NAS (as defined in params.py normally)
@@ -98,7 +98,7 @@ def train_paradigm(rank, world_size, args, parameters):
                         train = False, 
                     )
     
-    # AERS: If training for image space, you can change if we want to memoize it in params.py. BUT YOU SHOULD!
+    # AERS: If training for image space, you can change if we want to memoize it in params.py. BUT YOU SHOULD MEMOIZE!
     if parameters['num_epochs_unet'] == 0 or (not parameters['memoise_ispace']):
         ispace_trainset = None
         ispace_testset = None
@@ -115,15 +115,16 @@ def train_paradigm(rank, world_size, args, parameters):
                             proc_device,
                             train = False, 
                         )
-
-    recurrent_model = Model_Kspace(parameters, proc_device).to(proc_device)
-    coil_combine_unet = Model_Ispace(parameters, proc_device).to(proc_device)
+    # AERS: In Niraj's version of the code in vide, kspace_model contains the k-space RNN and image LSTM. He mentioned that when running this code, this will not have an image LSTM. That's why the names don't match.
+    # It is the recurrent module, it has the k-space RNN and image LSTM
+    recurrent_model = Model_Kspace(parameters, proc_device).to(proc_device)         # AERS: recurrent model is called kspace_model in Niraj's video. Explanation above. 
+    coil_combine_unet = Model_Ispace(parameters, proc_device).to(proc_device)       # AERS: coil_combine_unet is called ispace_model in final version
     
-    checkpoint_path = os.path.join(save_path, 'checkpoints/')
-    os.makedirs(checkpoint_path, exist_ok = True)
+    checkpoint_path = os.path.join(save_path, 'checkpoints/')                       # AERS: creates folder for checkpoints in save_path. Every epoch, it will store the model weights and everything needed to resume training.
+    os.makedirs(checkpoint_path, exist_ok = True)                                   #       In Niraj's code, checkpoints are in the NAS so they can be accessed from any system.
 
     parameters['GPUs'] = args.gpu
-    if rank == 0:
+    if rank == 0:                                                                   # AERS: sets up Neptune to log training and results
         if args.neptune_log:
             if os.path.isfile(checkpoint_path + 'neptune_run.pth'):
                 run_id = torch.load(checkpoint_path + 'neptune_run.pth', map_location = torch.device('cpu'))['run_id']
@@ -151,7 +152,7 @@ def train_paradigm(rank, world_size, args, parameters):
         else:
             run = None
 
-    if args.resume:
+    if args.resume:                                                                     # AERS: If we want to resume training, it loads the dictionary from the checkpoint path
         model_state = torch.load(checkpoint_path + 'state.pth', map_location = torch.device('cpu'))['state']
         if (not args.state == -1):
             model_state = args.state
@@ -159,21 +160,21 @@ def train_paradigm(rank, world_size, args, parameters):
             print('Loading checkpoint at model state {}'.format(model_state), flush = True)
         dic = torch.load(checkpoint_path + 'checkpoint_{}.pth'.format(model_state),map_location = proc_device)
         pre_e = dic['e']
-        recurrent_model.load_state_dict(dic['recurrent_model'])
-        coil_combine_unet.load_state_dict(dic['coil_combine_unet'])
-        opt_dict_recurrent = dic['recurrent_optim']
-        opt_dict_unet = dic['unet_optim']
+        recurrent_model.load_state_dict(dic['recurrent_model'])                         # AERS: Loads k-space and image model weights and loss functions
+        coil_combine_unet.load_state_dict(dic['coil_combine_unet'])                     # AERS: Loads U-NET (coil combination)
+        opt_dict_recurrent = dic['recurrent_optim']                                     # AERS: Loads the dictionaries. Note that the dictionary of the optimizer or scheduler are not loaded here because they are not defined yet.
+        opt_dict_unet = dic['unet_optim']                                               # AERS: The optimizer is defined inside the Trainer. So, first the Trainer is definer, then the optimizer and Trainer dictionaries are loaded.
         if parameters['scheduler'] != 'None':
             scheduler_dict_unet = dic['unet_scheduler']
             scheduler_dict_recurrent = dic['recurrent_scheduler']
         losses = dic['losses']
         test_losses = dic['test_losses']
-        if rank == 0:
+        if rank == 0:                                                                   # AERS: Any  printing is only performed by the fist child. Otherwise, repeated messages will appear.
             print('Resuming Training after {} epochs'.format(pre_e), flush = True)
         del dic
     elif args.resume_kspace:
-        model_state = 0
-        if rank == 0:
+        model_state = 0                                 # AERS: This is to resume k-space training. Therefore, it is always model_state 0. In mode=1, both k-space RNN and image LSTM are trained. In mode=2, only the U-NET. 
+        if rank == 0:                                   # AERS: This will not load the image space, scheduler, optimizer or model. Just k-space.
             print('Loading checkpoint at model state {}'.format(model_state), flush = True)
         dic = torch.load(checkpoint_path + 'checkpoint_{}.pth'.format(model_state),map_location = proc_device)
         pre_e = dic['e']
@@ -189,7 +190,7 @@ def train_paradigm(rank, world_size, args, parameters):
         if rank == 0:
             print('Resuming Training after {} epochs'.format(pre_e), flush = True)
         del dic
-    else:
+    else:                                   # AERS: When starting from scratch.
         model_state = 0
         pre_e =0
         losses = []
@@ -201,8 +202,11 @@ def train_paradigm(rank, world_size, args, parameters):
         if rank == 0:
             print('Starting Training', flush = True)
 
+    # AERS: Related to DDP library. DDP is a class that stores the model inside that will handle training in multiple GPUs. Coordinates the weights and merging of them.
     recurrent_model = DDP(recurrent_model, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
     coil_combine_unet = DDP(coil_combine_unet, device_ids = [args.gpu[rank]], output_device = args.gpu[rank], find_unused_parameters = False)
+
+    # AERS: Definition of the Trainer. This class is where everything actually happes.
     trainer = Trainer(recurrent_model, coil_combine_unet, ispace_trainset, ispace_testset, trainset, testset, parameters, proc_device, rank, world_size, args)
 
     if args.time_analysis:
@@ -219,17 +223,25 @@ def train_paradigm(rank, world_size, args, parameters):
                 trainer.unet_scheduler.load_state_dict(scheduler_dict_unet)
             trainer.recurrent_scheduler.load_state_dict(scheduler_dict_recurrent)
 
-    for e in range(parameters['num_epochs_total']):
-        if pre_e > 0:
+    for e in range(parameters['num_epochs_total']):         # AERS: for the number of epochs we want to run, copy/paste a bunch of data.  
+        if pre_e > 0:                                       # AERS: This is a way is skipping the previously done epochs. 
             pre_e -= 1
             continue
-        collected_train_losses = [torch.zeros(15,).to(proc_device) for _ in range(world_size)]
+
+        # AERS: Collects train and test losses from the 15 statistics returned by the Trainer (once per GPU). collected_train_losses and collected_train_losses are accumulators.
+        collected_train_losses = [torch.zeros(15,).to(proc_device) for _ in range(world_size)]    
         collected_test_losses = [torch.zeros(15,).to(proc_device) for _ in range(world_size)]
         
-        kspaceloss_mag, kpsaceloss_phase, kspaceloss_real, loss_forget_gate, loss_input_gate, kspacessim, kpsaceloss_l1, kspaceloss_l2, sosssim_score, sosl1_score, sosl2_score, ispaceloss_real, ispacessim, ipsaceloss_l1, ispaceloss_l2 = trainer.train(e)
-        dist.all_gather(collected_train_losses, torch.tensor([kspaceloss_mag, kpsaceloss_phase, kspaceloss_real, loss_forget_gate, loss_input_gate, kspacessim, kpsaceloss_l1, kspaceloss_l2, sosssim_score, sosl1_score, sosl2_score, ispaceloss_real, ispacessim, ipsaceloss_l1, ispaceloss_l2]).to(proc_device))
+        kspaceloss_mag, kpsaceloss_phase, kspaceloss_real, loss_forget_gate, loss_input_gate, kspacessim, \
+            kpsaceloss_l1, kspaceloss_l2, sosssim_score, sosl1_score, sosl2_score, ispaceloss_real, ispacessim, ipsaceloss_l1, ispaceloss_l2 = trainer.train(e)
+        
+        # AERS: Gathers all the 15 values, inside collected_train_losses, which is a multi-processing library function. 
+        # AERS: This is needed because DDP collects and averages the model weights, but not the losses. That is what this is doing.
+        dist.all_gather(collected_train_losses, torch.tensor([kspaceloss_mag, kpsaceloss_phase, kspaceloss_real, loss_forget_gate, loss_input_gate, kspacessim, \
+                                                              kpsaceloss_l1, kspaceloss_l2, sosssim_score, sosl1_score, sosl2_score, ispaceloss_real, ispacessim, ipsaceloss_l1, ispaceloss_l2]).to(proc_device))
+        
         if rank == 0:
-            avgkspace_train_mag_loss = sum([x[0] for x in collected_train_losses]).cpu().item()/len(args.gpu)
+            avgkspace_train_mag_loss = sum([x[0] for x in collected_train_losses]).cpu().item()/len(args.gpu)                   # AERS: Sums losses across GPUs
             avgkspace_train_phase_loss = sum([x[1] for x in collected_train_losses]).cpu().item()/len(args.gpu)
             avgkspace_train_real_loss = sum([x[2] for x in collected_train_losses]).cpu().item()/len(args.gpu)
             avgkspace_train_forget_gate_loss = sum([x[3] for x in collected_train_losses]).cpu().item()/len(args.gpu)

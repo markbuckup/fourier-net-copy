@@ -271,7 +271,7 @@ class Trainer(nn.Module):
         self.SSIM = kornia.metrics.SSIM(11)
         self.msssim_loss = kornia.losses.SSIMLoss(11).to(device)
 
-    def train(self, epoch, print_loss = False):
+    def train(self, epoch, print_loss = False):  # AERS: Trains the epoch it is training for. print_loss is always False, so if it is True, something is wrong!
         """
         Trains the model for one epoch.
 
@@ -283,6 +283,7 @@ class Trainer(nn.Module):
         tuple: Averaged losses and scores for the epoch.
         """
 
+        # AERS: Determines if it is in k-space or image space mode: what model is training?
         if epoch < self.parameters['num_epochs_recurrent']:
             self.recurrent_mode = True
         else:
@@ -490,7 +491,10 @@ class Trainer(nn.Module):
                 if self.unet_scheduler is not None:
                     self.unet_scheduler.step()
 
-        return avgkspacelossmag, avgkspacelossphase, avgkspacelossreal,avgkspacelossforget_gate, avgkspacelossinput_gate, kspacessim_score, avgkspace_l1_loss, avgkspace_l2_loss, sosssim_score, avgsos_l1_loss, avgsos_l2_loss, avgispacelossreal, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss
+        # AERS: It returns a total of 15 statistics from the epoch: average k-space loss for magnitude, phase, real, forget gate, input gate, SSIM, L1, L2, etc.
+        # AERS: This is only for a single GPU. These needs to be combined in DDP_paradigms_LSTM_nufft.py
+        return avgkspacelossmag, avgkspacelossphase, avgkspacelossreal,avgkspacelossforget_gate, avgkspacelossinput_gate, kspacessim_score, \
+            avgkspace_l1_loss, avgkspace_l2_loss, sosssim_score, avgsos_l1_loss, avgsos_l2_loss, avgispacelossreal, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss
 
     def evaluate(self, epoch, train = False, print_loss = False):
         """

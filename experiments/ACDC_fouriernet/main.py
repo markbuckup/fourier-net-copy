@@ -123,4 +123,5 @@ if __name__ == '__main__':
         nprocs=world_size
     )
 
-    # AERS: test_paradigm and train_paradigm are instructions a child/spawn process should perform when summoned
+    # AERS: test_paradigm and train_paradigm are instructions a child/spawn process should perform when summoned.
+    # AERS: data are loaded outside the training paradigm, so that each child doesn't have a copy of the data. Instead, data are passed as a parameter by reference.
