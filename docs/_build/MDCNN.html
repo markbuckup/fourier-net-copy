@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 
 <html lang="en" data-content_root="./">
@@ -7,39 +6,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <title>MDCNN module &#8212; FOURIER-Net 20240614 documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=649a27d8" />
-    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=658d757c" />
-    
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=f63d8bfa" />
+    <link rel="stylesheet" type="text/css" href="_static/haiku.css?v=dfa0e015" />
     <script src="_static/documentation_options.js?v=6ad00ebc"></script>
     <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="_static/bizstyle.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <!--[if lt IE 9]>
-    <script src="_static/css3-mediaqueries.js"></script>
-    <![endif]-->
+    <link rel="next" title="flops module" href="flops.html" />
+    <link rel="prev" title="functions module" href="functions.html" /> 
   </head><body>
-    <div class="related" role="navigation" aria-label="Related">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="genindex.html" title="General Index"
-             accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">FOURIER-Net 20240614 documentation</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">MDCNN module</a></li> 
-      </ul>
-    </div>  
+      <div class="header" role="banner"><h1 class="heading"><a href="index.html">
+          <span>FOURIER-Net 20240614 documentation</span></a></h1>
+        <h2 class="heading"><span>MDCNN module</span></h2>
+      </div>
+      <div class="topnav" role="navigation" aria-label="Top">
+      
+        <p>
+        «&#160;&#160;<a href="functions.html">functions module</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="flops.html">flops module</a>&#160;&#160;»
+        </p>
 
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          <div class="body" role="main">
-            
+      </div>
+      <div class="content" role="main">
+        
+        
   <section id="module-MDCNN">
 <span id="mdcnn-module"></span><h1>MDCNN module<a class="headerlink" href="#module-MDCNN" title="Link to this heading">¶</a></h1>
 <dl class="py class">
@@ -256,99 +250,19 @@ registered hooks while the latter silently ignores them.</p>
 </section>
 
 
-            <div class="clearer"></div>
-          </div>
-        </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="Main">
-        <div class="sphinxsidebarwrapper">
-  <div>
-    <h3><a href="index.html">Table of Contents</a></h3>
-    <ul>
-<li><a class="reference internal" href="#">MDCNN module</a><ul>
-<li><a class="reference internal" href="#MDCNN.CoupledDown"><code class="docutils literal notranslate"><span class="pre">CoupledDown</span></code></a><ul>
-<li><a class="reference internal" href="#MDCNN.CoupledDown.forward"><code class="docutils literal notranslate"><span class="pre">CoupledDown.forward()</span></code></a></li>
-<li><a class="reference internal" href="#MDCNN.CoupledDown.train_mode_set"><code class="docutils literal notranslate"><span class="pre">CoupledDown.train_mode_set()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#MDCNN.CoupledDownReal"><code class="docutils literal notranslate"><span class="pre">CoupledDownReal</span></code></a><ul>
-<li><a class="reference internal" href="#MDCNN.CoupledDownReal.forward"><code class="docutils literal notranslate"><span class="pre">CoupledDownReal.forward()</span></code></a></li>
-<li><a class="reference internal" href="#MDCNN.CoupledDownReal.train_mode_set"><code class="docutils literal notranslate"><span class="pre">CoupledDownReal.train_mode_set()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#MDCNN.CoupledUp"><code class="docutils literal notranslate"><span class="pre">CoupledUp</span></code></a><ul>
-<li><a class="reference internal" href="#MDCNN.CoupledUp.forward"><code class="docutils literal notranslate"><span class="pre">CoupledUp.forward()</span></code></a></li>
-<li><a class="reference internal" href="#MDCNN.CoupledUp.train_mode_set"><code class="docutils literal notranslate"><span class="pre">CoupledUp.train_mode_set()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#MDCNN.CoupledUpReal"><code class="docutils literal notranslate"><span class="pre">CoupledUpReal</span></code></a><ul>
-<li><a class="reference internal" href="#MDCNN.CoupledUpReal.forward"><code class="docutils literal notranslate"><span class="pre">CoupledUpReal.forward()</span></code></a></li>
-<li><a class="reference internal" href="#MDCNN.CoupledUpReal.train_mode_set"><code class="docutils literal notranslate"><span class="pre">CoupledUpReal.train_mode_set()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#MDCNN.ImageSpaceDecoder"><code class="docutils literal notranslate"><span class="pre">ImageSpaceDecoder</span></code></a><ul>
-<li><a class="reference internal" href="#MDCNN.ImageSpaceDecoder.forward_decode"><code class="docutils literal notranslate"><span class="pre">ImageSpaceDecoder.forward_decode()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#MDCNN.ImageSpaceEncoder"><code class="docutils literal notranslate"><span class="pre">ImageSpaceEncoder</span></code></a><ul>
-<li><a class="reference internal" href="#MDCNN.ImageSpaceEncoder.forward"><code class="docutils literal notranslate"><span class="pre">ImageSpaceEncoder.forward()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#MDCNN.ImageSpaceModel"><code class="docutils literal notranslate"><span class="pre">ImageSpaceModel</span></code></a><ul>
-<li><a class="reference internal" href="#MDCNN.ImageSpaceModel.forward"><code class="docutils literal notranslate"><span class="pre">ImageSpaceModel.forward()</span></code></a></li>
-<li><a class="reference internal" href="#MDCNN.ImageSpaceModel.train_mode_set"><code class="docutils literal notranslate"><span class="pre">ImageSpaceModel.train_mode_set()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#MDCNN.KspaceModel"><code class="docutils literal notranslate"><span class="pre">KspaceModel</span></code></a><ul>
-<li><a class="reference internal" href="#MDCNN.KspaceModel.forward"><code class="docutils literal notranslate"><span class="pre">KspaceModel.forward()</span></code></a></li>
-<li><a class="reference internal" href="#MDCNN.KspaceModel.train_mode_set"><code class="docutils literal notranslate"><span class="pre">KspaceModel.train_mode_set()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#MDCNN.MDCNN"><code class="docutils literal notranslate"><span class="pre">MDCNN</span></code></a><ul>
-<li><a class="reference internal" href="#MDCNN.MDCNN.forward"><code class="docutils literal notranslate"><span class="pre">MDCNN.forward()</span></code></a></li>
-<li><a class="reference internal" href="#MDCNN.MDCNN.time_analysis"><code class="docutils literal notranslate"><span class="pre">MDCNN.time_analysis()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#MDCNN.no_bn_forward"><code class="docutils literal notranslate"><span class="pre">no_bn_forward()</span></code></a></li>
-</ul>
-</li>
-</ul>
+      <div class="bottomnav" role="navigation" aria-label="Bottom">
+      
+        <p>
+        «&#160;&#160;<a href="functions.html">functions module</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="flops.html">flops module</a>&#160;&#160;»
+        </p>
 
-  </div>
-  <div role="note" aria-label="source link">
-    <h3>This Page</h3>
-    <ul class="this-page-menu">
-      <li><a href="_sources/MDCNN.rst.txt"
-            rel="nofollow">Show Source</a></li>
-    </ul>
-   </div>
-<search id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      <input type="submit" value="Go" />
-    </form>
-    </div>
-</search>
-<script>document.getElementById('searchbox').style.display = "block"</script>
-        </div>
       </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="related" role="navigation" aria-label="Related">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="genindex.html" title="General Index"
-             >index</a></li>
-        <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">FOURIER-Net 20240614 documentation</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">MDCNN module</a></li> 
-      </ul>
-    </div>
+
     <div class="footer" role="contentinfo">
     &#169; Copyright 2024, AERS + NRM.
       Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.4.7.
