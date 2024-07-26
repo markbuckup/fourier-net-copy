@@ -1,0 +1,657 @@
+
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>periodLSTM module &#8212; FOURIER-Net 20240614 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=649a27d8" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=658d757c" />
+    
+    <script src="_static/documentation_options.js?v=6ad00ebc"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="flops module" href="flops.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="flops.html" title="flops module"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">FOURIER-Net 20240614 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" accesskey="U">FOURIER-Net</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">periodLSTM module</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="module-periodLSTM">
+<span id="periodlstm-module"></span><h1>periodLSTM module<a class="headerlink" href="#module-periodLSTM" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="periodLSTM.CoupledDown">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">CoupledDown</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inp_channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outp_channels</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#CoupledDown"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.CoupledDown" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.CoupledDown.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#CoupledDown.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.CoupledDown.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.CoupledDown.train_mode_set">
+<span class="sig-name descname"><span class="pre">train_mode_set</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bool</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#CoupledDown.train_mode_set"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.CoupledDown.train_mode_set" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="periodLSTM.CoupledDownReal">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">CoupledDownReal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inp_channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outp_channels</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#CoupledDownReal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.CoupledDownReal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.CoupledDownReal.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#CoupledDownReal.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.CoupledDownReal.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.CoupledDownReal.train_mode_set">
+<span class="sig-name descname"><span class="pre">train_mode_set</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bool</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#CoupledDownReal.train_mode_set"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.CoupledDownReal.train_mode_set" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="periodLSTM.CoupledUp">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">CoupledUp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inp_channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outp_channels</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#CoupledUp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.CoupledUp" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.CoupledUp.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#CoupledUp.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.CoupledUp.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.CoupledUp.train_mode_set">
+<span class="sig-name descname"><span class="pre">train_mode_set</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bool</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#CoupledUp.train_mode_set"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.CoupledUp.train_mode_set" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="periodLSTM.CoupledUpReal">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">CoupledUpReal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inp_channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outp_channels</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#CoupledUpReal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.CoupledUpReal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.CoupledUpReal.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#CoupledUpReal.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.CoupledUpReal.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.CoupledUpReal.train_mode_set">
+<span class="sig-name descname"><span class="pre">train_mode_set</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bool</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#CoupledUpReal.train_mode_set"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.CoupledUpReal.train_mode_set" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="periodLSTM.Identity">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">Identity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_rnn_cells</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_lstm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#Identity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.Identity" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>A simple identity module - placeholder for absent modules during ablation studies</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="periodLSTM.Identity.n_rnn_cells">
+<span class="sig-name descname"><span class="pre">n_rnn_cells</span></span><a class="headerlink" href="#periodLSTM.Identity.n_rnn_cells" title="Link to this definition">¶</a></dt>
+<dd><p>Place holder argument</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="periodLSTM.Identity.m">
+<span class="sig-name descname"><span class="pre">m</span></span><a class="headerlink" href="#periodLSTM.Identity.m" title="Link to this definition">¶</a></dt>
+<dd><p>Place holder attribute so that the module has parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>nn.Module</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.Identity.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hist_mag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hist_phase</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gt_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mag_prev_outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phase_prev_outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#Identity.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.Identity.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Place holder Forward pass - will never be used</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hist_mag</strong> (<em>Tensor</em>) – Historical magnitude data.</p></li>
+<li><p><strong>hist_phase</strong> (<em>Tensor</em>) – Historical phase data.</p></li>
+<li><p><strong>gt_mask</strong> (<em>Tensor</em><em>, </em><em>optional</em>) – Ground truth mask.</p></li>
+<li><p><strong>mag_prev_outputs</strong> (<em>Tensor</em><em>, </em><em>optional</em>) – Previous magnitude outputs.</p></li>
+<li><p><strong>phase_prev_outputs</strong> (<em>Tensor</em><em>, </em><em>optional</em>) – Previous phase outputs.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The same outputs as input</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[List[Tensor], List[Tensor]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="periodLSTM.Identity_param">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">Identity_param</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proc_device</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#Identity_param"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.Identity_param" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>A identity module - placeholder for absent modules during ablation studies</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="periodLSTM.Identity_param.m">
+<span class="sig-name descname"><span class="pre">m</span></span><a class="headerlink" href="#periodLSTM.Identity_param.m" title="Link to this definition">¶</a></dt>
+<dd><p>Linear transformation layer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>nn.Module</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.Identity_param.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#Identity_param.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.Identity_param.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Placeholder Forward pass of the Identity_param module.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>Tensor</em>) – Input tensor.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>x</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="periodLSTM.ImageSpaceModel1">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">ImageSpaceModel1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proc_device</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#ImageSpaceModel1"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.ImageSpaceModel1" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.ImageSpaceModel1.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#ImageSpaceModel1.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.ImageSpaceModel1.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.ImageSpaceModel1.time_analysis">
+<span class="sig-name descname"><span class="pre">time_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#ImageSpaceModel1.time_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.ImageSpaceModel1.time_analysis" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="periodLSTM.RecurrentModule">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">RecurrentModule</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">history_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_coils</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forget_gate_coupled</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forget_gate_same_coils</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forget_gate_same_phase_mag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rnn_input_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_connections</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_layers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_hidden</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_rnn_cells</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coilwise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gate_cat_prev_output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#RecurrentModule"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.RecurrentModule" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>The Recurrent Module for undersampled k-space data processing. Contains the kspace-RNN and the image LSTM.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">Various</span> <span class="pre">attributes</span> <span class="pre">for</span> <span class="pre">LSTM</span> <span class="pre">cell</span> <span class="pre">configuration.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.RecurrentModule.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hist_mag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hist_phase</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">background</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gt_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mag_prev_outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phase_prev_outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">inf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mag_gates_remember</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phase_gates_remember</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#RecurrentModule.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.RecurrentModule.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Forward pass of the RecurrentModule.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hist_mag</strong> (<em>Tensor</em>) – Log Magnitude data. If history is provided, then this will have multiple frames appended as channnels.</p></li>
+<li><p><strong>hist_phase</strong> (<em>Tensor</em>) – Phase data as angles. If history is provided, then this will have multiple frames appended as channnels.</p></li>
+<li><p><strong>background</strong> (<em>Tensor</em><em>, </em><em>optional</em>) – Background mask. Defaults to None.</p></li>
+<li><p><strong>gt_mask</strong> (<em>Tensor</em><em>, </em><em>optional</em>) – Ground truth mask. Defaults to None.</p></li>
+<li><p><strong>mag_prev_outputs</strong> (<em>Tensor</em><em>, </em><em>optional</em>) – Previous magnitude outputs. Defaults to None.</p></li>
+<li><p><strong>phase_prev_outputs</strong> (<em>Tensor</em><em>, </em><em>optional</em>) – Previous phase outputs. Defaults to None.</p></li>
+<li><p><strong>window_size</strong> (<em>int</em><em>, </em><em>optional</em>) – Window size for gating. Defaults to np.inf.</p></li>
+<li><p><strong>mag_gates_remember</strong> (<em>list</em><em>, </em><em>optional</em>) – List to remember magnitude gates to enforce windowing. Defaults to None.</p></li>
+<li><p><strong>phase_gates_remember</strong> (<em>list</em><em>, </em><em>optional</em>) – List to remember phase gates to enforce windowing. Defaults to None.</p></li>
+<li><p><strong>eval</strong> (<em>bool</em><em>, </em><em>optional</em>) – Evaluation flag - if yes, then do not compute loss. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>New magnitude and phase outputs, loss for forget gate, loss for input gate, remembered magnitude gates, remembered phase gates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[List[Tensor], List[Tensor], Tensor, Tensor, List, List]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="periodLSTM.UNet">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">UNet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#UNet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.UNet" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.UNet.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#UNet.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.UNet.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="periodLSTM.concatConv">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">concatConv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cnn_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relu_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gate_input_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hidden_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gate_output_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_layers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_connections</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#concatConv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.concatConv" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Concatenated convolutional layers module.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="periodLSTM.concatConv.layerlist">
+<span class="sig-name descname"><span class="pre">layerlist</span></span><a class="headerlink" href="#periodLSTM.concatConv.layerlist" title="Link to this definition">¶</a></dt>
+<dd><p>List of convolutional layers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>nn.ModuleList</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="periodLSTM.concatConv.skip_connections">
+<span class="sig-name descname"><span class="pre">skip_connections</span></span><a class="headerlink" href="#periodLSTM.concatConv.skip_connections" title="Link to this definition">¶</a></dt>
+<dd><p>Flag for using skip connections.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="periodLSTM.concatConv.relu_func">
+<span class="sig-name descname"><span class="pre">relu_func</span></span><a class="headerlink" href="#periodLSTM.concatConv.relu_func" title="Link to this definition">¶</a></dt>
+<dd><p>ReLU activation function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>nn.Module</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="periodLSTM.concatConv.n_layers">
+<span class="sig-name descname"><span class="pre">n_layers</span></span><a class="headerlink" href="#periodLSTM.concatConv.n_layers" title="Link to this definition">¶</a></dt>
+<dd><p>Number of layers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.concatConv.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#concatConv.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.concatConv.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Forward pass of the concatConv module.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>Tensor</em>) – Input tensor.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Output tensor.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="periodLSTM.convLSTM_Kspace1">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">convLSTM_Kspace1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proc_device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">two_cell</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#convLSTM_Kspace1"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.convLSTM_Kspace1" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.convLSTM_Kspace1.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fft_exp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gt_masks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">device(type='cpu')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">periods</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">targ_phase</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">targ_mag_log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">targ_real</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">og_video</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">inf</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#convLSTM_Kspace1.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.convLSTM_Kspace1.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.convLSTM_Kspace1.time_analysis">
+<span class="sig-name descname"><span class="pre">time_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fft_exp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">periods</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ispace_model</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#convLSTM_Kspace1.time_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.convLSTM_Kspace1.time_analysis" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="periodLSTM.convLSTMcell">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">convLSTMcell</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tanh_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">real_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ilstm_gate_cat_prev_output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#convLSTMcell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.convLSTMcell" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>A convolutional LSTM cell module.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">Various</span> <span class="pre">attributes</span> <span class="pre">for</span> <span class="pre">LSTM</span> <span class="pre">cell</span> <span class="pre">configuration.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="periodLSTM.convLSTMcell.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prev_state</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prev_output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#convLSTMcell.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.convLSTMcell.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Forward pass of the convLSTMcell module.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>Tensor</em>) – Input tensor.</p></li>
+<li><p><strong>prev_state</strong> (<em>Tensor</em><em>, </em><em>optional</em>) – Previous cell state. Defaults to None.</p></li>
+<li><p><strong>prev_output</strong> (<em>Tensor</em><em>, </em><em>optional</em>) – Previous output. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>New cell state and output.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[Tensor, Tensor]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="periodLSTM.fetch_models">
+<span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">fetch_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#fetch_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.fetch_models" title="Link to this definition">¶</a></dt>
+<dd><p>Fetches the LSTM model types based on the given parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>parameters</strong> (<em>dict</em>) – Dictionary of parameters.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>LSTM model types for image and k-space.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[Type[nn.Module], Type[nn.Module]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="periodLSTM.gaussian_2d">
+<span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">gaussian_2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#gaussian_2d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.gaussian_2d" title="Link to this definition">¶</a></dt>
+<dd><p>Generate a 2D Gaussian mask.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>shape</strong> (<em>tuple</em>) – Shape of the output array (height, width).</p></li>
+<li><p><strong>sigma</strong> (<em>float</em>) – Standard deviation of the Gaussian distribution.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>2D Gaussian mask.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="periodLSTM.mylog">
+<span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">mylog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#mylog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.mylog" title="Link to this definition">¶</a></dt>
+<dd><p>Computes the logarithm of a tensor with a specified base.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>Tensor</em>) – Input tensor.</p></li>
+<li><p><strong>base</strong> (<em>int</em><em>, </em><em>optional</em>) – Logarithm base. Defaults to 10.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Logarithm of the input tensor.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="periodLSTM.special_trim">
+<span class="sig-prename descclassname"><span class="pre">periodLSTM.</span></span><span class="sig-name descname"><span class="pre">special_trim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">95</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/periodLSTM.html#special_trim"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#periodLSTM.special_trim" title="Link to this definition">¶</a></dt>
+<dd><p>Trims the values of a tensor to be within the specified percentiles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>Tensor</em>) – Input tensor.</p></li>
+<li><p><strong>l</strong> (<em>int</em><em>, </em><em>optional</em>) – Lower percentile. Defaults to 5.</p></li>
+<li><p><strong>u</strong> (<em>int</em><em>, </em><em>optional</em>) – Upper percentile. Defaults to 95.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Trimmed tensor.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">periodLSTM module</a><ul>
+<li><a class="reference internal" href="#periodLSTM.CoupledDown"><code class="docutils literal notranslate"><span class="pre">CoupledDown</span></code></a><ul>
+<li><a class="reference internal" href="#periodLSTM.CoupledDown.forward"><code class="docutils literal notranslate"><span class="pre">CoupledDown.forward()</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.CoupledDown.train_mode_set"><code class="docutils literal notranslate"><span class="pre">CoupledDown.train_mode_set()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#periodLSTM.CoupledDownReal"><code class="docutils literal notranslate"><span class="pre">CoupledDownReal</span></code></a><ul>
+<li><a class="reference internal" href="#periodLSTM.CoupledDownReal.forward"><code class="docutils literal notranslate"><span class="pre">CoupledDownReal.forward()</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.CoupledDownReal.train_mode_set"><code class="docutils literal notranslate"><span class="pre">CoupledDownReal.train_mode_set()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#periodLSTM.CoupledUp"><code class="docutils literal notranslate"><span class="pre">CoupledUp</span></code></a><ul>
+<li><a class="reference internal" href="#periodLSTM.CoupledUp.forward"><code class="docutils literal notranslate"><span class="pre">CoupledUp.forward()</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.CoupledUp.train_mode_set"><code class="docutils literal notranslate"><span class="pre">CoupledUp.train_mode_set()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#periodLSTM.CoupledUpReal"><code class="docutils literal notranslate"><span class="pre">CoupledUpReal</span></code></a><ul>
+<li><a class="reference internal" href="#periodLSTM.CoupledUpReal.forward"><code class="docutils literal notranslate"><span class="pre">CoupledUpReal.forward()</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.CoupledUpReal.train_mode_set"><code class="docutils literal notranslate"><span class="pre">CoupledUpReal.train_mode_set()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#periodLSTM.Identity"><code class="docutils literal notranslate"><span class="pre">Identity</span></code></a><ul>
+<li><a class="reference internal" href="#periodLSTM.Identity.n_rnn_cells"><code class="docutils literal notranslate"><span class="pre">Identity.n_rnn_cells</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.Identity.m"><code class="docutils literal notranslate"><span class="pre">Identity.m</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.Identity.forward"><code class="docutils literal notranslate"><span class="pre">Identity.forward()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#periodLSTM.Identity_param"><code class="docutils literal notranslate"><span class="pre">Identity_param</span></code></a><ul>
+<li><a class="reference internal" href="#periodLSTM.Identity_param.m"><code class="docutils literal notranslate"><span class="pre">Identity_param.m</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.Identity_param.forward"><code class="docutils literal notranslate"><span class="pre">Identity_param.forward()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#periodLSTM.ImageSpaceModel1"><code class="docutils literal notranslate"><span class="pre">ImageSpaceModel1</span></code></a><ul>
+<li><a class="reference internal" href="#periodLSTM.ImageSpaceModel1.forward"><code class="docutils literal notranslate"><span class="pre">ImageSpaceModel1.forward()</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.ImageSpaceModel1.time_analysis"><code class="docutils literal notranslate"><span class="pre">ImageSpaceModel1.time_analysis()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#periodLSTM.RecurrentModule"><code class="docutils literal notranslate"><span class="pre">RecurrentModule</span></code></a><ul>
+<li><a class="reference internal" href="#periodLSTM.RecurrentModule.forward"><code class="docutils literal notranslate"><span class="pre">RecurrentModule.forward()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#periodLSTM.UNet"><code class="docutils literal notranslate"><span class="pre">UNet</span></code></a><ul>
+<li><a class="reference internal" href="#periodLSTM.UNet.forward"><code class="docutils literal notranslate"><span class="pre">UNet.forward()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#periodLSTM.concatConv"><code class="docutils literal notranslate"><span class="pre">concatConv</span></code></a><ul>
+<li><a class="reference internal" href="#periodLSTM.concatConv.layerlist"><code class="docutils literal notranslate"><span class="pre">concatConv.layerlist</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.concatConv.skip_connections"><code class="docutils literal notranslate"><span class="pre">concatConv.skip_connections</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.concatConv.relu_func"><code class="docutils literal notranslate"><span class="pre">concatConv.relu_func</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.concatConv.n_layers"><code class="docutils literal notranslate"><span class="pre">concatConv.n_layers</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.concatConv.forward"><code class="docutils literal notranslate"><span class="pre">concatConv.forward()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#periodLSTM.convLSTM_Kspace1"><code class="docutils literal notranslate"><span class="pre">convLSTM_Kspace1</span></code></a><ul>
+<li><a class="reference internal" href="#periodLSTM.convLSTM_Kspace1.forward"><code class="docutils literal notranslate"><span class="pre">convLSTM_Kspace1.forward()</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.convLSTM_Kspace1.time_analysis"><code class="docutils literal notranslate"><span class="pre">convLSTM_Kspace1.time_analysis()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#periodLSTM.convLSTMcell"><code class="docutils literal notranslate"><span class="pre">convLSTMcell</span></code></a><ul>
+<li><a class="reference internal" href="#periodLSTM.convLSTMcell.forward"><code class="docutils literal notranslate"><span class="pre">convLSTMcell.forward()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#periodLSTM.fetch_models"><code class="docutils literal notranslate"><span class="pre">fetch_models()</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.gaussian_2d"><code class="docutils literal notranslate"><span class="pre">gaussian_2d()</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.mylog"><code class="docutils literal notranslate"><span class="pre">mylog()</span></code></a></li>
+<li><a class="reference internal" href="#periodLSTM.special_trim"><code class="docutils literal notranslate"><span class="pre">special_trim()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="flops.html"
+                          title="previous chapter">flops module</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/periodLSTM.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="flops.html" title="flops module"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">FOURIER-Net 20240614 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" >FOURIER-Net</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">periodLSTM module</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2024, AERS + NRM.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.4.7.
+    </div>
+  </body>
+</html>

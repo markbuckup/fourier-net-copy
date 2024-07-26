@@ -1,0 +1,312 @@
+
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>complexCNNs.cmplx_conv &#8212; FOURIER-Net 20240614 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=649a27d8" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bizstyle.css?v=658d757c" />
+    
+    <script src="../../_static/documentation_options.js?v=6ad00ebc"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">FOURIER-Net 20240614 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">complexCNNs.cmplx_conv</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for complexCNNs.cmplx_conv</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+
+
+<div class="viewcode-block" id="ComplexConv">
+<a class="viewcode-back" href="../../complexCNNs.html#complexCNNs.cmplx_conv.ComplexConv">[docs]</a>
+<span class="k">class</span> <span class="nc">ComplexConv</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">rank</span><span class="p">,</span>
+        <span class="n">in_channels</span><span class="p">,</span>
+        <span class="n">out_channels</span><span class="p">,</span>
+        <span class="n">kernel_size</span><span class="p">,</span>
+        <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">output_padding</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">groups</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">bias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">conv_transposed</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ComplexConv</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">=</span> <span class="n">rank</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">in_channels</span> <span class="o">=</span> <span class="n">in_channels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">out_channels</span> <span class="o">=</span> <span class="n">out_channels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kernel_size</span> <span class="o">=</span> <span class="n">kernel_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stride</span> <span class="o">=</span> <span class="n">stride</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">padding</span> <span class="o">=</span> <span class="n">padding</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_padding</span> <span class="o">=</span> <span class="n">output_padding</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dilation</span> <span class="o">=</span> <span class="n">dilation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">groups</span> <span class="o">=</span> <span class="n">groups</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bias</span> <span class="o">=</span> <span class="n">bias</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_transposed</span> <span class="o">=</span> <span class="n">conv_transposed</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_args</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;in_channels&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_channels</span><span class="p">,</span>
+            <span class="s2">&quot;out_channels&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_channels</span><span class="p">,</span>
+            <span class="s2">&quot;kernel_size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel_size</span><span class="p">,</span>
+            <span class="s2">&quot;stride&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">stride</span><span class="p">,</span>
+            <span class="s2">&quot;padding&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">padding</span><span class="p">,</span>
+            <span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">,</span>
+            <span class="s2">&quot;bias&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_transposed</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conv_args</span><span class="p">[</span><span class="s2">&quot;output_padding&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_padding</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conv_args</span><span class="p">[</span><span class="s2">&quot;dilation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dilation</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_func</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv1d</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_transposed</span> <span class="k">else</span> <span class="n">nn</span><span class="o">.</span><span class="n">ConvTranspose1d</span><span class="p">,</span>
+                          <span class="mi">2</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_transposed</span> <span class="k">else</span> <span class="n">nn</span><span class="o">.</span><span class="n">ConvTranspose2d</span><span class="p">,</span>
+                          <span class="mi">3</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv3d</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_transposed</span> <span class="k">else</span> <span class="n">nn</span><span class="o">.</span><span class="n">ConvTranspose3d</span><span class="p">}[</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">real_conv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_func</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">conv_args</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">imag_conv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_func</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">conv_args</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ComplexConv.forward">
+<a class="viewcode-back" href="../../complexCNNs.html#complexCNNs.cmplx_conv.ComplexConv.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">            Considering a complex-valued input z = x + iy to be convolved by complex-valued filter h = a + ib</span>
+<span class="sd">            where Output O = z * h, where * is a complex convolution operator, then O = x*a + i(x*b)+ i(y*a) - y*b</span>
+<span class="sd">            so we need to calculate each of the 4 convolution operations in the previous equation,</span>
+<span class="sd">            one simple way to implement this as two conolution layers, one layer for the real weights (a)</span>
+<span class="sd">            and the other for imaginary weights (b), this can be done by concatenating both real and imaginary</span>
+<span class="sd">            parts of the input and convolve over both of them as follows:</span>
+<span class="sd">            c_r = [x; y] * a , and  c_i= [x; y] * b, so that</span>
+<span class="sd">            O_real = c_r[real] - c_i[real], and O_imag = c_r[imag] - c_i[imag]</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">input_real</span><span class="p">,</span> <span class="n">input_imag</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">unbind</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">output_real</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">real_conv</span><span class="p">(</span><span class="n">input_real</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">imag_conv</span><span class="p">(</span><span class="n">input_imag</span><span class="p">)</span>
+        <span class="n">output_imag</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">real_conv</span><span class="p">(</span><span class="n">input_imag</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">imag_conv</span><span class="p">(</span><span class="n">input_real</span><span class="p">)</span>
+        
+        <span class="n">output</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">output_real</span><span class="p">,</span> <span class="n">output_imag</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">output</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ComplexConv1d">
+<a class="viewcode-back" href="../../complexCNNs.html#complexCNNs.cmplx_conv.ComplexConv1d">[docs]</a>
+<span class="k">class</span> <span class="nc">ComplexConv1d</span><span class="p">(</span><span class="n">ComplexConv</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Applies a 1D Complex convolution over an input signal composed of several input</span>
+<span class="sd">    planes.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        in_channels (int): Number of channels in the input image</span>
+<span class="sd">        out_channels (int): Number of channels produced by the convolution</span>
+<span class="sd">        kernel_size (int or tuple): Size of the convolving kernel</span>
+<span class="sd">        stride (int or tuple, optional): Stride of the convolution. Default: 1</span>
+<span class="sd">        padding (int or tuple, optional): Zero-padding added to both sides of</span>
+<span class="sd">            the input. Default: 0</span>
+<span class="sd">        dilation (int or tuple, optional): Spacing between kernel</span>
+<span class="sd">            elements. Default: 1</span>
+<span class="sd">        groups (int, optional): Number of blocked connections from input</span>
+<span class="sd">            channels to output channels. Default: 1</span>
+<span class="sd">        bias (bool, optional): If ``True``, adds a learnable bias to the output. Default: ``True``</span>
+<span class="sd">    Shape:</span>
+<span class="sd">        - Input: :math:`(N, C_{in}, L_{in}, 2)`</span>
+<span class="sd">        - Output: :math:`(N, C_{out}, L_{out}, 2)`</span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        weight (Tensor): the learnable weights of the module of shape</span>
+<span class="sd">            (out_channels, in_channels, kernel_size, 2)</span>
+<span class="sd">        bias (Tensor):   the learnable bias of the module of shape</span>
+<span class="sd">            (out_channels, 2)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">in_channels</span><span class="p">,</span>
+                 <span class="n">out_channels</span><span class="p">,</span>
+                 <span class="n">kernel_size</span><span class="p">,</span>
+                 <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                 <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">groups</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">bias</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ComplexConv1d</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">rank</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">in_channels</span><span class="o">=</span><span class="n">in_channels</span><span class="p">,</span>
+            <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="p">,</span>
+            <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="p">,</span>
+            <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span>
+            <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">,</span>
+            <span class="n">dilation</span><span class="o">=</span><span class="n">dilation</span><span class="p">,</span>
+            <span class="n">groups</span><span class="o">=</span><span class="n">groups</span><span class="p">,</span>
+            <span class="n">bias</span><span class="o">=</span><span class="n">bias</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ComplexConv2d">
+<a class="viewcode-back" href="../../complexCNNs.html#complexCNNs.cmplx_conv.ComplexConv2d">[docs]</a>
+<span class="k">class</span> <span class="nc">ComplexConv2d</span><span class="p">(</span><span class="n">ComplexConv</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Applies a 2D Complex convolution over an input signal composed of several input</span>
+<span class="sd">    planes.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        in_channels (int): Number of channels in the input image</span>
+<span class="sd">        out_channels (int): Number of channels produced by the convolution</span>
+<span class="sd">        kernel_size (int or tuple): Size of the convolving kernel</span>
+<span class="sd">        stride (int or tuple, optional): Stride of the convolution. Default: 1</span>
+<span class="sd">        padding (int or tuple, optional): Zero-padding added to both sides of</span>
+<span class="sd">            the input. Default: 0</span>
+<span class="sd">        dilation (int or tuple, optional): Spacing between kernel</span>
+<span class="sd">            elements. Default: 1</span>
+<span class="sd">        groups (int, optional): Number of blocked connections from input</span>
+<span class="sd">            channels to output channels. Default: 1</span>
+<span class="sd">        bias (bool, optional): If ``True``, adds a learnable bias to the output. Default: ``True``</span>
+<span class="sd">    Shape:</span>
+<span class="sd">        - Input: :math:`(N, C_{in}, L_{in}, 2)`</span>
+<span class="sd">        - Output: :math:`(N, C_{out}, L_{out}, 2)`</span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        weight (Tensor): the learnable weights of the module of shape</span>
+<span class="sd">            (out_channels, in_channels, kernel_size, 2)</span>
+<span class="sd">        bias (Tensor):   the learnable bias of the module of shape</span>
+<span class="sd">            (out_channels, 2)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">in_channels</span><span class="p">,</span>
+                 <span class="n">out_channels</span><span class="p">,</span>
+                 <span class="n">kernel_size</span><span class="p">,</span>
+                 <span class="n">stride</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                 <span class="n">padding</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                 <span class="n">dilation</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                 <span class="n">groups</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">bias</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ComplexConv2d</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">rank</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">in_channels</span><span class="o">=</span><span class="n">in_channels</span><span class="p">,</span>
+            <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="p">,</span>
+            <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="p">,</span>
+            <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span>
+            <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">,</span>
+            <span class="n">dilation</span><span class="o">=</span><span class="n">dilation</span><span class="p">,</span>
+            <span class="n">groups</span><span class="o">=</span><span class="n">groups</span><span class="p">,</span>
+            <span class="n">bias</span><span class="o">=</span><span class="n">bias</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ComplexConv3d">
+<a class="viewcode-back" href="../../complexCNNs.html#complexCNNs.cmplx_conv.ComplexConv3d">[docs]</a>
+<span class="k">class</span> <span class="nc">ComplexConv3d</span><span class="p">(</span><span class="n">ComplexConv</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Applies a 3D complex convolution over an input signal composed of several input</span>
+<span class="sd">    planes.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        in_channels (int): Number of channels in the input image</span>
+<span class="sd">        out_channels (int): Number of channels produced by the convolution</span>
+<span class="sd">        kernel_size (int or tuple): Size of the convolving kernel</span>
+<span class="sd">        stride (int or tuple, optional): Stride of the convolution. Default: 1</span>
+<span class="sd">        padding (int or tuple, optional): Zero-padding added to both sides of</span>
+<span class="sd">            the input. Default: 0</span>
+<span class="sd">        dilation (int or tuple, optional): Spacing between kernel</span>
+<span class="sd">            elements. Default: 1</span>
+<span class="sd">        groups (int, optional): Number of blocked connections from input</span>
+<span class="sd">            channels to output channels. Default: 1</span>
+<span class="sd">        bias (bool, optional): If ``True``, adds a learnable bias to the output. Default: ``True``</span>
+<span class="sd">    Shape:</span>
+<span class="sd">        - Input: :math:`(N, C_{in}, L_{in}, 2)`</span>
+<span class="sd">        - Output: :math:`(N, C_{out}, L_{out}, 2)`</span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        weight (Tensor): the learnable weights of the module of shape</span>
+<span class="sd">            (out_channels, in_channels, kernel_size, 2)</span>
+<span class="sd">        bias (Tensor):   the learnable bias of the module of shape</span>
+<span class="sd">            (out_channels, 2)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">in_channels</span><span class="p">,</span>
+                 <span class="n">out_channels</span><span class="p">,</span>
+                 <span class="n">kernel_size</span><span class="p">,</span>
+                 <span class="n">stride</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                 <span class="n">padding</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                 <span class="n">dilation</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                 <span class="n">groups</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">bias</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ComplexConv3d</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">rank</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+            <span class="n">in_channels</span><span class="o">=</span><span class="n">in_channels</span><span class="p">,</span>
+            <span class="n">out_channels</span><span class="o">=</span><span class="n">out_channels</span><span class="p">,</span>
+            <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="p">,</span>
+            <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span>
+            <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">,</span>
+            <span class="n">dilation</span><span class="o">=</span><span class="n">dilation</span><span class="p">,</span>
+            <span class="n">groups</span><span class="o">=</span><span class="n">groups</span><span class="p">,</span>
+            <span class="n">bias</span><span class="o">=</span><span class="n">bias</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">FOURIER-Net 20240614 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">complexCNNs.cmplx_conv</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2024, AERS + NRM.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.4.7.
+    </div>
+  </body>
+</html>

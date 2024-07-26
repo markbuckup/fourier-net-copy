@@ -1,0 +1,312 @@
+
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>functions &#8212; FOURIER-Net 20240614 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=649a27d8" />
+    <link rel="stylesheet" type="text/css" href="../_static/bizstyle.css?v=658d757c" />
+    
+    <script src="../_static/documentation_options.js?v=6ad00ebc"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">FOURIER-Net 20240614 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">functions</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for functions</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torchvision</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">PIL</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;../&#39;</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">import</span> <span class="nn">kornia</span>
+<span class="kn">from</span> <span class="nn">kornia.metrics</span> <span class="kn">import</span> <span class="n">ssim</span>
+<span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">kornia</span>
+<span class="kn">from</span> <span class="nn">kornia.utils</span> <span class="kn">import</span> <span class="n">draw_line</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">nn</span><span class="p">,</span> <span class="n">optim</span>
+<span class="kn">import</span> <span class="nn">utils</span>
+
+<span class="n">EPS</span> <span class="o">=</span> <span class="mf">1e-10</span>
+<span class="n">GR</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="mi">5</span><span class="o">**</span><span class="mf">0.5</span><span class="p">))</span><span class="o">/</span><span class="mi">2</span>
+<span class="n">GA</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="n">GR</span>
+
+<span class="c1"># AERS: Generates GA masks for a finite number of GAs (n=376), because GA of n=0 and n=377 are very similar.</span>
+<div class="viewcode-block" id="get_golden_bars">
+<a class="viewcode-back" href="../functions.html#functions.get_golden_bars">[docs]</a>
+<span class="k">def</span> <span class="nf">get_golden_bars</span><span class="p">(</span><span class="n">num_bars</span> <span class="o">=</span> <span class="mi">376</span><span class="p">,</span> <span class="n">resolution</span> <span class="o">=</span> <span class="mi">128</span><span class="p">):</span>
+    <span class="n">ans</span> <span class="o">=</span> <span class="n">mask_theta</span><span class="p">(</span><span class="mi">90</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">resolution</span><span class="p">,</span> <span class="n">resolution</span><span class="p">))</span>
+    <span class="n">angle</span> <span class="o">=</span> <span class="mi">90</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">num_bars</span><span class="p">):</span>
+        <span class="n">angle</span> <span class="o">=</span> <span class="p">(</span><span class="n">angle</span> <span class="o">+</span> <span class="p">(</span><span class="mi">360</span><span class="o">*</span><span class="p">(</span><span class="n">GA</span><span class="p">))</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span> 
+        <span class="n">ans</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">ans</span><span class="p">,</span><span class="n">mask_theta</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">resolution</span><span class="p">,</span> <span class="n">resolution</span><span class="p">))))</span>
+    <span class="k">return</span> <span class="n">ans</span> <span class="c1"># AERS: ans dimentions are 376 x resolution x resolution</span></div>
+
+
+
+<div class="viewcode-block" id="fetch_loss_function">
+<a class="viewcode-back" href="../functions.html#functions.fetch_loss_function">[docs]</a>
+<span class="k">def</span> <span class="nf">fetch_loss_function</span><span class="p">(</span><span class="n">loss_str</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">loss_params</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">loss_str</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">elif</span> <span class="n">loss_str</span> <span class="o">==</span> <span class="s1">&#39;Cosine&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">acos</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">y</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">EPS</span><span class="o">*</span><span class="mi">10</span><span class="o">**</span><span class="mi">3</span><span class="p">))</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="n">loss_str</span> <span class="o">==</span> <span class="s1">&#39;L1&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">nn</span><span class="o">.</span><span class="n">L1Loss</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">loss_str</span> <span class="o">==</span> <span class="s1">&#39;L2&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">loss_str</span> <span class="o">==</span> <span class="s1">&#39;SSIM&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">kornia</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">SSIMLoss</span><span class="p">(</span><span class="n">loss_params</span><span class="p">[</span><span class="s1">&#39;SSIM_window&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">loss_str</span> <span class="o">==</span> <span class="s1">&#39;MS_SSIM&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">kornia</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">MS_SSIMLoss</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">loss_str</span> <span class="o">==</span> <span class="s1">&#39;Cosine-L1&#39;</span><span class="p">:</span>
+        <span class="c1"># expects a shifted fourier transform</span>
+        <span class="k">return</span> <span class="n">dual_fft_loss</span><span class="p">(</span>
+                    <span class="n">fetch_loss_function</span><span class="p">(</span><span class="s1">&#39;Cosine&#39;</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">loss_params</span><span class="p">),</span> 
+                    <span class="n">fetch_loss_function</span><span class="p">(</span><span class="s1">&#39;L1&#39;</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">loss_params</span><span class="p">),</span> 
+                    <span class="n">alpha_phase</span> <span class="o">=</span> <span class="n">loss_params</span><span class="p">[</span><span class="s1">&#39;alpha_phase&#39;</span><span class="p">],</span> 
+                    <span class="n">alpha_amp</span> <span class="o">=</span> <span class="n">loss_params</span><span class="p">[</span><span class="s1">&#39;alpha_amp&#39;</span><span class="p">]</span>
+                        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">loss_str</span> <span class="o">==</span> <span class="s1">&#39;Cosine-L2&#39;</span><span class="p">:</span>
+        <span class="c1"># expects a shifted fourier transform</span>
+        <span class="k">return</span> <span class="n">dual_fft_loss</span><span class="p">(</span>
+                    <span class="n">fetch_loss_function</span><span class="p">(</span><span class="s1">&#39;Cosine&#39;</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">loss_params</span><span class="p">),</span> 
+                    <span class="n">fetch_loss_function</span><span class="p">(</span><span class="s1">&#39;L2&#39;</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">loss_params</span><span class="p">),</span> 
+                    <span class="n">alpha_phase</span> <span class="o">=</span> <span class="n">loss_params</span><span class="p">[</span><span class="s1">&#39;alpha_phase&#39;</span><span class="p">],</span> 
+                    <span class="n">alpha_amp</span> <span class="o">=</span> <span class="n">loss_params</span><span class="p">[</span><span class="s1">&#39;alpha_amp&#39;</span><span class="p">]</span>
+                        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">loss_str</span> <span class="o">==</span> <span class="s1">&#39;Cosine-SSIM&#39;</span><span class="p">:</span>
+        <span class="c1"># expects a shifted fourier transform</span>
+        <span class="k">return</span> <span class="n">dual_fft_loss</span><span class="p">(</span>
+                    <span class="n">fetch_loss_function</span><span class="p">(</span><span class="s1">&#39;Cosine&#39;</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">loss_params</span><span class="p">),</span> 
+                    <span class="n">fetch_loss_function</span><span class="p">(</span><span class="s1">&#39;SSIM&#39;</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">loss_params</span><span class="p">),</span> 
+                    <span class="n">alpha_phase</span> <span class="o">=</span> <span class="n">loss_params</span><span class="p">[</span><span class="s1">&#39;alpha_phase&#39;</span><span class="p">],</span> 
+                    <span class="n">alpha_amp</span> <span class="o">=</span> <span class="n">loss_params</span><span class="p">[</span><span class="s1">&#39;alpha_amp&#39;</span><span class="p">]</span>
+                        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">loss_str</span> <span class="o">==</span> <span class="s1">&#39;Cosine-MS_SSIM&#39;</span><span class="p">:</span>
+        <span class="c1"># expects a shifted fourier transform</span>
+        <span class="k">return</span> <span class="n">dual_fft_loss</span><span class="p">(</span>
+                    <span class="n">fetch_loss_function</span><span class="p">(</span><span class="s1">&#39;Cosine&#39;</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">loss_params</span><span class="p">),</span> 
+                    <span class="n">fetch_loss_function</span><span class="p">(</span><span class="s1">&#39;MS_SSIM&#39;</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">loss_params</span><span class="p">),</span> 
+                    <span class="n">alpha_phase</span> <span class="o">=</span> <span class="n">loss_params</span><span class="p">[</span><span class="s1">&#39;alpha_phase&#39;</span><span class="p">],</span> 
+                    <span class="n">alpha_amp</span> <span class="o">=</span> <span class="n">loss_params</span><span class="p">[</span><span class="s1">&#39;alpha_amp&#39;</span><span class="p">]</span>
+                        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="dual_fft_loss">
+<a class="viewcode-back" href="../functions.html#functions.dual_fft_loss">[docs]</a>
+<span class="k">def</span> <span class="nf">dual_fft_loss</span><span class="p">(</span><span class="n">phase_loss</span><span class="p">,</span> <span class="n">amp_loss</span><span class="p">,</span> <span class="n">alpha_phase</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">alpha_amp</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">apply_func</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="p">):</span>
+        <span class="n">real1</span><span class="p">,</span> <span class="n">imag1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">unbind</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">real2</span><span class="p">,</span> <span class="n">imag2</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">unbind</span><span class="p">(</span><span class="n">x2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">amp1</span><span class="p">,</span><span class="n">phase1</span> <span class="o">=</span> <span class="n">convert_cylindrical_to_polar</span><span class="p">(</span><span class="n">real1</span><span class="p">,</span> <span class="n">imag1</span><span class="p">)</span>
+        <span class="n">amp2</span><span class="p">,</span><span class="n">phase2</span> <span class="o">=</span> <span class="n">convert_cylindrical_to_polar</span><span class="p">(</span><span class="n">real2</span><span class="p">,</span> <span class="n">imag2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">phase_loss</span><span class="p">(</span><span class="n">phase1</span><span class="p">,</span> <span class="n">phase2</span><span class="p">)</span><span class="o">*</span><span class="n">alpha_phase</span> <span class="o">+</span> <span class="n">amp_loss</span><span class="p">(</span><span class="n">amp1</span><span class="p">,</span> <span class="n">amp2</span><span class="p">)</span><span class="o">*</span><span class="n">alpha_amp</span>
+    <span class="k">return</span> <span class="n">apply_func</span></div>
+
+
+<div class="viewcode-block" id="mask_theta">
+<a class="viewcode-back" href="../functions.html#functions.mask_theta">[docs]</a>
+<span class="k">def</span> <span class="nf">mask_theta</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">size</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">size</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">theta</span> <span class="o">=</span> <span class="n">theta</span><span class="o">%</span><span class="mi">180</span>
+    <span class="n">minval</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">tx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="n">c</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="n">c</span><span class="p">):</span>
+        <span class="n">costheta</span> <span class="o">=</span> <span class="p">(</span><span class="n">tx</span><span class="p">)</span> <span class="o">/</span> <span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="mi">0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="mi">0</span><span class="o">-</span><span class="n">tx</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">costheta</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">((</span><span class="n">theta</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span><span class="o">/</span><span class="mi">180</span><span class="p">))</span> <span class="o">&lt;</span> <span class="n">minval</span><span class="p">:</span>
+            <span class="n">startx</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">starty</span> <span class="o">=</span> <span class="n">r</span><span class="o">-</span><span class="mi">1</span>
+            <span class="n">endx</span> <span class="o">=</span> <span class="n">tx</span>
+            <span class="n">endy</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">minval</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">costheta</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">((</span><span class="n">theta</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span><span class="o">/</span><span class="mi">180</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">endx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">endx</span> <span class="o">+=</span> <span class="n">c</span><span class="o">-</span><span class="mi">1</span>
+        <span class="n">startx</span> <span class="o">+=</span> <span class="n">c</span><span class="o">-</span><span class="mi">1</span>
+    <span class="k">for</span> <span class="n">ty</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">r</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">ty</span> <span class="o">&lt;</span> <span class="n">r</span><span class="p">:</span>
+            <span class="n">costheta</span> <span class="o">=</span> <span class="p">(</span><span class="n">c</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="n">ty</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="mi">0</span><span class="o">-</span><span class="n">c</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">costheta</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">c</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="n">ty</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="mi">0</span><span class="o">-</span><span class="n">c</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">costheta</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">((</span><span class="n">theta</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span><span class="o">/</span><span class="mi">180</span><span class="p">))</span> <span class="o">&lt;</span> <span class="n">minval</span><span class="p">:</span>
+            <span class="n">startx</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">starty</span> <span class="o">=</span> <span class="n">r</span><span class="o">-</span><span class="mi">1</span>
+            <span class="n">endx</span> <span class="o">=</span> <span class="n">c</span><span class="o">-</span><span class="mi">1</span>
+            <span class="n">endy</span> <span class="o">=</span> <span class="n">ty</span>
+            <span class="n">minval</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">costheta</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">((</span><span class="n">theta</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span><span class="o">/</span><span class="mi">180</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">endy</span> <span class="o">&gt;=</span> <span class="n">r</span><span class="p">:</span>
+        <span class="n">endy</span> <span class="o">-=</span> <span class="n">r</span><span class="o">-</span><span class="mi">1</span>
+        <span class="n">starty</span> <span class="o">-=</span> <span class="n">r</span><span class="o">-</span><span class="mi">1</span>
+    
+    <span class="n">distfromtop</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">starty</span><span class="p">,</span> <span class="n">endy</span><span class="p">)</span>
+    <span class="n">distfrombottom</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">r</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="n">starty</span><span class="p">,</span> <span class="n">r</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="n">endy</span><span class="p">)</span>
+    <span class="n">distfromleft</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">startx</span><span class="p">,</span> <span class="n">endx</span><span class="p">)</span>
+    <span class="n">distfromright</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">c</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="n">startx</span><span class="p">,</span> <span class="n">c</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="n">endx</span><span class="p">)</span>
+    <span class="n">moveup</span> <span class="o">=</span> <span class="n">distfromtop</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="n">moveright</span> <span class="o">=</span> <span class="n">distfromright</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="n">moveup</span> <span class="o">-=</span> <span class="n">distfrombottom</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="n">moveright</span> <span class="o">-=</span> <span class="n">distfromleft</span> <span class="o">//</span> <span class="mi">2</span>
+
+    <span class="n">starty</span> <span class="o">-=</span> <span class="n">moveup</span>
+    <span class="n">endy</span> <span class="o">-=</span> <span class="n">moveup</span>
+    <span class="n">startx</span> <span class="o">+=</span> <span class="n">moveright</span>
+    <span class="n">endx</span> <span class="o">+=</span> <span class="n">moveright</span>
+    <span class="k">return</span> <span class="n">draw_line</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">size</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">startx</span><span class="p">,</span> <span class="n">starty</span><span class="p">]),</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">endx</span><span class="p">,</span> <span class="n">endy</span><span class="p">]),</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.</span><span class="p">]))</span></div>
+
+
+<div class="viewcode-block" id="get_window_mask">
+<a class="viewcode-back" href="../functions.html#functions.get_window_mask">[docs]</a>
+<span class="k">def</span> <span class="nf">get_window_mask</span><span class="p">(</span><span class="n">theta_init</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">window_size</span> <span class="o">=</span> <span class="mi">7</span><span class="p">,</span> <span class="n">number_of_radial_views</span> <span class="o">=</span> <span class="mi">14</span><span class="p">,</span> <span class="n">resolution</span> <span class="o">=</span> <span class="mi">128</span><span class="p">):</span>
+    <span class="n">window_thetas</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">window_mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">window_size</span><span class="p">,</span> <span class="n">resolution</span><span class="p">,</span> <span class="n">resolution</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">number_of_radial_views</span><span class="p">):</span>
+        <span class="n">window_thetas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="p">(</span><span class="mi">180</span><span class="o">/</span><span class="n">number_of_radial_views</span><span class="p">))</span>
+    <span class="n">theta_translations</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">window_size</span><span class="p">):</span>
+        <span class="n">theta_translations</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">i</span><span class="o">*</span><span class="mi">180</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">window_size</span><span class="o">*</span><span class="n">number_of_radial_views</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">wi</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">window_size</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">thetai</span> <span class="ow">in</span> <span class="n">window_thetas</span><span class="p">:</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="n">mask_theta</span><span class="p">(</span><span class="n">theta_init</span> <span class="o">+</span> <span class="n">thetai</span> <span class="o">+</span> <span class="n">theta_translations</span><span class="p">[</span><span class="n">wi</span><span class="p">]</span> <span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">resolution</span><span class="p">,</span><span class="n">resolution</span><span class="p">))</span>
+            <span class="n">window_mask</span><span class="p">[</span><span class="n">wi</span><span class="p">,:,:]</span> <span class="o">+=</span> <span class="n">m</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+    <span class="n">window_mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">window_mask</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">window_mask</span></div>
+
+
+<div class="viewcode-block" id="fspecial_gauss">
+<a class="viewcode-back" href="../functions.html#functions.fspecial_gauss">[docs]</a>
+<span class="k">def</span> <span class="nf">fspecial_gauss</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">sigma</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Function to mimic the &#39;fspecial&#39; gaussian MATLAB function</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mgrid</span><span class="p">[</span><span class="o">-</span><span class="n">size</span><span class="o">//</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span><span class="n">size</span><span class="o">//</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="n">size</span><span class="o">//</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span><span class="n">size</span><span class="o">//</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">g</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">((</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">y</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">2.0</span><span class="o">*</span><span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">g</span><span class="o">/</span><span class="n">g</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span></div>
+
+
+<span class="c1"># AERS: get_coil_mask data gets stored somewhere (metadata?) else so that they are always the same for each patient</span>
+<div class="viewcode-block" id="get_coil_mask">
+<a class="viewcode-back" href="../functions.html#functions.get_coil_mask">[docs]</a>
+<span class="k">def</span> <span class="nf">get_coil_mask</span><span class="p">(</span><span class="n">theta_init</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">n_coils</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">resolution</span> <span class="o">=</span> <span class="mi">128</span><span class="p">):</span>
+    <span class="c1"># AERS: </span>
+    <span class="c1"># theta_init: location of where coils start</span>
+    <span class="c1"># n_coils: number of coils</span>
+    <span class="c1"># resolution: matrix size</span>
+  
+    <span class="c1"># assert(len(centres) == n_coils)</span>
+
+    <span class="c1"># AERS: Selects center pixel</span>
+    <span class="n">centrex</span><span class="p">,</span> <span class="n">centrey</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">resolution</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">resolution</span>
+
+    <span class="c1"># AERS: Sigma and radius control the coil coverage</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">resolution</span><span class="o">/</span><span class="p">(</span><span class="mf">2.5</span><span class="p">)</span>
+    <span class="n">radius</span> <span class="o">=</span> <span class="n">resolution</span><span class="o">//</span><span class="mi">2</span>
+
+    <span class="c1"># AERS: Creates the Gaussian filter</span>
+    <span class="nb">filter</span> <span class="o">=</span> <span class="n">fspecial_gauss</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">resolution</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>
+    <span class="n">ans</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_coils</span><span class="p">,</span> <span class="n">resolution</span><span class="p">,</span> <span class="n">resolution</span><span class="p">)</span>
+
+    <span class="c1"># AERS: Get Gaussian mask centered at given coordinates centre_g_x and centre_g_y</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_coils</span><span class="p">):</span>
+        <span class="c1"># Coils are evenly distributed around 2π</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">theta_init</span> <span class="o">+</span> <span class="p">((</span><span class="n">i</span><span class="o">/</span><span class="n">n_coils</span><span class="p">)</span><span class="o">*</span><span class="p">((</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)))</span>
+
+        <span class="c1"># AERS: Estimates the coordinates of the center of the coil based on theta and radius</span>
+        <span class="n">x_delta</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">radius</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">))</span>
+        <span class="n">y_delta</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">radius</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">))</span>
+        <span class="n">centre_g_x</span> <span class="o">=</span> <span class="n">centrex</span> <span class="o">+</span> <span class="n">x_delta</span>
+        <span class="n">centre_g_y</span> <span class="o">=</span> <span class="n">centrey</span> <span class="o">+</span> <span class="n">y_delta</span>
+
+        <span class="c1"># AERS: Places the mask in a large grid, then extracts the subregion that first the original size and centers (based on radius)</span>
+        <span class="c1"># Final coil mask is normalized 0 to 1        </span>
+        <span class="n">big_ans</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="o">*</span><span class="n">resolution</span><span class="p">,</span><span class="mi">4</span><span class="o">*</span><span class="n">resolution</span><span class="p">))</span>
+        <span class="n">big_ans</span><span class="p">[</span><span class="n">centre_g_x</span><span class="o">-</span><span class="n">resolution</span><span class="p">:</span><span class="n">centre_g_x</span><span class="o">+</span><span class="n">resolution</span><span class="p">,</span> <span class="n">centre_g_y</span><span class="o">-</span><span class="n">resolution</span><span class="p">:</span><span class="n">centre_g_y</span><span class="o">+</span><span class="n">resolution</span><span class="p">]</span> <span class="o">=</span> <span class="nb">filter</span>
+        <span class="n">ans</span><span class="p">[</span><span class="n">i</span><span class="p">,:,:]</span> <span class="o">=</span> <span class="n">big_ans</span><span class="p">[</span><span class="n">centrex</span><span class="o">-</span><span class="n">radius</span><span class="p">:</span><span class="n">centrex</span><span class="o">+</span><span class="n">radius</span><span class="p">,</span> <span class="n">centrey</span><span class="o">-</span><span class="n">radius</span><span class="p">:</span><span class="n">centrey</span><span class="o">+</span><span class="n">radius</span><span class="p">]</span>
+        <span class="n">ans</span><span class="p">[</span><span class="n">i</span><span class="p">,:,:]</span> <span class="o">=</span> <span class="n">ans</span><span class="p">[</span><span class="n">i</span><span class="p">,:,:]</span> <span class="o">-</span> <span class="p">(</span><span class="n">ans</span><span class="p">[</span><span class="n">i</span><span class="p">,:,:]</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+        <span class="n">ans</span><span class="p">[</span><span class="n">i</span><span class="p">,:,:]</span> <span class="o">=</span> <span class="n">ans</span><span class="p">[</span><span class="n">i</span><span class="p">,:,:]</span> <span class="o">/</span> <span class="p">(</span><span class="n">ans</span><span class="p">[</span><span class="n">i</span><span class="p">,:,:]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">+</span><span class="mf">1e-8</span><span class="p">)</span>
+
+
+    <span class="k">return</span> <span class="n">ans</span>    </div>
+
+
+<div class="viewcode-block" id="save_coils">
+<a class="viewcode-back" href="../functions.html#functions.save_coils">[docs]</a>
+<span class="k">def</span> <span class="nf">save_coils</span><span class="p">(</span><span class="n">theta_init</span><span class="p">,</span> <span class="n">n_coils</span> <span class="o">=</span> <span class="mi">4</span><span class="p">):</span>
+    <span class="n">coils</span> <span class="o">=</span> <span class="n">get_coil_mask</span><span class="p">(</span><span class="n">theta_init</span> <span class="o">=</span> <span class="n">theta_init</span><span class="p">,</span> <span class="n">n_coils</span> <span class="o">=</span> <span class="n">n_coils</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">ci</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">coils</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imsave</span><span class="p">(</span><span class="s1">&#39;Coil_</span><span class="si">{}</span><span class="s1">.png&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ci</span><span class="p">),</span> <span class="n">coils</span><span class="p">[</span><span class="n">ci</span><span class="p">,:,:],</span> <span class="n">cmap</span> <span class="o">=</span> <span class="s1">&#39;gray&#39;</span><span class="p">)</span></div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">FOURIER-Net 20240614 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">functions</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2024, AERS + NRM.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.4.7.
+    </div>
+  </body>
+</html>

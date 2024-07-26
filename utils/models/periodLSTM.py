@@ -32,12 +32,13 @@ class Identity(nn.Module):
         m (nn.Module): Place holder attribute so that the module has parameters.
     """
 
-    def __init__(self, n_rnn_cells = 1, image_lstm = False):
+    def __init__(self, n_rnn_cells = 1, image_lstm = False):   # AERS: Added param_dic because sphinx needed it
         super(Identity, self).__init__()
         if not image_lstm:
             self.m = nn.Linear(3,3)
         self.n_rnn_cells = n_rnn_cells
-
+        
+    
     def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_outputs = None, phase_prev_outputs = None):
         """
         Place holder Forward pass - will never be used
@@ -560,21 +561,29 @@ class convLSTM_Kspace1(nn.Module):
 
         self.real_mode = True
 
-        if not self.param_dic['skip_kspace_rnn']:
+        # if not self.param_dic['skip_kspace_rnn']:   # AERS: Original from Niraj
+        if not self.param_dic.get('skip_kspace_rnn', False):     # AERS: Edited because sphinx was having an issue with this line
             self.kspace_m = RecurrentModule(
                         num_coils = self.n_coils,
                         history_length = self.history_length,
                         forget_gate_coupled = self.param_dic['forget_gate_coupled'],
                         forget_gate_same_coils = self.param_dic['forget_gate_same_coils'],
                         forget_gate_same_phase_mag = self.param_dic['forget_gate_same_phase_mag'],
-                        rnn_input_mask = self.param_dic['rnn_input_mask'],
-                        skip_connections = self.param_dic['kspace_rnn_skip_connections'],
-                        n_layers = self.param_dic['n_layers'],
-                        n_hidden = self.param_dic['n_hidden'],
-                        n_rnn_cells = self.param_dic['n_rnn_cells'],
+                        rnn_input_mask = self.param_dic.get('rnn_input_mask', None),
+                        skip_connections = self.param_dic.get('kspace_rnn_skip_connections', None),
+                        n_layers = self.param_dic.get('n_layers', 0),
+                        n_hidden = self.param_dic.get('n_hidden', 0),
+                        n_rnn_cells = self.param_dic.get('n_rnn_cells',0),
                         coilwise = self.param_dic['coilwise'],
                         gate_cat_prev_output = self.param_dic['gate_cat_prev_output'],
-                    )
+                    ) 
+            
+            # AERS: Edited line 571 from rnn_input_mask = self.param_dic('rnn_input_mask'), because sphinx had issues with it.
+            # AERS: Edited line 572 from skip_connections = self.param_dic['kspace_rnn_skip_connections'], because sphinx had issues with it.
+            # AERS: Edited line 573 from n_layers = self.param_dic['n_layers'],
+            # AERS: Edited line 574 from n_hidden = self.param_dic['n_hidden'],
+            # AERS: Edited line 575 from n_rnn_cells = self.param_dic['n_rnn_cells'],
+
         else:
             self.kspace_m = Identity(n_rnn_cells = self.param_dic['n_rnn_cells'], image_lstm = self.param_dic['image_lstm'])
 

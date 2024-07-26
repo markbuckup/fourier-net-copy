@@ -1,0 +1,69 @@
+complexCNNs package
+===================
+
+Submodules
+----------
+
+complexCNNs.cmplx\_activation module
+------------------------------------
+
+.. automodule:: complexCNNs.cmplx_activation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+complexCNNs.cmplx\_conv module
+------------------------------
+
+.. automodule:: complexCNNs.cmplx_conv
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+complexCNNs.cmplx\_dropout module
+---------------------------------
+
+.. automodule:: complexCNNs.cmplx_dropout
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+complexCNNs.cmplx\_fc module
+----------------------------
+
+.. automodule:: complexCNNs.cmplx_fc
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+complexCNNs.cmplx\_upsample module
+----------------------------------
+
+.. automodule:: complexCNNs.cmplx_upsample
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+complexCNNs.polar\_transforms module
+------------------------------------
+
+.. automodule:: complexCNNs.polar_transforms
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+complexCNNs.radial\_bn module
+-----------------------------
+
+.. automodule:: complexCNNs.radial_bn
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: complexCNNs
+   :members:
+   :undoc-members:
+   :show-inheritance:
