@@ -232,6 +232,7 @@ def train_paradigm(rank, world_size, args, parameters):
         collected_train_losses = [torch.zeros(15,).to(proc_device) for _ in range(world_size)]    
         collected_test_losses = [torch.zeros(15,).to(proc_device) for _ in range(world_size)]
         
+        ################# MODEL TRAINING ################# 
         kspaceloss_mag, kpsaceloss_phase, kspaceloss_real, loss_forget_gate, loss_input_gate, kspacessim, \
             kpsaceloss_l1, kspaceloss_l2, sosssim_score, sosl1_score, sosl2_score, ispaceloss_real, ispacessim, ipsaceloss_l1, ispaceloss_l2 = trainer.train(e)
         
@@ -256,6 +257,8 @@ def train_paradigm(rank, world_size, args, parameters):
             ispacessim_score = sum([x[12] for x in collected_train_losses]).cpu().item()/len(args.gpu)
             ispacel1_score = sum([x[13] for x in collected_train_losses]).cpu().item()/len(args.gpu)
             ispacel2_score = (sum([x[14] for x in collected_train_losses]).cpu().item()/len(args.gpu))**0.5
+
+            # AERS: Neptune log
             if args.neptune_log and rank == 0:
                 run["train/epochs_trained"].log(e)
                 run["train/kspace_train_mag_loss"].log(avgkspace_train_mag_loss)
@@ -274,6 +277,7 @@ def train_paradigm(rank, world_size, args, parameters):
                 run["train/ispace_train_l1"].log(ispacel1_score)
                 run["train/ispace_train_l2"].log(ispacel2_score)
             
+            # AERS: Prints results per epoch
             print('KSpace Training Losses for Epoch {}:'.format(e), flush = True)
             print('KSpace Mag Loss = {}' .format(avgkspace_train_mag_loss), flush = True)
             print('KSpace Phase Loss = {}' .format(avgkspace_train_phase_loss), flush = True)
@@ -289,8 +293,12 @@ def train_paradigm(rank, world_size, args, parameters):
             print('ISpace Real (L1) Loss = {}' .format(avgispace_train_real_loss), flush = True)
             print('ISpace SSIM = {}\n\n' .format(ispacessim_score), flush = True)
 
-        kspaceloss_mag, kpsaceloss_phase, kspaceloss_real, loss_forget_gate, loss_input_gate, kspacessim, kpsaceloss_l1, kspaceloss_l2, test_sosssim_score, test_sosl1_score, test_sosl2_score, ispaceloss_real, ispacessim, ipsaceloss_l1, ispaceloss_l2 = trainer.evaluate(e, train = False)
-        dist.all_gather(collected_test_losses, torch.tensor([kspaceloss_mag, kpsaceloss_phase, kspaceloss_real, loss_forget_gate, loss_input_gate, kspacessim, kpsaceloss_l1, kspaceloss_l2, test_sosssim_score, test_sosl1_score, test_sosl2_score, ispaceloss_real, ispacessim, ipsaceloss_l1, ispaceloss_l2]).to(proc_device))
+        ################# MODEL EVALUATION ################# 
+
+        kspaceloss_mag, kpsaceloss_phase, kspaceloss_real, loss_forget_gate, loss_input_gate, kspacessim, kpsaceloss_l1, kspaceloss_l2, test_sosssim_score, \
+            test_sosl1_score, test_sosl2_score, ispaceloss_real, ispacessim, ipsaceloss_l1, ispaceloss_l2 = trainer.evaluate(e, train = False)
+        dist.all_gather(collected_test_losses, torch.tensor([kspaceloss_mag, kpsaceloss_phase, kspaceloss_real, loss_forget_gate, loss_input_gate, kspacessim, \
+                                                             kpsaceloss_l1, kspaceloss_l2, test_sosssim_score, test_sosl1_score, test_sosl2_score, ispaceloss_real, ispacessim, ipsaceloss_l1, ispaceloss_l2]).to(proc_device))
         if rank == 0:
             avgkspace_test_mag_loss = sum([x[0] for x in collected_test_losses]).cpu().item()/len(args.gpu)
             avgkspace_test_phase_loss = sum([x[1] for x in collected_test_losses]).cpu().item()/len(args.gpu)
@@ -307,6 +315,8 @@ def train_paradigm(rank, world_size, args, parameters):
             test_ispacessim_score = sum([x[12] for x in collected_test_losses]).cpu().item()/len(args.gpu)
             test_ispacel1_score = sum([x[13] for x in collected_test_losses]).cpu().item()/len(args.gpu)
             test_ispacel2_score = (sum([x[14] for x in collected_test_losses]).cpu().item()/len(args.gpu)) ** 0.5
+
+            # AERS: Neptune log
             if args.neptune_log and rank == 0:
                 run["train/kspacetest_mag_loss"].log(avgkspace_test_mag_loss)
                 run["train/kspacetest_phase_loss"].log(avgkspace_test_phase_loss)
@@ -324,6 +334,7 @@ def train_paradigm(rank, world_size, args, parameters):
                 run["train/ispacetest_l1"].log(test_ispacel1_score)
                 run["train/ispacetest_l2"].log(test_ispacel2_score)
             
+            # AERS: Prints results per epoch
             print('KSpace Test Losses for Epoch {}:'.format(e), flush = True)
             print('KSpace Mag Loss = {}' .format(avgkspace_test_mag_loss), flush = True)
             print('KSpace Phase Loss = {}' .format(avgkspace_test_phase_loss), flush = True)
@@ -338,27 +349,32 @@ def train_paradigm(rank, world_size, args, parameters):
             print('\nISpace Test Losses:', flush = True)
             print('ISpace Real (L1) Loss = {}' .format(avgispace_test_real_loss), flush = True)
             print('ISpace SSIM = {}' .format(test_ispacessim_score), flush = True)
-            
-        if rank == 0:
-            losses.append((avgkspace_train_mag_loss,avgkspace_train_phase_loss,avgkspace_train_real_loss,avgkspace_train_forget_gate_loss,avgkspace_train_input_gate_loss,kspacessim_score,kspacel1_score,kspacel2_score,sosssim_score,sosl1_score,sosl2_score,avgispace_train_real_loss,ispacessim_score,ispacel1_score,ispacel2_score))
-            test_losses.append((avgkspace_test_mag_loss, avgkspace_test_phase_loss, avgkspace_test_real_loss, avgkspace_test_forget_gate_loss, avgkspace_test_input_gate_loss, test_kspacessim_score, test_kspacel1_score, test_kspacel2_score, test_sosssim_score, test_sosl1_score, test_sosl2_score, avgispace_test_real_loss, test_ispacessim_score, test_ispacel1_score, test_ispacel2_score))
 
+        # AERS: Saves results
+
+        if rank == 0:
+            losses.append((avgkspace_train_mag_loss,avgkspace_train_phase_loss,avgkspace_train_real_loss,avgkspace_train_forget_gate_loss,avgkspace_train_input_gate_loss,kspacessim_score,\
+                           kspacel1_score,kspacel2_score,sosssim_score,sosl1_score,sosl2_score,avgispace_train_real_loss,ispacessim_score,ispacel1_score,ispacel2_score))
+            test_losses.append((avgkspace_test_mag_loss, avgkspace_test_phase_loss, avgkspace_test_real_loss, avgkspace_test_forget_gate_loss, avgkspace_test_input_gate_loss, test_kspacessim_score, \
+                                 test_kspacel1_score, test_kspacel2_score, test_sosssim_score, test_sosl1_score, test_sosl2_score, avgispace_test_real_loss, test_ispacessim_score, test_ispacel1_score, test_ispacel2_score))
+
+            # AERS: This is updated here for Neptune and in the dictionary
             parameters['train_losses'] = losses
             parameters['test_losses'] = test_losses
 
             dic = {}
             dic['e'] = e+1
-            dic['recurrent_model'] = trainer.recurrent_model.module.state_dict()
-            dic['coil_combine_unet'] = trainer.coil_combine_unet.module.state_dict()
-            dic['recurrent_optim'] = trainer.recurrent_optim.state_dict()
+            dic['recurrent_model'] = trainer.recurrent_model.module.state_dict()                # AERS: Saves the k-space model that is inside the Trainer
+            dic['coil_combine_unet'] = trainer.coil_combine_unet.module.state_dict()            # AERS: Saves the U-NET model
+            dic['recurrent_optim'] = trainer.recurrent_optim.state_dict()                       # AERS: Saves the opimizer for k-space RNN and image space LSTM
 
-            dic['unet_optim'] = trainer.unet_optim.state_dict()
-            if parameters['scheduler'] != 'None':
+            dic['unet_optim'] = trainer.unet_optim.state_dict()                                 # AERS: Saves the opimizer for the U-NET
+            if parameters['scheduler'] != 'None':                                               # AERS: Scheduler is a cyclic LR (helps escape local minima)
                 dic['unet_scheduler'] = trainer.unet_scheduler.state_dict()
                 dic['recurrent_scheduler'] = trainer.recurrent_scheduler.state_dict()
             dic['losses'] = losses
             dic['test_losses'] = test_losses
-            if (e+1) % SAVE_INTERVAL == 0:
+            if (e+1) % SAVE_INTERVAL == 0:                                                      # AERS: Saves the model state
                 if e > parameters['num_epochs_recurrent']:
                     model_state = 3
                 elif e > parameters['num_epochs_recurrent'] - parameters['num_epochs_windowed']:
@@ -396,7 +412,7 @@ def train_paradigm(rank, world_size, args, parameters):
     loads checkpoint if resuming, and evaluates the model on the test dataset. Test losses are logged,
     and model performance is visualized if specified.
     """
-def test_paradigm(rank, world_size, args, parameters):
+def test_paradigm(rank, world_size, args, parameters):                                         # AERS: Same as the training paradigm, but just loads the models, does not evaluate. This is done in single GPU.
     torch.cuda.set_device(args.gpu[rank])
     setup(rank, world_size, args)
     proc_device = torch.device('cuda:{}'.format(args.gpu[rank]))
@@ -569,6 +585,7 @@ def test_paradigm(rank, world_size, args, parameters):
                     # test_ispace_l2_score
         os.makedirs(os.path.join(save_path, 'images'), exist_ok=True)
 
+        # AERS: Number of epochs that have been trained (for the image space LSTM, it removes the k-space RNN epochs because in those values, the losses would be zero)
         kspace_x = range(min(parameters['num_epochs_recurrent'], len(losses)))
         ispace_x = range(max(parameters['num_epochs_total'] - parameters['num_epochs_unet']+1, 0), min(parameters['num_epochs_total'], len(losses)))
         
@@ -759,13 +776,16 @@ def test_paradigm(rank, world_size, args, parameters):
 
         plt.close('all')
         if not args.numbers_only:
-            trainer.visualise(pre_e, train = False)
+            trainer.visualise(pre_e, train = False)         # AERS: If the argument numbers_only is True, it doesn't save the plots
             trainer.visualise(pre_e, train = True)
 
-    if not args.visualise_only:
-        test_kspaceloss_mag, test_kspaceloss_phase, test_kspaceloss_real, test_loss_forget_gate, test_loss_input_gate, test_kspacessim, test_kspaceloss_l1, test_kspaceloss_l2, avgsos_test_ssim, avgsos_test_l1, avgsos_test_l2, test_ispaceloss_real, test_ispacessim, test_ispaceloss_l1, test_ispaceloss_l2 = trainer.evaluate(pre_e, train = False)
+    if not args.visualise_only:                             # AERS: If the argument visualise_only is True, it saves all the plots for a single patient and two locations
+        test_kspaceloss_mag, test_kspaceloss_phase, test_kspaceloss_real, test_loss_forget_gate, test_loss_input_gate, test_kspacessim, \
+            test_kspaceloss_l1, test_kspaceloss_l2, avgsos_test_ssim, avgsos_test_l1, avgsos_test_l2, test_ispaceloss_real, test_ispacessim, test_ispaceloss_l1, test_ispaceloss_l2 = trainer.evaluate(pre_e, train = False)
         collected_test_losses = [torch.zeros(15,).to(proc_device) for _ in range(world_size)]
-        dist.all_gather(collected_test_losses, torch.tensor([test_kspaceloss_mag, test_kspaceloss_phase, test_kspaceloss_real, test_loss_forget_gate, test_loss_input_gate, test_kspacessim, test_kspaceloss_l1, test_kspaceloss_l2, avgsos_test_ssim, avgsos_test_l1, avgsos_test_l2, test_ispaceloss_real, test_ispacessim, test_ispaceloss_l1, test_ispaceloss_l2]).to(proc_device))
+        dist.all_gather(collected_test_losses, torch.tensor([test_kspaceloss_mag, test_kspaceloss_phase, test_kspaceloss_real, test_loss_forget_gate, \
+                                                             test_loss_input_gate, test_kspacessim, test_kspaceloss_l1, test_kspaceloss_l2, avgsos_test_ssim, \
+                                                                avgsos_test_l1, avgsos_test_l2, test_ispaceloss_real, test_ispacessim, test_ispaceloss_l1, test_ispaceloss_l2]).to(proc_device))
         if rank == 0:
             avgkspace_test_mag_loss = sum([x[0] for x in collected_test_losses]).item()/len(args.gpu)
             avgkspace_test_phase_loss = sum([x[1] for x in collected_test_losses]).item()/len(args.gpu)
@@ -819,10 +839,13 @@ def test_paradigm(rank, world_size, args, parameters):
             print('ISpace L2 = {}' .format(avgispace_test_l2), flush = True)
             print('ISpace SSIM = {}\n\n' .format(avgispace_test_ssim), flush = True)
 
-        if not args.test_only:
-            train_kspaceloss_mag, train_kspaceloss_phase, train_kspaceloss_real, train_loss_forget_gate, train_loss_input_gate, train_kspacessim, train_kspaceloss_l1, train_kspaceloss_l2, avgsos_train_ssim, avgsos_train_l1, avgsos_train_l2, train_ispaceloss_real, train_ispacessim, train_ispaceloss_l1, train_ispaceloss_l2 = trainer.evaluate(pre_e, train = True)
+        if not args.test_only:                           # AERS: If the argument test_only is True
+            train_kspaceloss_mag, train_kspaceloss_phase, train_kspaceloss_real, train_loss_forget_gate, train_loss_input_gate, train_kspacessim, train_kspaceloss_l1, train_kspaceloss_l2, avgsos_train_ssim, \
+                avgsos_train_l1, avgsos_train_l2, train_ispaceloss_real, train_ispacessim, train_ispaceloss_l1, train_ispaceloss_l2 = trainer.evaluate(pre_e, train = True)
             collected_train_losses = [torch.zeros(15,).to(proc_device) for _ in range(world_size)]
-            dist.all_gather(collected_train_losses, torch.tensor([train_kspaceloss_mag, train_kspaceloss_phase, train_kspaceloss_real, train_loss_forget_gate, train_loss_input_gate, train_kspacessim, train_kspaceloss_l1, train_kspaceloss_l2, avgsos_train_ssim, avgsos_train_l1, avgsos_train_l2, train_ispaceloss_real, train_ispacessim, train_ispaceloss_l1, train_ispaceloss_l2]).to(proc_device))
+            dist.all_gather(collected_train_losses, torch.tensor([train_kspaceloss_mag, train_kspaceloss_phase, train_kspaceloss_real, train_loss_forget_gate, train_loss_input_gate, train_kspacessim, \
+                                                                  train_kspaceloss_l1, train_kspaceloss_l2, avgsos_train_ssim, avgsos_train_l1, avgsos_train_l2, train_ispaceloss_real, train_ispacessim, \
+                                                                    train_ispaceloss_l1, train_ispaceloss_l2]).to(proc_device))
             if rank == 0:
                 avgkspace_train_mag_loss = sum([x[0] for x in collected_train_losses]).item()/len(args.gpu)
                 avgkspace_train_phase_loss = sum([x[1] for x in collected_train_losses]).item()/len(args.gpu)
