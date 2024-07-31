@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>DDP_LSTMTrainer_nufft module &#8212; FOURIER-Net 20240614 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=f63d8bfa" />
+    <link rel="stylesheet" type="text/css" href="_static/haiku.css?v=dfa0e015" />
+    <script src="_static/documentation_options.js?v=6ad00ebc"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+  </head><body>
+      <div class="header" role="banner"><h1 class="heading"><a href="index.html">
+          <span>FOURIER-Net 20240614 documentation</span></a></h1>
+        <h2 class="heading"><span>DDP_LSTMTrainer_nufft module</span></h2>
+      </div>
+      <div class="topnav" role="navigation" aria-label="Top">
+      
+        <p>
+        <a class="uplink" href="index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content" role="main">
+        
+        
+  <section id="module-DDP_LSTMTrainer_nufft">
+<span id="ddp-lstmtrainer-nufft-module"></span><h1>DDP_LSTMTrainer_nufft module<a class="headerlink" href="#module-DDP_LSTMTrainer_nufft" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">DDP_LSTMTrainer_nufft.</span></span><span class="sig-name descname"><span class="pre">Trainer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recurrent_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coil_combine_unet</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ispace_trainset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ispace_testset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trainset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">testset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ddp_rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ddp_world_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#Trainer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Trainer class for handling the training and evaluation of models in a distributed setup.</p>
+<p>Attributes:
+recurrent_model (nn.Module): The recurrent module consisting of the k-space RNN and the image lstm.
+coil_combine_unet (nn.Module): The UNet model for combining coils.
+trainset (Dataset): Training dataset.
+testset (Dataset): Testing dataset.
+ispace_trainset (Dataset): Training dataset that can memoise the recurrent module prediction for a fast Unet training.
+ispace_testset (Dataset): Testing dataset that can memoise the recurrent module prediction for a fast Unet training
+parameters (dict): Dictionary of training parameters loaded from params.py
+device (torch.device): Device on which the training is conducted.
+ddp_rank (int): Rank of the current process in distributed training.
+ddp_world_size (int): Total number of processes in distributed training.
+args (Namespace): argparse arguments</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.evaluate">
+<span class="sig-name descname"><span class="pre">evaluate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_loss</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#Trainer.evaluate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.evaluate" title="Link to this definition">¶</a></dt>
+<dd><p>Evaluates the model after training for one epoch.</p>
+<p>Parameters:
+epoch (int): The current epoch number.
+train (bool): Whether to evaluate on the training set. Default is False.
+print_loss (bool): Whether to print the loss values. Default is False.</p>
+<p>Returns:
+tuple: Averaged losses and scores for the evaluation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.time_analysis">
+<span class="sig-name descname"><span class="pre">time_analysis</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#Trainer.time_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.time_analysis" title="Link to this definition">¶</a></dt>
+<dd><p>Analyzes and prints the average time per frame for the model inference.</p>
+<p>Returns:
+None</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.train">
+<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_loss</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#Trainer.train"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.train" title="Link to this definition">¶</a></dt>
+<dd><p>Trains the model for one epoch.</p>
+<p>Parameters:
+epoch (int): The current epoch number.
+print_loss (bool): Whether to print the loss values. Default is False.</p>
+<p>Returns:
+tuple: Averaged losses and scores for the epoch.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.visualise">
+<span class="sig-name descname"><span class="pre">visualise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#Trainer.visualise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.visualise" title="Link to this definition">¶</a></dt>
+<dd><p>Visualizes and saves the model predictions on the training or testing data.</p>
+<p>Parameters:
+epoch (int): The current epoch number.
+train (bool): Whether to visualize the training set. Default is False.</p>
+<p>Returns:
+None</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.visualise_on_real">
+<span class="sig-name descname"><span class="pre">visualise_on_real</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#Trainer.visualise_on_real"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.visualise_on_real" title="Link to this definition">¶</a></dt>
+<dd><p>Visualizes the model predictions on actual data and saves the plots.</p>
+<p>Parameters:
+epoch (int): The current epoch number.</p>
+<p>Returns:
+None</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.myimshow">
+<span class="sig-prename descclassname"><span class="pre">DDP_LSTMTrainer_nufft.</span></span><span class="sig-name descname"><span class="pre">myimshow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gray'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#myimshow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.myimshow" title="Link to this definition">¶</a></dt>
+<dd><p>Displays an image with optional trimming.</p>
+<p>Parameters:
+x (np.ndarray): Image array to be displayed.
+cmap (str): Colormap used for display. Default is ‘gray’.
+trim (bool): Whether to trim the image intensities at 5th and 95th percentiles. Default is False.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.show_difference_image">
+<span class="sig-prename descclassname"><span class="pre">DDP_LSTMTrainer_nufft.</span></span><span class="sig-name descname"><span class="pre">show_difference_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">im1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">im2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#show_difference_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.show_difference_image" title="Link to this definition">¶</a></dt>
+<dd><p>Displays the absolute difference between two images.</p>
+<p>Parameters:
+im1 (np.ndarray): First image array.
+im2 (np.ndarray): Second image array.</p>
+<p>Returns:
+np.ndarray: Absolute difference image reshaped to a 1D array.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.special_trim">
+<span class="sig-prename descclassname"><span class="pre">DDP_LSTMTrainer_nufft.</span></span><span class="sig-name descname"><span class="pre">special_trim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">95</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#special_trim"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.special_trim" title="Link to this definition">¶</a></dt>
+<dd><p>Trims the values of a tensor to be within the specified percentiles.</p>
+<p>Parameters:
+x (torch.Tensor): Tensor to be trimmed.
+l (int): Lower percentile for trimming. Default is 5.
+u (int): Upper percentile for trimming. Default is 95.</p>
+<p>Returns:
+torch.Tensor: Trimmed tensor.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.torch_trim">
+<span class="sig-prename descclassname"><span class="pre">DDP_LSTMTrainer_nufft.</span></span><span class="sig-name descname"><span class="pre">torch_trim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#torch_trim"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.torch_trim" title="Link to this definition">¶</a></dt>
+<dd><p>Normalizes and trims a 4D tensor along its last two dimensions.</p>
+<p>Parameters:
+x (torch.Tensor): Input tensor of shape (B, C, H, W).</p>
+<p>Returns:
+torch.Tensor: Normalized and trimmed tensor.</p>
+</dd></dl>
+
+</section>
+
+
+      </div>
+      <div class="bottomnav" role="navigation" aria-label="Bottom">
+      
+        <p>
+        <a class="uplink" href="index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2024, AERS + NRM.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.4.7.
+    </div>
+  </body>
+</html>

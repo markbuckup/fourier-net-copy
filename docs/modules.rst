@@ -12,4 +12,5 @@ FOURIER-Net
    MDCNN
    flops
    periodLSTM
-   
+   utils.Trainers
+   DDP_LSTMTrainer_nufft

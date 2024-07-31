@@ -21,6 +21,7 @@ sys.path.insert(0,os.path.abspath(".."))
 sys.path.insert(0,os.path.abspath("../utils"))
 sys.path.insert(0,os.path.abspath("../utils/models"))
 sys.path.insert(0,os.path.abspath("../utils/models/complexCNNs"))
+sys.path.insert(0,os.path.abspath("../utils/Trainers"))
 
 extensions = ["sphinx.ext.todo", "sphinx.ext.viewcode", "sphinx.ext.autodoc", "sphinx.ext.napoleon"]
 

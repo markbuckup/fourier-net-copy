@@ -238,7 +238,7 @@ class Trainer(nn.Module):
                             )
 
         if self.parameters['optimizer'] == 'Adam':
-            if self.parameters['image_lstm']:
+            if self.parameters['image_lstm']:       # AERS: The optimizer has access to the weights and we pass it the model. It will then calcualte: weight = weight - learning_rate*weight.gradient
                 self.recurrent_optim = optim.Adam(list(self.recurrent_model.module.kspace_m.parameters())+list(self.recurrent_model.module.ispacem.parameters()), lr=self.parameters['lr_kspace'], betas=(0.9, 0.999))
             else:
                 self.recurrent_optim = optim.Adam(self.recurrent_model.module.kspace_m.parameters(), lr=self.parameters['lr_kspace'], betas=(0.9, 0.999))
@@ -329,69 +329,102 @@ class Trainer(nn.Module):
                 tqdm_object = enumerate(self.ispacetrainloader)
             else:
                 tqdm_object = enumerate(self.trainloader)
-        for i, data_instance in tqdm_object:
+        for i, data_instance in tqdm_object: # AERS: Fetch a batch of data from the tqdm object (progress bar), which is a train loader
             if self.recurrent_mode:
+                # AERS: Output from ACDC_radial_faster.py (getitem)– data instance for the k-space mode
+                # AERS: indices of patient numbers, masks, gound truth video, input to the neural network, coils and period
                 (indices, masks, og_video, coilwise_targets, undersampled_fts, coils_used, periods) = data_instance
-                skip_kspace = False
-            else:
-                mem = data_instance[0]
-                if mem == 0:
+                skip_kspace = False   # AERS: If you are in k-space mode, don't skip it.
+            else:  # AERS: If, in image mode, then a different dataset object is used. The memoized dataset object.
+                mem = data_instance[0]  # AERS: From ACDC_radial_faster.py (getitem), the first output is a boolean to indicate if data are memoized or not
+                if mem == 0:            # AERS: If not memoized, data needs to be expanded into multiple variables (as above)
                     skip_kspace = False
                     (indices, masks, og_video, coilwise_targets, undersampled_fts, coils_used, periods) = data_instance[1:]
                 else:
-                    skip_kspace = True
+                    skip_kspace = True   # AERS: If it is not zero, skip k-space training and used the memoized data
                     predr, targ_vid = data_instance[1:]
                     predr = predr.to(self.device)
                     targ_vid = targ_vid.to(self.device)
 
-            if not skip_kspace:
-                with torch.set_grad_enabled(self.recurrent_mode):
-                    if self.recurrent_mode:
-                        self.recurrent_optim.zero_grad(set_to_none=True)
+#################### AERS: Recurrent Module Training ####################
 
+            if not skip_kspace:          
+                with torch.set_grad_enabled(self.recurrent_mode):           # AERS: Enclosure to enable or disable gradient computation for anything inside of this.
+                    if self.recurrent_mode:
+                        self.recurrent_optim.zero_grad(set_to_none=True)    # AERS: Default (June 10th video, min 8:03). Sets everything to None. It is faster than writing zeros.
+
+                    # AERS: Additional preprocessing. NRM mentions shows a previous code version where there is an if to set parameters to combine coils or not. 
+                    # Ground truth for k-space RNN is the coil-wise gt. Coil combination is performed by U-Net.
+                    # This pre-processing is done here because the data needs to be pushed to GPU to perform FFT (faster than CPU).
+                    # ACDC_radial_faster avoids uting GPU inside the dataset object to prevent GPU memory leak. 
+                    # As per NRM: A dataset object should not have access to GPU at all. It should just run on the CPU.
+                    # AERS: FFT of coil-wise ground truth is needed because in the k-space RNN, the loss is a loss element in both k-space and image space.
                     batch, num_frames, chan, numr, numc = undersampled_fts.shape
-                    og_coiled_vids = coilwise_targets.to(self.device)
-                    og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))
-                    inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])
-                    inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)
+                    og_coiled_vids = coilwise_targets.to(self.device)                                           # AERS: coil-wise ground truth for k-space RNN
+                    og_coiled_fts = torch.fft.fftshift(torch.fft.fft2(og_coiled_vids), dim = (-2,-1))           # AERS: coil-wise ground truth FFT  
+                    
+                    # AERS: log of the magnitude to makes sure values are in a reasonable range rather than very large. 
+                    # This ensures the NN will learn with a reasonable learning rate. 
+                    inpt_mag_log = mylog((og_coiled_fts.abs()+EPS), base = self.parameters['logarithm_base'])   
+                    inpt_phase = og_coiled_fts / (self.parameters['logarithm_base']**inpt_mag_log)              # AERS: phase estimation
                     inpt_phase = torch.stack((inpt_phase.real, inpt_phase.imag),-1)
                     
+                    # AERS: If we want to skip the k-space LSTM or not
                     if not (self.parameters['skip_kspace_rnn'] and (not self.parameters['image_lstm'])):
                         if self.recurrent_mode:
-                            self.recurrent_model.train()
+                            self.recurrent_model.train()        # AERS: Train
                         else:
-                            self.recurrent_model.eval()
+                            self.recurrent_model.eval()         # AERS: Testing
 
+                    # AERS: Generate the predictions
                     if not (self.parameters['skip_kspace_rnn'] and (not self.parameters['image_lstm'])):
-                        predr, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = self.recurrent_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video, epoch = epoch)
+                        # AERS: First forward pass or the .train()
+                        # AERS: Sends undersampled input, masks, GPU #, period of each video (for ARKS), ground truths (phase and log of mag), \
+                        # and original video (coil combined from previous implementation).
 
+                        # AERS: predicted image space (output of image LSTM -> U-Net),  predr_kpace (output of k-space RNN),
+                        # losses: loss_mag (L1 loss between magnitudes), loss_phase (L1 loss between angles), loss_real (iFFT of data and compare w/original coil gt)
+                        predr, _, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (loss_l1, loss_l2, ss1) = \
+                            self.recurrent_model(undersampled_fts, masks, self.device, periods.clone(), targ_phase = inpt_phase, \
+                                                 targ_mag_log = inpt_mag_log, targ_real = og_coiled_vids, og_video = og_video, epoch = epoch)
+
+                        # AERS: Statistics
                         predr_sos = ((predr**2).sum(2, keepdim = True) ** 0.5)[:,kspace_skip_frames_loss:]
                         targ_vid = og_video.to(self.device)[:,kspace_skip_frames_loss:]
+                        # AERS: SSIM of sum of squares prediction
                         loss_ss1_sos = self.msssim_loss(predr_sos.reshape(predr_sos.shape[0]*predr_sos.shape[1]*predr_sos.shape[2],1,*predr_sos.shape[3:]), targ_vid.reshape(predr_sos.shape[0]*predr_sos.shape[1]*predr_sos.shape[2],1,*predr_sos.shape[3:]))
                          
                         del masks
                         del inpt_phase
                         del inpt_mag_log
                         
-                        
+                        # AERS: Before backprogating the loss, they need to be added together to get a combined loss. 
+                        # Because they have different magnitudes, they get scaled. 
                         loss = 0.1*loss_mag + 2*loss_phase + 12*loss_real + 0.2*loss_ss1_sos
                         if self.parameters['lstm_forget_gate_loss']:
                             loss += loss_forget_gate * 8
                         if self.parameters['lstm_input_gate_loss']:
                             loss += loss_input_gate * 18
 
+                        # AERS: Backpropagate the loss
                         if self.recurrent_mode:
-                            loss.backward()
-                            self.recurrent_optim.step()
+                            loss.backward()                   # AERS: Propagates the loss to the leaves (weights of NN that require gradients). 
+                                                              # Each number in the predictions is a function of a particular weight in the NN. 
+                                                              # This will compute the gradient of the output with respect to a particular weight (dloss/dweight) and store it. 
+                            self.recurrent_optim.step()       # AERS: Optimizer has access to all the weights and we pass it the model, so it will iterate all the weights to update them based on the learning rate and gradient
 
                         del loss
-                        avgkspacelossphase += float(loss_phase.cpu().item()/(len(dloader)))
+
+                        # AERS: Accumulator variables for losses (in CPU, to avoid using GPU memory).
+                        avgkspacelossphase += float(loss_phase.cpu().item()/(len(dloader)))        # AERS: Divides by the data loader length to average across data
                         avgkspacelossmag += float(loss_mag.cpu().item()/(len(dloader)))
                         avgkspacelossforget_gate += float(loss_forget_gate.cpu().item()/(len(dloader)))
                         avgkspacelossinput_gate += float(loss_input_gate.cpu().item()/(len(dloader)))
                         del loss_phase
                         del loss_mag
-                    else:
+
+                    else: # AERS: If we are skipping k-space training, the prediction should be the iFFT of the undersample data FFTs.
+                          # AERS: This is bascially another experiment in which the k-space model is deleted (ablation study).
                         predr = torch.fft.ifft2(torch.fft.ifftshift(undersampled_fts, dim = (-2,-1))).abs().to(self.device)
                         loss_real = (predr- og_coiled_vids).reshape(predr.shape[0]*predr.shape[1]*predr.shape[2], predr.shape[3]*predr.shape[4]).abs().detach().cpu().mean(1).sum()
                         ss1 = self.SSIM(predr.reshape(predr.shape[0]*predr.shape[1]*predr.shape[2],1,predr.shape[3], predr.shape[4]), (og_coiled_vids).reshape(predr.shape[0]*predr.shape[1]*predr.shape[2],1,predr.shape[3], predr.shape[4]))
@@ -406,9 +439,10 @@ class Trainer(nn.Module):
                     avgkspace_l2_loss += float(loss_l2.cpu()/dset.total_unskipped_frames)*len(self.args.gpu)
                     del loss_real
                 
-                with torch.no_grad():
+                with torch.no_grad():                   # AERS: Ensures that gradient computation regardless of any condition.
                     predr_sos = predr_sos.clip(0,1)
 
+                    # AERS: Computes statistics before U-Net
                     loss_l1_sos = (predr_sos - targ_vid).reshape(predr_sos.shape[0]*predr_sos.shape[1], predr_sos.shape[3]*predr_sos.shape[4]).abs().mean(1).sum().detach().cpu()
                     loss_l2_sos = (((predr_sos - targ_vid).reshape(predr_sos.shape[0]*predr_sos.shape[1], predr_sos.shape[3]*predr_sos.shape[4]) ** 2).mean(1).sum()).detach().cpu()
                     ss1_sos = self.SSIM(predr_sos.reshape(predr_sos.shape[0]*predr_sos.shape[1]*predr_sos.shape[2],1,*predr_sos.shape[3:]), targ_vid.reshape(predr_sos.shape[0]*predr_sos.shape[1]*predr_sos.shape[2],1,*predr_sos.shape[3:]))
@@ -418,16 +452,21 @@ class Trainer(nn.Module):
                     avgsos_l1_loss += float(loss_l1_sos.cpu().item()/dset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
                     avgsos_l2_loss += float(loss_l2_sos.cpu().item()/dset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
 
+                # AERS: Coil combination. Two ways: SOS or U-Net
                 if self.parameters['coil_combine'] == 'SOS':
                     predr = ((predr**2).sum(2, keepdim = True) ** 0.5)[:,kspace_skip_frames_loss:]
                     predr = predr.clip(0,1)
                     chan = 1
                 else:
-                    predr = predr[:,kspace_skip_frames_loss:]
+                    predr = predr[:,kspace_skip_frames_loss:]    # AERS: U-Net
 
+                # ARES: If you want to memoize the image space, we bulk set the data (batches defined with indices[:,0] and indices[:,1])
+                # AERS: Calls the classmethod bulk_set_data in ACDC_radial_faster.py, which has afor loop to sort the dataset into batches.
+                # AERS: If not in k-space mode, and we reach here, it means that we are in image space mode and we came here to memoize the image data
                 if self.unet_mode and self.parameters['memoise_ispace'] and not self.args.eval and not self.args.eval_on_real and not self.recurrent_mode:
-                    self.ispace_trainset.bulk_set_data(indices[:,0], indices[:,1], predr, targ_vid)
+                    self.ispace_trainset.bulk_set_data(indices[:,0], indices[:,1], predr, targ_vid)   
 
+#################### AERS: U-Net Training ####################
             
             with torch.set_grad_enabled(self.unet_mode):
 
@@ -436,10 +475,13 @@ class Trainer(nn.Module):
                 if self.unet_mode:
                     self.unet_optim.zero_grad(set_to_none=True)
                 
+                # AERS: Prediction. Reshapes the data to the original shape (channels as number of coils)
                 predr = predr.reshape(batch*num_frames,chan,numr, numc).to(self.device)
                 
+                # AERS: Ground truth (single coil channel)
                 targ_vid = targ_vid.reshape(batch*num_frames,1, numr, numc).to(self.device)
                 
+                # AERS: Coil combination using U-Net
                 outp = self.coil_combine_unet(predr.detach())
 
 
