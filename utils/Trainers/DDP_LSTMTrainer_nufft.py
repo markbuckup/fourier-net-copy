@@ -292,6 +292,8 @@ class Trainer(nn.Module):
             self.unet_mode = True
         else:
             self.unet_mode = False
+
+        # AERS: Initializations for the accumulators (aka the statistics that will be returner)
         avgkspacelossphase = 0.
         avgkspacelossreal = 0.
         avgkspacelossforget_gate = 0.
@@ -307,6 +309,8 @@ class Trainer(nn.Module):
         ispacessim_score = 0.
         avgispace_l1_loss = 0.
         avgispace_l2_loss = 0.
+
+        # AERS: Select the proper dataset and dataloader, depending on the current epoch. Memoized vs normal one.
         if self.unet_mode and not self.args.eval and not self.args.eval_on_real and not self.recurrent_mode:
             self.ispacetrainloader.sampler.set_epoch(epoch)
             dset = self.ispace_trainset
@@ -317,7 +321,7 @@ class Trainer(nn.Module):
             dset = self.trainset
             dloader = self.trainloader
             kspace_skip_frames_loss = self.parameters['init_skip_frames']
-        if self.ddp_rank == 0:
+        if self.ddp_rank == 0:          # AERS: Only prints progress bar if we are in rank 0, to avoid printing multiple progress bars.
             if self.unet_mode and self.recurrent_mode:
                 tqdm_object = tqdm(enumerate(self.trainloader), total = len(self.trainloader), desc = "[{}] | KS+IS Epoch {}/{}".format(os.getpid(), epoch+1, self.parameters['num_epochs_total']), bar_format="{desc} | {percentage:3.0f}%|{bar:10}{r_bar}")
             elif self.unet_mode:
@@ -329,6 +333,8 @@ class Trainer(nn.Module):
                 tqdm_object = enumerate(self.ispacetrainloader)
             else:
                 tqdm_object = enumerate(self.trainloader)
+
+        # AERS: tqdm object is iterating over the data
         for i, data_instance in tqdm_object: # AERS: Fetch a batch of data from the tqdm object (progress bar), which is a train loader
             if self.recurrent_mode:
                 # AERS: Output from ACDC_radial_faster.py (getitem)– data instance for the k-space mode
@@ -466,7 +472,7 @@ class Trainer(nn.Module):
                 if self.unet_mode and self.parameters['memoise_ispace'] and not self.args.eval and not self.args.eval_on_real and not self.recurrent_mode:
                     self.ispace_trainset.bulk_set_data(indices[:,0], indices[:,1], predr, targ_vid)   
 
-#################### AERS: U-Net Training ####################
+#################### AERS: U-Net (Image Space) Training ####################
             
             with torch.set_grad_enabled(self.unet_mode):
 
@@ -484,7 +490,8 @@ class Trainer(nn.Module):
                 # AERS: Coil combination using U-Net
                 outp = self.coil_combine_unet(predr.detach())
 
-
+                # AERS: In a previous version this used to be called crop_loss and NRM said not to use it because it creates 'bright corners' in k-space. 
+                # In the image domain, there was a DC shift in the log domain. This loss (crop_loss) was not useful. 
                 if self.parameters['center_weighted_loss']:
                     mask = gaussian_2d((self.parameters['image_resolution'],self.parameters['image_resolution'])).reshape(1,1,self.parameters['image_resolution'],self.parameters['image_resolution'])
                 else:
@@ -492,19 +499,20 @@ class Trainer(nn.Module):
 
                 mask = torch.FloatTensor(mask).to(outp.device)
 
-
+                # AERS: This loss is a combination of MS-SSIM and L1 losses. 
                 if self.unet_mode:
                     loss_ss1 = self.msssim_loss(outp.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
                     loss = 0.2*loss_ss1
                     loss += self.l2loss(outp*mask, targ_vid*mask)
 
-                    loss.backward()
-                    self.unet_optim.step()
-                    avgispacelossreal += float(loss.cpu().item()/(len(dloader)))
+                    loss.backward()                 # AERS: Backpropagation
+                    self.unet_optim.step()          # AERS: Update the weights
+                    avgispacelossreal += float(loss.cpu().item()/(len(dloader)))    
 
 
                 outp = outp.clip(0,1)
 
+                # AERS: Statistics
                 loss_l1 = (outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]).abs().mean(1).sum().detach().cpu()
                 loss_l2 = (((outp- targ_vid).reshape(outp.shape[0]*outp.shape[1], outp.shape[2]*outp.shape[3]) ** 2).mean(1).sum()).detach().cpu()
                 ss1 = self.SSIM(outp.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]), targ_vid.reshape(outp.shape[0]*outp.shape[1],1,*outp.shape[2:]))
@@ -513,7 +521,7 @@ class Trainer(nn.Module):
                 avgispace_l1_loss += float(loss_l1.cpu().item()/dset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
                 avgispace_l2_loss += float(loss_l2.cpu().item()/dset.total_unskipped_frames)*len(self.args.gpu)*self.parameters['num_coils']
 
-
+            # AERS: If scheduler is CyclicLR, a scheduler step is performed every batch. As opposed to other schedulers where it is done every epoch.
             if self.parameters['scheduler'] == 'CyclicLR':
                 if self.recurrent_mode:
                     if not (self.parameters['skip_kspace_rnn'] and (not self.parameters['image_lstm'])):
@@ -524,6 +532,7 @@ class Trainer(nn.Module):
                     if self.unet_scheduler is not None and (self.unet_mode):
                         self.unet_scheduler.step()
         
+        # AERS: A step LR is performed for each epoch (outside the loop above).
         if not self.parameters['scheduler'] == 'CyclicLR':
             if self.recurrent_mode:
                 if not (self.parameters['skip_kspace_rnn'] and (not self.parameters['image_lstm'])):
@@ -537,6 +546,11 @@ class Trainer(nn.Module):
         # AERS: This is only for a single GPU. These needs to be combined in DDP_paradigms_LSTM_nufft.py
         return avgkspacelossmag, avgkspacelossphase, avgkspacelossreal,avgkspacelossforget_gate, avgkspacelossinput_gate, kspacessim_score, \
             avgkspace_l1_loss, avgkspace_l2_loss, sosssim_score, avgsos_l1_loss, avgsos_l2_loss, avgispacelossreal, ispacessim_score, avgispace_l1_loss, avgispace_l2_loss
+
+#################### AERS: Testing ####################
+# This code is basically the same as the training code, without:
+#  loss.backward(), optimizer.step(), optimizer.zero_grad(), 
+#  and enclosed in no_grad().
 
     def evaluate(self, epoch, train = False, print_loss = False):
         """
@@ -742,15 +756,17 @@ class Trainer(nn.Module):
             batch, num_frames, chan, numr, numc = actual_data.shape
 
             if not (self.parameters['skip_kspace_rnn'] and (not self.parameters['image_lstm'])):
+                # AERS: predr is the image space prediction, predr_kspace is the k-space RNN prediction
                 predr, predr_kspace, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.recurrent_model(actual_data, None, self.device, None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
             else:
                 predr = torch.fft.ifft2(torch.fft.ifftshift(actual_data, dim = (-2,-1))).abs().to(self.device)
-                predr_kspace = predr
+                predr_kspace = predr     
 
             if torch.isnan(predr).any():
                 print('Predr nan',torch.isnan(predr).any())
             predr[torch.isnan(predr)] = 0
 
+            # AERS: Sum of squares output
             sos_output = (predr**2).sum(2, keepdim = False).cpu() ** 0.5
             sos_output = sos_output.clip(0,1)
 
@@ -764,6 +780,7 @@ class Trainer(nn.Module):
             if self.parameters['kspace_architecture'] == 'MDCNN':
                 chan = 1
             
+            # AERS: U-Net output
             ispace_input = ispace_input.reshape(batch*num_frames,chan,numr, numc).to(self.device)
             ispace_outp = self.coil_combine_unet(ispace_input).cpu().reshape(batch,num_frames,numr,numc)
             ispace_outp = ispace_outp.clip(0,1)
@@ -771,6 +788,7 @@ class Trainer(nn.Module):
             predr = predr.reshape(batch,num_frames,chan,numr, numc).to(self.device)
             pred_ft = torch.fft.fftshift(torch.fft.fft2(predr), dim = (-2,-1))
             
+            # AERS: For loop to generate images
             with tqdm(total=num_frames) as pbar:
                 for f_num in range(num_frames):
                     fig = plt.figure(figsize = (8,6))
