@@ -33,10 +33,14 @@ def myimshow(x, cmap = 'gray', trim = False):
     """
     Displays an image with optional trimming.
 
-    Parameters:
-    x (np.ndarray): Image array to be displayed.
-    cmap (str): Colormap used for display. Default is 'gray'.
-    trim (bool): Whether to trim the image intensities at 5th and 95th percentiles. Default is False.
+    Parameters
+    ----------
+    x : np.ndarray
+        Image array to be displayed.
+    cmap : str
+        Colormap used for display. Default is 'gray'.
+    trim : bool
+        Whether to trim the image intensities at 5th and 95th percentiles. Default is False.
     """
     if trim:
         percentile_95 = np.percentile(x, 95)
@@ -52,13 +56,19 @@ def special_trim(x, l = 5, u = 95):
     """
     Trims the values of a tensor to be within the specified percentiles.
 
-    Parameters:
-    x (torch.Tensor): Tensor to be trimmed.
-    l (int): Lower percentile for trimming. Default is 5.
-    u (int): Upper percentile for trimming. Default is 95.
+    Parameters
+    ----------
+    x : torch.Tensor
+        Tensor to be trimmed.
+    l : int
+        Lower percentile for trimming. Default is 5.
+    u : int
+        Upper percentile for trimming. Default is 95.
 
-    Returns:
-    torch.Tensor: Trimmed tensor.
+    Returns
+    ----------
+    torch.Tensor
+        Trimmed tensor.
     """
     percentile_95 = np.percentile(x.detach().cpu(), u)
     percentile_5 = np.percentile(x.detach().cpu(), l)
@@ -69,11 +79,15 @@ def torch_trim(x):
     """
     Normalizes and trims a 4D tensor along its last two dimensions.
 
-    Parameters:
-    x (torch.Tensor): Input tensor of shape (B, C, H, W).
+    Parameters
+    ----------
+    x : torch.Tensor
+        Input tensor of shape (B, C, H, W).
 
-    Returns:
-    torch.Tensor: Normalized and trimmed tensor.
+    Returns
+    ----------
+    torch.Tensor
+        Normalized and trimmed tensor.
     """
     B,C,row,col = x.shape
     
@@ -102,12 +116,17 @@ def show_difference_image(im1, im2):
     """
     Displays the absolute difference between two images.
 
-    Parameters:
-    im1 (np.ndarray): First image array.
-    im2 (np.ndarray): Second image array.
+    Parameters
+    ----------
+    im1 : np.ndarray
+        First image array.
+    im2 : np.ndarray
+        Second image array.
 
-    Returns:
-    np.ndarray: Absolute difference image reshaped to a 1D array.
+    Returns
+    ----------
+    np.ndarray
+        Absolute difference image reshaped to a 1D array.
     """
     diff = (im1-im2)
     plt.axis('off')
@@ -119,18 +138,30 @@ class Trainer(nn.Module):
     """
     Trainer class for handling the training and evaluation of models in a distributed setup.
 
-    Attributes:
-    recurrent_model (nn.Module): The recurrent module consisting of the k-space RNN and the image lstm.
-    coil_combine_unet (nn.Module): The UNet model for combining coils.
-    trainset (Dataset): Training dataset.
-    testset (Dataset): Testing dataset.
-    ispace_trainset (Dataset): Training dataset that can memoise the recurrent module prediction for a fast Unet training.
-    ispace_testset (Dataset): Testing dataset that can memoise the recurrent module prediction for a fast Unet training
-    parameters (dict): Dictionary of training parameters loaded from params.py
-    device (torch.device): Device on which the training is conducted.
-    ddp_rank (int): Rank of the current process in distributed training.
-    ddp_world_size (int): Total number of processes in distributed training.
-    args (Namespace): argparse arguments
+    Attributes
+    ----------
+    recurrent_model : nn.Module
+        The recurrent module consisting of the k-space RNN and the image lstm.
+    coil_combine_unet : nn.Module
+        The U-Net model for combining coils.
+    trainset : Dataset
+        Training dataset.
+    testset : Dataset
+        Testing dataset.
+    ispace_trainset : Dataset
+        Training dataset that can memoise the recurrent module prediction for a fast U-Net training.
+    ispace_testset : Dataset
+        Testing dataset that can memoise the recurrent module prediction for a fast U-Net training
+    parameters : dict
+        Dictionary of training parameters loaded from params.py
+    device : torch.device
+        Device on which the training is conducted.
+    ddp_rank : int 
+        Rank of the current process in distributed training.
+    ddp_world_size : int 
+        Total number of processes in distributed training.
+    args : Namespace
+        argparse arguments
     """
 
     def __init__(self, recurrent_model, coil_combine_unet, ispace_trainset, ispace_testset, trainset, testset, parameters, device, ddp_rank, ddp_world_size, args):
@@ -275,12 +306,17 @@ class Trainer(nn.Module):
         """
         Trains the model for one epoch.
 
-        Parameters:
-        epoch (int): The current epoch number.
-        print_loss (bool): Whether to print the loss values. Default is False.
+        Parameters
+        ----------
+        epoch : int
+            The current epoch number.
+        print_loss : bool
+            Whether to print the loss values. Default is False.
 
-        Returns:
-        tuple: Averaged losses and scores for the epoch.
+        Returns
+        ---------- 
+        tuple
+            Averaged losses and scores for the epoch.
         """
 
         # AERS: Determines if it is in k-space or image space mode: what model is training?
@@ -556,13 +592,19 @@ class Trainer(nn.Module):
         """
         Evaluates the model after training for one epoch.
 
-        Parameters:
-        epoch (int): The current epoch number.
-        train (bool): Whether to evaluate on the training set. Default is False.
-        print_loss (bool): Whether to print the loss values. Default is False.
+        Parameters
+        ----------
+        epoch : int
+            The current epoch number.
+        train : bool
+            Whether to evaluate on the training set. Default is False.
+        print_loss : bool
+            Whether to print the loss values. Default is False.
 
-        Returns:
-        tuple: Averaged losses and scores for the evaluation.
+        Returns
+        ----------
+        tuple
+            Averaged losses and scores for the evaluation.
         """
         if epoch < self.parameters['num_epochs_recurrent']:
             self.recurrent_mode = True
@@ -722,7 +764,8 @@ class Trainer(nn.Module):
         """
         Analyzes and prints the average time per frame for the model inference.
 
-        Returns:
+        Returns
+        ----------
         None
         """
         tqdm_object = tqdm(enumerate(self.testloader), total = len(self.testloader))
@@ -740,10 +783,13 @@ class Trainer(nn.Module):
         """
         Visualizes the model predictions on actual data and saves the plots.
 
-        Parameters:
-        epoch (int): The current epoch number.
+        Parameters
+        ----------
+        epoch : int
+            The current epoch number.
 
-        Returns:
+        Returns
+        ----------
         None
         """
         print('Saving plots for actual data', flush = True)
@@ -861,11 +907,15 @@ class Trainer(nn.Module):
         """
         Visualizes and saves the model predictions on the training or testing data.
 
-        Parameters:
-        epoch (int): The current epoch number.
-        train (bool): Whether to visualize the training set. Default is False.
+        Parameters
+        ----------
+        epoch : int 
+            The current epoch number.
+        train : bool
+            Whether to visualize the training set. Default is False.
 
-        Returns:
+        Returns
+        ----------
         None
         """
         

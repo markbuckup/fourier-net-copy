@@ -33,16 +33,22 @@ class ComplexDropout(nn.Module):
 
 
 class ComplexDropout1d(ComplexDropout):
-    r"""Randomly zeroes whole channels of the complex input tensor.
-        The channels to zero are randomized on every forward call.
-        Usually the input comes from :class:`nn.Conv3d` modules.
-        Args:
-            p (float, optional): probability of an element to be zeroed.
-            inplace (bool, optional): If set to ``True``, will do this operation
-                in-place
-        Shape:
-            - Input: :math:`(N, C, D, H, W, 2)`
-            - Output: :math:`(N, C, D, H, W, 2)` (same shape as input)
+    r"""
+    Randomly zeroes whole channels of the complex input tensor.
+    The channels to zero are randomized on every forward call.
+    Usually the input comes from :class:`nn.Conv3d` modules.
+
+    Args:
+    -----------
+    p : float, optional
+        Probability of an element to be zeroed.
+    inplace : bool, optional
+        If set to ``True``, will do this operation in-place
+
+    Shape:
+    -----------
+        - Input: :math:`(N, C, D, H, W, 2)`
+        - Output: :math:`(N, C, D, H, W, 2)` (same shape as input)
     """
     def __init__(self, p=0.5, inplace=False):
         super(ComplexDropout1d, self).__init__(
@@ -53,14 +59,20 @@ class ComplexDropout1d(ComplexDropout):
 
 
 class ComplexDropout2d(ComplexDropout):
-    r"""Randomly zeroes whole channels of the complex input tensor.
+    r"""
+    Randomly zeroes whole channels of the complex input tensor.
     The channels to zero-out are randomized on every forward call.
     Usually the input comes from :class:`nn.Conv2d` modules.
+
     Args:
-        p (float, optional): probability of an element to be zero-ed.
-        inplace (bool, optional): If set to ``True``, will do this operation
-            in-place
+    -----------
+    p : float, optional
+        Probability of an element to be zero-ed.
+    inplace : bool, optional
+        If set to ``True``, will do this operation in-place
+
     Shape:
+    -----------
         - Input: :math:`(N, C, H, W, 2)`
         - Output: :math:`(N, C, H, W, 2)` (same shape as input)
 
@@ -74,14 +86,20 @@ class ComplexDropout2d(ComplexDropout):
 
 
 class ComplexDropout3d(ComplexDropout):
-    r"""Randomly zeroes whole channels of the complex input tensor.
+    r"""
+    Randomly zeroes whole channels of the complex input tensor.
     The channels to zero are randomized on every forward call.
     Usually the input comes from :class:`nn.Conv3d` modules.
+
     Args:
-        p (float, optional): probability of an element to be zeroed.
-        inplace (bool, optional): If set to ``True``, will do this operation
-            in-place
+    -----------
+    p : float, optional
+        Probability of an element to be zeroed.
+    inplace : bool, optional 
+        If set to ``True``, will do this operation in-place
+
     Shape:
+    -----------
         - Input: :math:`(N, C, D, H, W, 2)`
         - Output: :math:`(N, C, D, H, W, 2)` (same shape as input)
 

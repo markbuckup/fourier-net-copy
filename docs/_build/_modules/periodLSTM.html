@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 
 <html lang="en" data-content_root="../">
@@ -6,40 +5,28 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>periodLSTM &#8212; FOURIER-Net 20240614 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=649a27d8" />
-    <link rel="stylesheet" type="text/css" href="../_static/bizstyle.css?v=658d757c" />
-    
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=f63d8bfa" />
+    <link rel="stylesheet" type="text/css" href="../_static/haiku.css?v=dfa0e015" />
     <script src="../_static/documentation_options.js?v=6ad00ebc"></script>
     <script src="../_static/doctools.js?v=9a2dae69"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="../_static/bizstyle.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
-    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <!--[if lt IE 9]>
-    <script src="_static/css3-mediaqueries.js"></script>
-    <![endif]-->
+    <link rel="search" title="Search" href="../search.html" /> 
   </head><body>
-    <div class="related" role="navigation" aria-label="Related">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="../genindex.html" title="General Index"
-             accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="../py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">FOURIER-Net 20240614 documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Module code</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">periodLSTM</a></li> 
-      </ul>
-    </div>  
+      <div class="header" role="banner"><h1 class="heading"><a href="../index.html">
+          <span>FOURIER-Net 20240614 documentation</span></a></h1>
+        <h2 class="heading"><span>periodLSTM</span></h2>
+      </div>
+      <div class="topnav" role="navigation" aria-label="Top">
+      
+        <p>
+        <a class="uplink" href="../index.html">Contents</a>
+        </p>
 
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          <div class="body" role="main">
-            
+      </div>
+      <div class="content" role="main">
+        
+        
   <h1>Source code for periodLSTM</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
@@ -72,9 +59,12 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A simple identity module - placeholder for absent modules during ablation studies</span>
 
-<span class="sd">    Attributes:</span>
-<span class="sd">        n_rnn_cells (int): Place holder argument</span>
-<span class="sd">        m (nn.Module): Place holder attribute so that the module has parameters.</span>
+<span class="sd">    Attributes</span>
+<span class="sd">    --------</span>
+<span class="sd">        n_rnn_cells : int</span>
+<span class="sd">            Place holder argument</span>
+<span class="sd">        m : nn.Module</span>
+<span class="sd">            Place holder attribute so that the module has parameters.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_rnn_cells</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">image_lstm</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>   <span class="c1"># AERS: Added param_dic because sphinx needed it</span>
@@ -88,17 +78,25 @@
 <a class="viewcode-back" href="../periodLSTM.html#periodLSTM.Identity.forward">[docs]</a>
     <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hist_mag</span><span class="p">,</span> <span class="n">hist_phase</span><span class="p">,</span> <span class="n">gt_mask</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">mag_prev_outputs</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">phase_prev_outputs</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Place holder Forward pass - will never be used</span>
+<span class="sd">        Place holder Forward pass - **will never be used**</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            hist_mag (Tensor): Historical magnitude data.</span>
-<span class="sd">            hist_phase (Tensor): Historical phase data.</span>
-<span class="sd">            gt_mask (Tensor, optional): Ground truth mask.</span>
-<span class="sd">            mag_prev_outputs (Tensor, optional): Previous magnitude outputs.</span>
-<span class="sd">            phase_prev_outputs (Tensor, optional): Previous phase outputs.</span>
+<span class="sd">        --------</span>
+<span class="sd">        hist_mag : Tensor</span>
+<span class="sd">            Historical magnitude data.</span>
+<span class="sd">        hist_phase : Tensor</span>
+<span class="sd">            Historical phase data.</span>
+<span class="sd">        gt_mask : Tensor, optional</span>
+<span class="sd">            Ground truth mask.</span>
+<span class="sd">        mag_prev_outputs : Tensor, optional</span>
+<span class="sd">            Previous magnitude outputs.</span>
+<span class="sd">        phase_prev_outputs : Tensor, optional</span>
+<span class="sd">            Previous phase outputs.</span>
 
-<span class="sd">        Returns:</span>
-<span class="sd">            Tuple[List[Tensor], List[Tensor]]: The same outputs as input</span>
+<span class="sd">        Returns</span>
+<span class="sd">        --------</span>
+<span class="sd">            Tuple[List[Tensor], List[Tensor]]</span>
+<span class="sd">                The same outputs as input</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">new_mag_outputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">hist_mag</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_rnn_cells</span><span class="p">)]</span>
         <span class="n">new_phase_outputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">hist_phase</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_rnn_cells</span><span class="p">)]</span>
@@ -119,11 +117,20 @@
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">proc_device</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Placeholder Initialization</span>
+<span class="sd">        AERS</span>
+<span class="sd">        Initialize the Identity_param module.</span>
+
+<span class="sd">        This method initializes an instance of the Identity_param module, setting up the internal </span>
+<span class="sd">        components and parameters. It includes a placeholder linear layer as an example.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            parameters (dict): Dictionary of parameters.</span>
-<span class="sd">            proc_device (str): Processing device.</span>
+<span class="sd">        -----</span>
+<span class="sd">        - parameters (dict): </span>
+<span class="sd">            A dictionary containing the configuration parameters for the module. </span>
+<span class="sd">            The specific contents and structure of this dictionary depend on the use case.</span>
+<span class="sd">        - proc_device (str): </span>
+<span class="sd">            The device on which the module&#39;s computations will be performed. Typically, this </span>
+<span class="sd">            is either &#39;cpu&#39; or &#39;cuda&#39; to specify the processing device.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">Identity_param</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">)</span>
@@ -217,7 +224,8 @@
 <span class="sd">    Fetches the LSTM model types based on the given parameters.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        parameters (dict): Dictionary of parameters.</span>
+<span class="sd">        parameters : dict</span>
+<span class="sd">            Dictionary of parameters.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Tuple[Type[nn.Module], Type[nn.Module]]: LSTM model types for image and k-space.</span>
@@ -243,24 +251,37 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Concatenated convolutional layers module.</span>
 
-<span class="sd">    Attributes:</span>
-<span class="sd">        layerlist (nn.ModuleList): List of convolutional layers.</span>
-<span class="sd">        skip_connections (bool): Flag for using skip connections.</span>
-<span class="sd">        relu_func (nn.Module): ReLU activation function.</span>
-<span class="sd">        n_layers (int): Number of layers.</span>
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    layerlist : nn.ModuleList</span>
+<span class="sd">        List of convolutional layers.</span>
+<span class="sd">    skip_connections : bool</span>
+<span class="sd">        Flag for using skip connections.</span>
+<span class="sd">    relu_func : nn.Module</span>
+<span class="sd">        ReLU activation function.</span>
+<span class="sd">    n_layers : int</span>
+<span class="sd">        Number of layers.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cnn_func</span><span class="p">,</span> <span class="n">relu_func</span><span class="p">,</span> <span class="n">gate_input_size</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">hidden_channels</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span> <span class="n">gate_output_size</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n_layers</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">skip_connections</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Initializes the concatConv module.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            cnn_func (Type[nn.Module]): Convolution function - real or complex</span>
-<span class="sd">            relu_func (Type[nn.Module]): ReLU function.</span>
-<span class="sd">            gate_input_size (int, optional): Input size of the gate. Defaults to 8.</span>
-<span class="sd">            hidden_channels (int, optional): Number of hidden channels. Defaults to 32.</span>
-<span class="sd">            gate_output_size (int, optional): Output size of the gate. Defaults to 1.</span>
-<span class="sd">            n_layers (int, optional): Number of layers. Defaults to 4.</span>
-<span class="sd">            skip_connections (bool, optional): Flag for using skip connections. Defaults to True.</span>
+<span class="sd">        ----------</span>
+<span class="sd">        - cnn_func : Type[nn.Module]</span>
+<span class="sd">            Convolution function - real or complex.</span>
+<span class="sd">        - relu_func : Type[nn.Module]</span>
+<span class="sd">            ReLU function.</span>
+<span class="sd">        - gate_input_size : int, optional</span>
+<span class="sd">            Input size of the gate. Defaults to 8.</span>
+<span class="sd">        - hidden_channels : int, optional</span>
+<span class="sd">            Number of hidden channels. Defaults to 32.</span>
+<span class="sd">        - gate_output_size : int, optional</span>
+<span class="sd">            Output size of the gate. Defaults to 1.</span>
+<span class="sd">        - n_layers : int, optional</span>
+<span class="sd">            Number of layers. Defaults to 4.</span>
+<span class="sd">        - skip_connections : bool, optional</span>
+<span class="sd">            Flag for using skip connections. Defaults to True.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">concatConv</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">layerlist</span> <span class="o">=</span> <span class="p">[]</span>
@@ -290,10 +311,14 @@
 <span class="sd">        Forward pass of the concatConv module.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            x (Tensor): Input tensor.</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : Tensor</span>
+<span class="sd">            Input tensor.</span>
 
-<span class="sd">        Returns:</span>
-<span class="sd">            Tensor: Output tensor.</span>
+<span class="sd">        Returns</span>
+<span class="sd">        ----------</span>
+<span class="sd">        Tensor</span>
+<span class="sd">            Output tensor.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">layerlist</span><span class="p">[</span><span class="mi">0</span><span class="p">](</span><span class="n">x</span><span class="p">)</span>
@@ -324,7 +349,8 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The Recurrent Module for undersampled k-space data processing. Contains the kspace-RNN and the image LSTM.</span>
 
-<span class="sd">    Attributes:</span>
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
 <span class="sd">        Various attributes for LSTM cell configuration.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">history_length</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">num_coils</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">forget_gate_coupled</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">forget_gate_same_coils</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">forget_gate_same_phase_mag</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">rnn_input_mask</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">skip_connections</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">n_layers</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">n_hidden</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">n_rnn_cells</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">coilwise</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">gate_cat_prev_output</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
@@ -332,18 +358,43 @@
 <span class="sd">        Initializes the convLSTMcell_kspace module.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            history_length (int, optional): Length of the history to append to the undersampled input. Appends historical frames from previous cardiac cycles. Defaults to 0.</span>
-<span class="sd">            num_coils (int, optional): Number of coils. Defaults to 8.</span>
-<span class="sd">            forget_gate_coupled (bool, optional): Flag for coupled forget gate - forget gate mask and input gate mask sum to 1. Defaults to False.</span>
-<span class="sd">            forget_gate_same_coils (bool, optional): Flag for same forget gate for all coils. Defaults to False.</span>
-<span class="sd">            forget_gate_same_phase_mag (bool, optional): Flag for same forget gate for phase and magnitude. Defaults to False.</span>
-<span class="sd">            rnn_input_mask (bool, optional): Flag for appending the mask of the locations of newly acquired data to the RNN input. Defaults to True.</span>
-<span class="sd">            skip_connections (bool, optional): Flag for having skip connections. Defaults to False.</span>
-<span class="sd">            n_layers (int, optional): Number of layers in the K-space RNN gates. Defaults to 3.</span>
-<span class="sd">            n_hidden (int, optional): Number of channels in the K-space RNN gates. Defaults to 12.</span>
-<span class="sd">            n_rnn_cells (int, optional): Number of RNN cells - can be coupled one after the other. Defaults to 1.</span>
-<span class="sd">            coilwise (bool, optional): If enabled, each coil of the input is processed independently. Defaults to True.</span>
-<span class="sd">            gate_cat_prev_output (bool, optional): Flag for appending the previously predicted frame to the RNN input. Defaults to True.</span>
+<span class="sd">        ----------</span>
+<span class="sd">        history_length : int, optional</span>
+<span class="sd">            Length of the history to append to the undersampled input. Appends historical frames from previous cardiac cycles. </span>
+<span class="sd">                Defaults to 0.</span>
+<span class="sd">        num_coils : int, optional</span>
+<span class="sd">            Number of coils. </span>
+<span class="sd">                Defaults to 8.</span>
+<span class="sd">        forget_gate_coupled : bool, optional</span>
+<span class="sd">            Flag for coupled forget gate - forget gate mask and input gate mask sum to 1. </span>
+<span class="sd">                Defaults to False.</span>
+<span class="sd">        forget_gate_same_coils : bool, optional</span>
+<span class="sd">            Flag for same forget gate for all coils. </span>
+<span class="sd">                Defaults to False.</span>
+<span class="sd">        forget_gate_same_phase_mag : bool, optional</span>
+<span class="sd">            Flag for same forget gate for phase and magnitude. </span>
+<span class="sd">                Defaults to False.</span>
+<span class="sd">        rnn_input_mask : bool, optional</span>
+<span class="sd">            Flag for appending the mask of the locations of newly acquired data to the RNN input. </span>
+<span class="sd">                Defaults to True.</span>
+<span class="sd">        skip_connections : bool, optional</span>
+<span class="sd">            Flag for having skip connections. </span>
+<span class="sd">                Defaults to False.</span>
+<span class="sd">        n_layers : int, optional</span>
+<span class="sd">            Number of layers in the K-space RNN gates. </span>
+<span class="sd">                Defaults to 3.</span>
+<span class="sd">        n_hidden :int, optional</span>
+<span class="sd">            Number of channels in the K-space RNN gates. </span>
+<span class="sd">                Defaults to 12.</span>
+<span class="sd">        n_rnn_cells : int, optional</span>
+<span class="sd">            Number of RNN cells - can be coupled one after the other. </span>
+<span class="sd">                Defaults to 1.</span>
+<span class="sd">        coilwise : bool, optional</span>
+<span class="sd">            If enabled, each coil of the input is processed independently. </span>
+<span class="sd">                Defaults to True.</span>
+<span class="sd">        gate_cat_prev_output : bool, optional</span>
+<span class="sd">            Flag for appending the previously predicted frame to the RNN input. </span>
+<span class="sd">                Defaults to True.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">RecurrentModule</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">n_rnn_cells</span> <span class="o">=</span> <span class="n">n_rnn_cells</span>
@@ -1291,40 +1342,15 @@
 
 </pre></div>
 
-            <div class="clearer"></div>
-          </div>
-        </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="Main">
-        <div class="sphinxsidebarwrapper">
-<search id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      <input type="submit" value="Go" />
-    </form>
-    </div>
-</search>
-<script>document.getElementById('searchbox').style.display = "block"</script>
-        </div>
+      <div class="bottomnav" role="navigation" aria-label="Bottom">
+      
+        <p>
+        <a class="uplink" href="../index.html">Contents</a>
+        </p>
+
       </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="related" role="navigation" aria-label="Related">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="../genindex.html" title="General Index"
-             >index</a></li>
-        <li class="right" >
-          <a href="../py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">FOURIER-Net 20240614 documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="index.html" >Module code</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">periodLSTM</a></li> 
-      </ul>
-    </div>
+
     <div class="footer" role="contentinfo">
     &#169; Copyright 2024, AERS + NRM.
       Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.4.7.

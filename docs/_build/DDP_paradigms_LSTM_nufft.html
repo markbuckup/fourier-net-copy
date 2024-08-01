@@ -48,32 +48,59 @@ terminated and resources are released.</p>
 <dt class="sig sig-object py" id="DDP_paradigms_LSTM_nufft.setup">
 <span class="sig-prename descclassname"><span class="pre">DDP_paradigms_LSTM_nufft.</span></span><span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">world_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_paradigms_LSTM_nufft.html#setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_paradigms_LSTM_nufft.setup" title="Link to this definition">¶</a></dt>
 <dd><p>Sets up the process group for distributed training.</p>
-<p>Parameters:
-rank (int): The rank of the current process.
-world_size (int): The total number of processes.
-args (Namespace): Arguments containing the port number and GPU configuration.</p>
 <p>This function initializes the process group using either ‘gloo’ or ‘nccl’ backend
 based on the GPU configuration provided in args. It also sets the master address
 and port for communication.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rank</strong> (<em>int</em>) – The rank of the current process.</p></li>
+<li><p><strong>world_size</strong> (<em>int</em>) – The total number of processes.</p></li>
+<li><p><strong>args</strong> (<em>Namespace</em>) – Arguments containing the port number and GPU configuration.</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="DDP_paradigms_LSTM_nufft.test_paradigm">
 <span class="sig-prename descclassname"><span class="pre">DDP_paradigms_LSTM_nufft.</span></span><span class="sig-name descname"><span class="pre">test_paradigm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">world_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_paradigms_LSTM_nufft.html#test_paradigm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_paradigms_LSTM_nufft.test_paradigm" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Tests a distributed model for cardiac MRI reconstruction using DDP.</p>
+<p>This function sets up the environment for distributed testing, initializes the dataset and models,
+loads checkpoint if resuming, and evaluates the model on the test dataset. Test losses are logged,
+and model performance is visualized if specified.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rank</strong> (<em>int</em>) – The rank of the current process.</p></li>
+<li><p><strong>world_size</strong> (<em>int</em>) – The total number of processes.</p></li>
+<li><p><strong>args</strong> (<em>Namespace</em>) – Arguments containing paths, GPU configuration, logging options, etc.</p></li>
+<li><p><strong>parameters</strong> (<em>model</em>)</p></li>
+<li><p><strong>configuration</strong> (<em>Testing parameters including dataset</em>)</p></li>
+<li><p><strong>parameters</strong></p></li>
+<li><p><strong>options.</strong> (<em>and testing</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="DDP_paradigms_LSTM_nufft.train_paradigm">
 <span class="sig-prename descclassname"><span class="pre">DDP_paradigms_LSTM_nufft.</span></span><span class="sig-name descname"><span class="pre">train_paradigm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">world_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_paradigms_LSTM_nufft.html#train_paradigm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_paradigms_LSTM_nufft.train_paradigm" title="Link to this definition">¶</a></dt>
 <dd><p>Trains a distributed model for cardiac MRI reconstruction using DDP.</p>
-<p>Parameters:
-rank (int): The rank of the current process.
-world_size (int): The total number of processes.
-args (Namespace): Arguments containing paths, GPU configuration, logging options, etc.
-parameters (dict): Training parameters including dataset configuration, model parameters, and training options.</p>
 <p>This function sets up the environment for distributed training, initializes the dataset and models,
 loads checkpoint if resuming, and trains the model over a specified number of epochs. Training and
 validation losses are logged, and model checkpoints are saved periodically.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rank</strong> (<em>int</em>) – The rank of the current process.</p></li>
+<li><p><strong>world_size</strong> (<em>int</em>) – The total number of processes.</p></li>
+<li><p><strong>args</strong> (<em>Namespace</em>) – Arguments containing paths, GPU configuration, logging options, etc.</p></li>
+<li><p><strong>parameters</strong> (<em>dict</em>) – Training parameters including dataset configuration, model parameters, and training options.</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

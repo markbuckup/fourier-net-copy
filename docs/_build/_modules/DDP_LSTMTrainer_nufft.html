@@ -65,10 +65,14 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Displays an image with optional trimming.</span>
 
-<span class="sd">    Parameters:</span>
-<span class="sd">    x (np.ndarray): Image array to be displayed.</span>
-<span class="sd">    cmap (str): Colormap used for display. Default is &#39;gray&#39;.</span>
-<span class="sd">    trim (bool): Whether to trim the image intensities at 5th and 95th percentiles. Default is False.</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : np.ndarray</span>
+<span class="sd">        Image array to be displayed.</span>
+<span class="sd">    cmap : str</span>
+<span class="sd">        Colormap used for display. Default is &#39;gray&#39;.</span>
+<span class="sd">    trim : bool</span>
+<span class="sd">        Whether to trim the image intensities at 5th and 95th percentiles. Default is False.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">trim</span><span class="p">:</span>
         <span class="n">percentile_95</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">95</span><span class="p">)</span>
@@ -87,13 +91,19 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Trims the values of a tensor to be within the specified percentiles.</span>
 
-<span class="sd">    Parameters:</span>
-<span class="sd">    x (torch.Tensor): Tensor to be trimmed.</span>
-<span class="sd">    l (int): Lower percentile for trimming. Default is 5.</span>
-<span class="sd">    u (int): Upper percentile for trimming. Default is 95.</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : torch.Tensor</span>
+<span class="sd">        Tensor to be trimmed.</span>
+<span class="sd">    l : int</span>
+<span class="sd">        Lower percentile for trimming. Default is 5.</span>
+<span class="sd">    u : int</span>
+<span class="sd">        Upper percentile for trimming. Default is 95.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">    torch.Tensor: Trimmed tensor.</span>
+<span class="sd">    Returns</span>
+<span class="sd">    ----------</span>
+<span class="sd">    torch.Tensor</span>
+<span class="sd">        Trimmed tensor.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">percentile_95</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span> <span class="n">u</span><span class="p">)</span>
     <span class="n">percentile_5</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span> <span class="n">l</span><span class="p">)</span>
@@ -107,11 +117,15 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Normalizes and trims a 4D tensor along its last two dimensions.</span>
 
-<span class="sd">    Parameters:</span>
-<span class="sd">    x (torch.Tensor): Input tensor of shape (B, C, H, W).</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : torch.Tensor</span>
+<span class="sd">        Input tensor of shape (B, C, H, W).</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">    torch.Tensor: Normalized and trimmed tensor.</span>
+<span class="sd">    Returns</span>
+<span class="sd">    ----------</span>
+<span class="sd">    torch.Tensor</span>
+<span class="sd">        Normalized and trimmed tensor.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">B</span><span class="p">,</span><span class="n">C</span><span class="p">,</span><span class="n">row</span><span class="p">,</span><span class="n">col</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
     
@@ -143,12 +157,17 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Displays the absolute difference between two images.</span>
 
-<span class="sd">    Parameters:</span>
-<span class="sd">    im1 (np.ndarray): First image array.</span>
-<span class="sd">    im2 (np.ndarray): Second image array.</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    im1 : np.ndarray</span>
+<span class="sd">        First image array.</span>
+<span class="sd">    im2 : np.ndarray</span>
+<span class="sd">        Second image array.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">    np.ndarray: Absolute difference image reshaped to a 1D array.</span>
+<span class="sd">    Returns</span>
+<span class="sd">    ----------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        Absolute difference image reshaped to a 1D array.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">diff</span> <span class="o">=</span> <span class="p">(</span><span class="n">im1</span><span class="o">-</span><span class="n">im2</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
@@ -163,18 +182,30 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Trainer class for handling the training and evaluation of models in a distributed setup.</span>
 
-<span class="sd">    Attributes:</span>
-<span class="sd">    recurrent_model (nn.Module): The recurrent module consisting of the k-space RNN and the image lstm.</span>
-<span class="sd">    coil_combine_unet (nn.Module): The UNet model for combining coils.</span>
-<span class="sd">    trainset (Dataset): Training dataset.</span>
-<span class="sd">    testset (Dataset): Testing dataset.</span>
-<span class="sd">    ispace_trainset (Dataset): Training dataset that can memoise the recurrent module prediction for a fast Unet training.</span>
-<span class="sd">    ispace_testset (Dataset): Testing dataset that can memoise the recurrent module prediction for a fast Unet training</span>
-<span class="sd">    parameters (dict): Dictionary of training parameters loaded from params.py</span>
-<span class="sd">    device (torch.device): Device on which the training is conducted.</span>
-<span class="sd">    ddp_rank (int): Rank of the current process in distributed training.</span>
-<span class="sd">    ddp_world_size (int): Total number of processes in distributed training.</span>
-<span class="sd">    args (Namespace): argparse arguments</span>
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    recurrent_model : nn.Module</span>
+<span class="sd">        The recurrent module consisting of the k-space RNN and the image lstm.</span>
+<span class="sd">    coil_combine_unet : nn.Module</span>
+<span class="sd">        The U-Net model for combining coils.</span>
+<span class="sd">    trainset : Dataset</span>
+<span class="sd">        Training dataset.</span>
+<span class="sd">    testset : Dataset</span>
+<span class="sd">        Testing dataset.</span>
+<span class="sd">    ispace_trainset : Dataset</span>
+<span class="sd">        Training dataset that can memoise the recurrent module prediction for a fast U-Net training.</span>
+<span class="sd">    ispace_testset : Dataset</span>
+<span class="sd">        Testing dataset that can memoise the recurrent module prediction for a fast U-Net training</span>
+<span class="sd">    parameters : dict</span>
+<span class="sd">        Dictionary of training parameters loaded from params.py</span>
+<span class="sd">    device : torch.device</span>
+<span class="sd">        Device on which the training is conducted.</span>
+<span class="sd">    ddp_rank : int </span>
+<span class="sd">        Rank of the current process in distributed training.</span>
+<span class="sd">    ddp_world_size : int </span>
+<span class="sd">        Total number of processes in distributed training.</span>
+<span class="sd">    args : Namespace</span>
+<span class="sd">        argparse arguments</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">recurrent_model</span><span class="p">,</span> <span class="n">coil_combine_unet</span><span class="p">,</span> <span class="n">ispace_trainset</span><span class="p">,</span> <span class="n">ispace_testset</span><span class="p">,</span> <span class="n">trainset</span><span class="p">,</span> <span class="n">testset</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">ddp_rank</span><span class="p">,</span> <span class="n">ddp_world_size</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
@@ -282,7 +313,7 @@
                             <span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;optimizer&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;Adam&#39;</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_lstm&#39;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_lstm&#39;</span><span class="p">]:</span>       <span class="c1"># AERS: The optimizer has access to the weights and we pass it the model. It will then calcualte: weight = weight - learning_rate*weight.gradient</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_optim</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recurrent_model</span><span class="o">.</span><span class="n">module</span><span class="o">.</span><span class="n">kspace_m</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span><span class="o">+</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recurrent_model</span><span class="o">.</span><span class="n">module</span><span class="o">.</span><span class="n">ispacem</span><span class="o">.</span><span class="n">parameters</span><span class="p">()),</span> <span class="n">lr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;lr_kspace&#39;</span><span class="p">],</span> <span class="n">betas</span><span class="o">=</span><span class="p">(</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.999</span><span class="p">))</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_optim</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recurrent_model</span><span class="o">.</span><span class="n">module</span><span class="o">.</span><span class="n">kspace_m</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;lr_kspace&#39;</span><span class="p">],</span> <span class="n">betas</span><span class="o">=</span><span class="p">(</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.999</span><span class="p">))</span>
@@ -321,12 +352,17 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Trains the model for one epoch.</span>
 
-<span class="sd">        Parameters:</span>
-<span class="sd">        epoch (int): The current epoch number.</span>
-<span class="sd">        print_loss (bool): Whether to print the loss values. Default is False.</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        epoch : int</span>
+<span class="sd">            The current epoch number.</span>
+<span class="sd">        print_loss : bool</span>
+<span class="sd">            Whether to print the loss values. Default is False.</span>
 
-<span class="sd">        Returns:</span>
-<span class="sd">        tuple: Averaged losses and scores for the epoch.</span>
+<span class="sd">        Returns</span>
+<span class="sd">        ---------- </span>
+<span class="sd">        tuple</span>
+<span class="sd">            Averaged losses and scores for the epoch.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># AERS: Determines if it is in k-space or image space mode: what model is training?</span>
@@ -338,6 +374,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">unet_mode</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">unet_mode</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># AERS: Initializations for the accumulators (aka the statistics that will be returner)</span>
         <span class="n">avgkspacelossphase</span> <span class="o">=</span> <span class="mf">0.</span>
         <span class="n">avgkspacelossreal</span> <span class="o">=</span> <span class="mf">0.</span>
         <span class="n">avgkspacelossforget_gate</span> <span class="o">=</span> <span class="mf">0.</span>
@@ -353,6 +391,8 @@
         <span class="n">ispacessim_score</span> <span class="o">=</span> <span class="mf">0.</span>
         <span class="n">avgispace_l1_loss</span> <span class="o">=</span> <span class="mf">0.</span>
         <span class="n">avgispace_l2_loss</span> <span class="o">=</span> <span class="mf">0.</span>
+
+        <span class="c1"># AERS: Select the proper dataset and dataloader, depending on the current epoch. Memoized vs normal one.</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unet_mode</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">eval</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">eval_on_real</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_mode</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">ispacetrainloader</span><span class="o">.</span><span class="n">sampler</span><span class="o">.</span><span class="n">set_epoch</span><span class="p">(</span><span class="n">epoch</span><span class="p">)</span>
             <span class="n">dset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ispace_trainset</span>
@@ -363,7 +403,7 @@
             <span class="n">dset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainset</span>
             <span class="n">dloader</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainloader</span>
             <span class="n">kspace_skip_frames_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;init_skip_frames&#39;</span><span class="p">]</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ddp_rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ddp_rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>          <span class="c1"># AERS: Only prints progress bar if we are in rank 0, to avoid printing multiple progress bars.</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unet_mode</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_mode</span><span class="p">:</span>
                 <span class="n">tqdm_object</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainloader</span><span class="p">),</span> <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainloader</span><span class="p">),</span> <span class="n">desc</span> <span class="o">=</span> <span class="s2">&quot;[</span><span class="si">{}</span><span class="s2">] | KS+IS Epoch </span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span> <span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_epochs_total&#39;</span><span class="p">]),</span> <span class="n">bar_format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">{desc}</span><span class="s2"> | </span><span class="si">{percentage:3.0f}</span><span class="s2">%|</span><span class="si">{bar:10}{r_bar}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">unet_mode</span><span class="p">:</span>
@@ -375,69 +415,104 @@
                 <span class="n">tqdm_object</span> <span class="o">=</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ispacetrainloader</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">tqdm_object</span> <span class="o">=</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainloader</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">data_instance</span> <span class="ow">in</span> <span class="n">tqdm_object</span><span class="p">:</span>
+
+        <span class="c1"># AERS: tqdm object is iterating over the data</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">data_instance</span> <span class="ow">in</span> <span class="n">tqdm_object</span><span class="p">:</span> <span class="c1"># AERS: Fetch a batch of data from the tqdm object (progress bar), which is a train loader</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_mode</span><span class="p">:</span>
+                <span class="c1"># AERS: Output from ACDC_radial_faster.py (getitem)– data instance for the k-space mode</span>
+                <span class="c1"># AERS: indices of patient numbers, masks, gound truth video, input to the neural network, coils and period</span>
                 <span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">masks</span><span class="p">,</span> <span class="n">og_video</span><span class="p">,</span> <span class="n">coilwise_targets</span><span class="p">,</span> <span class="n">undersampled_fts</span><span class="p">,</span> <span class="n">coils_used</span><span class="p">,</span> <span class="n">periods</span><span class="p">)</span> <span class="o">=</span> <span class="n">data_instance</span>
-                <span class="n">skip_kspace</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">mem</span> <span class="o">=</span> <span class="n">data_instance</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-                <span class="k">if</span> <span class="n">mem</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">skip_kspace</span> <span class="o">=</span> <span class="kc">False</span>   <span class="c1"># AERS: If you are in k-space mode, don&#39;t skip it.</span>
+            <span class="k">else</span><span class="p">:</span>  <span class="c1"># AERS: If, in image mode, then a different dataset object is used. The memoized dataset object.</span>
+                <span class="n">mem</span> <span class="o">=</span> <span class="n">data_instance</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># AERS: From ACDC_radial_faster.py (getitem), the first output is a boolean to indicate if data are memoized or not</span>
+                <span class="k">if</span> <span class="n">mem</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>            <span class="c1"># AERS: If not memoized, data needs to be expanded into multiple variables (as above)</span>
                     <span class="n">skip_kspace</span> <span class="o">=</span> <span class="kc">False</span>
                     <span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">masks</span><span class="p">,</span> <span class="n">og_video</span><span class="p">,</span> <span class="n">coilwise_targets</span><span class="p">,</span> <span class="n">undersampled_fts</span><span class="p">,</span> <span class="n">coils_used</span><span class="p">,</span> <span class="n">periods</span><span class="p">)</span> <span class="o">=</span> <span class="n">data_instance</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">skip_kspace</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">skip_kspace</span> <span class="o">=</span> <span class="kc">True</span>   <span class="c1"># AERS: If it is not zero, skip k-space training and used the memoized data</span>
                     <span class="n">predr</span><span class="p">,</span> <span class="n">targ_vid</span> <span class="o">=</span> <span class="n">data_instance</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
                     <span class="n">predr</span> <span class="o">=</span> <span class="n">predr</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
                     <span class="n">targ_vid</span> <span class="o">=</span> <span class="n">targ_vid</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">skip_kspace</span><span class="p">:</span>
-                <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">set_grad_enabled</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recurrent_mode</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_mode</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_optim</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">(</span><span class="n">set_to_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="c1">#################### AERS: Recurrent Module Training ####################</span>
 
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">skip_kspace</span><span class="p">:</span>          
+                <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">set_grad_enabled</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recurrent_mode</span><span class="p">):</span>           <span class="c1"># AERS: Enclosure to enable or disable gradient computation for anything inside of this.</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_mode</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_optim</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">(</span><span class="n">set_to_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>    <span class="c1"># AERS: Default (June 10th video, min 8:03). Sets everything to None. It is faster than writing zeros.</span>
+
+                    <span class="c1"># AERS: Additional preprocessing. NRM mentions shows a previous code version where there is an if to set parameters to combine coils or not. </span>
+                    <span class="c1"># Ground truth for k-space RNN is the coil-wise gt. Coil combination is performed by U-Net.</span>
+                    <span class="c1"># This pre-processing is done here because the data needs to be pushed to GPU to perform FFT (faster than CPU).</span>
+                    <span class="c1"># ACDC_radial_faster avoids uting GPU inside the dataset object to prevent GPU memory leak. </span>
+                    <span class="c1"># As per NRM: A dataset object should not have access to GPU at all. It should just run on the CPU.</span>
+                    <span class="c1"># AERS: FFT of coil-wise ground truth is needed because in the k-space RNN, the loss is a loss element in both k-space and image space.</span>
                     <span class="n">batch</span><span class="p">,</span> <span class="n">num_frames</span><span class="p">,</span> <span class="n">chan</span><span class="p">,</span> <span class="n">numr</span><span class="p">,</span> <span class="n">numc</span> <span class="o">=</span> <span class="n">undersampled_fts</span><span class="o">.</span><span class="n">shape</span>
-                    <span class="n">og_coiled_vids</span> <span class="o">=</span> <span class="n">coilwise_targets</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-                    <span class="n">og_coiled_fts</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">og_coiled_vids</span><span class="p">),</span> <span class="n">dim</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
-                    <span class="n">inpt_mag_log</span> <span class="o">=</span> <span class="n">mylog</span><span class="p">((</span><span class="n">og_coiled_fts</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">+</span><span class="n">EPS</span><span class="p">),</span> <span class="n">base</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;logarithm_base&#39;</span><span class="p">])</span>
-                    <span class="n">inpt_phase</span> <span class="o">=</span> <span class="n">og_coiled_fts</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;logarithm_base&#39;</span><span class="p">]</span><span class="o">**</span><span class="n">inpt_mag_log</span><span class="p">)</span>
+                    <span class="n">og_coiled_vids</span> <span class="o">=</span> <span class="n">coilwise_targets</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>                                           <span class="c1"># AERS: coil-wise ground truth for k-space RNN</span>
+                    <span class="n">og_coiled_fts</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">og_coiled_vids</span><span class="p">),</span> <span class="n">dim</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>           <span class="c1"># AERS: coil-wise ground truth FFT  </span>
+                    
+                    <span class="c1"># AERS: log of the magnitude to makes sure values are in a reasonable range rather than very large. </span>
+                    <span class="c1"># This ensures the NN will learn with a reasonable learning rate. </span>
+                    <span class="n">inpt_mag_log</span> <span class="o">=</span> <span class="n">mylog</span><span class="p">((</span><span class="n">og_coiled_fts</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">+</span><span class="n">EPS</span><span class="p">),</span> <span class="n">base</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;logarithm_base&#39;</span><span class="p">])</span>   
+                    <span class="n">inpt_phase</span> <span class="o">=</span> <span class="n">og_coiled_fts</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;logarithm_base&#39;</span><span class="p">]</span><span class="o">**</span><span class="n">inpt_mag_log</span><span class="p">)</span>              <span class="c1"># AERS: phase estimation</span>
                     <span class="n">inpt_phase</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">((</span><span class="n">inpt_phase</span><span class="o">.</span><span class="n">real</span><span class="p">,</span> <span class="n">inpt_phase</span><span class="o">.</span><span class="n">imag</span><span class="p">),</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
                     
+                    <span class="c1"># AERS: If we want to skip the k-space LSTM or not</span>
                     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;skip_kspace_rnn&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_lstm&#39;</span><span class="p">])):</span>
                         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_mode</span><span class="p">:</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>        <span class="c1"># AERS: Train</span>
                         <span class="k">else</span><span class="p">:</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>         <span class="c1"># AERS: Testing</span>
 
+                    <span class="c1"># AERS: Generate the predictions</span>
                     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;skip_kspace_rnn&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_lstm&#39;</span><span class="p">])):</span>
-                        <span class="n">predr</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">loss_mag</span><span class="p">,</span> <span class="n">loss_phase</span><span class="p">,</span> <span class="n">loss_real</span><span class="p">,</span> <span class="n">loss_forget_gate</span><span class="p">,</span> <span class="n">loss_input_gate</span><span class="p">,</span> <span class="p">(</span><span class="n">loss_l1</span><span class="p">,</span> <span class="n">loss_l2</span><span class="p">,</span> <span class="n">ss1</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_model</span><span class="p">(</span><span class="n">undersampled_fts</span><span class="p">,</span> <span class="n">masks</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">periods</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span> <span class="n">targ_phase</span> <span class="o">=</span> <span class="n">inpt_phase</span><span class="p">,</span> <span class="n">targ_mag_log</span> <span class="o">=</span> <span class="n">inpt_mag_log</span><span class="p">,</span> <span class="n">targ_real</span> <span class="o">=</span> <span class="n">og_coiled_vids</span><span class="p">,</span> <span class="n">og_video</span> <span class="o">=</span> <span class="n">og_video</span><span class="p">,</span> <span class="n">epoch</span> <span class="o">=</span> <span class="n">epoch</span><span class="p">)</span>
+                        <span class="c1"># AERS: First forward pass or the .train()</span>
+                        <span class="c1"># AERS: Sends undersampled input, masks, GPU #, period of each video (for ARKS), ground truths (phase and log of mag), \</span>
+                        <span class="c1"># and original video (coil combined from previous implementation).</span>
 
+                        <span class="c1"># AERS: predicted image space (output of image LSTM -&gt; U-Net),  predr_kpace (output of k-space RNN),</span>
+                        <span class="c1"># losses: loss_mag (L1 loss between magnitudes), loss_phase (L1 loss between angles), loss_real (iFFT of data and compare w/original coil gt)</span>
+                        <span class="n">predr</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">loss_mag</span><span class="p">,</span> <span class="n">loss_phase</span><span class="p">,</span> <span class="n">loss_real</span><span class="p">,</span> <span class="n">loss_forget_gate</span><span class="p">,</span> <span class="n">loss_input_gate</span><span class="p">,</span> <span class="p">(</span><span class="n">loss_l1</span><span class="p">,</span> <span class="n">loss_l2</span><span class="p">,</span> <span class="n">ss1</span><span class="p">)</span> <span class="o">=</span> \
+                            <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_model</span><span class="p">(</span><span class="n">undersampled_fts</span><span class="p">,</span> <span class="n">masks</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">periods</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span> <span class="n">targ_phase</span> <span class="o">=</span> <span class="n">inpt_phase</span><span class="p">,</span> \
+                                                 <span class="n">targ_mag_log</span> <span class="o">=</span> <span class="n">inpt_mag_log</span><span class="p">,</span> <span class="n">targ_real</span> <span class="o">=</span> <span class="n">og_coiled_vids</span><span class="p">,</span> <span class="n">og_video</span> <span class="o">=</span> <span class="n">og_video</span><span class="p">,</span> <span class="n">epoch</span> <span class="o">=</span> <span class="n">epoch</span><span class="p">)</span>
+
+                        <span class="c1"># AERS: Statistics</span>
                         <span class="n">predr_sos</span> <span class="o">=</span> <span class="p">((</span><span class="n">predr</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">keepdim</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">)[:,</span><span class="n">kspace_skip_frames_loss</span><span class="p">:]</span>
                         <span class="n">targ_vid</span> <span class="o">=</span> <span class="n">og_video</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)[:,</span><span class="n">kspace_skip_frames_loss</span><span class="p">:]</span>
+                        <span class="c1"># AERS: SSIM of sum of squares prediction</span>
                         <span class="n">loss_ss1_sos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msssim_loss</span><span class="p">(</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="mi">1</span><span class="p">,</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">:]),</span> <span class="n">targ_vid</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="mi">1</span><span class="p">,</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">:]))</span>
                          
                         <span class="k">del</span> <span class="n">masks</span>
                         <span class="k">del</span> <span class="n">inpt_phase</span>
                         <span class="k">del</span> <span class="n">inpt_mag_log</span>
                         
-                        
+                        <span class="c1"># AERS: Before backprogating the loss, they need to be added together to get a combined loss. </span>
+                        <span class="c1"># Because they have different magnitudes, they get scaled. </span>
                         <span class="n">loss</span> <span class="o">=</span> <span class="mf">0.1</span><span class="o">*</span><span class="n">loss_mag</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">loss_phase</span> <span class="o">+</span> <span class="mi">12</span><span class="o">*</span><span class="n">loss_real</span> <span class="o">+</span> <span class="mf">0.2</span><span class="o">*</span><span class="n">loss_ss1_sos</span>
                         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;lstm_forget_gate_loss&#39;</span><span class="p">]:</span>
                             <span class="n">loss</span> <span class="o">+=</span> <span class="n">loss_forget_gate</span> <span class="o">*</span> <span class="mi">8</span>
                         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;lstm_input_gate_loss&#39;</span><span class="p">]:</span>
                             <span class="n">loss</span> <span class="o">+=</span> <span class="n">loss_input_gate</span> <span class="o">*</span> <span class="mi">18</span>
 
+                        <span class="c1"># AERS: Backpropagate the loss</span>
                         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_mode</span><span class="p">:</span>
-                            <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_optim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+                            <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>                   <span class="c1"># AERS: Propagates the loss to the leaves (weights of NN that require gradients). </span>
+                                                              <span class="c1"># Each number in the predictions is a function of a particular weight in the NN. </span>
+                                                              <span class="c1"># This will compute the gradient of the output with respect to a particular weight (dloss/dweight) and store it. </span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_optim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>       <span class="c1"># AERS: Optimizer has access to all the weights and we pass it the model, so it will iterate all the weights to update them based on the learning rate and gradient</span>
 
                         <span class="k">del</span> <span class="n">loss</span>
-                        <span class="n">avgkspacelossphase</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">loss_phase</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="o">/</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dloader</span><span class="p">)))</span>
+
+                        <span class="c1"># AERS: Accumulator variables for losses (in CPU, to avoid using GPU memory).</span>
+                        <span class="n">avgkspacelossphase</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">loss_phase</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="o">/</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dloader</span><span class="p">)))</span>        <span class="c1"># AERS: Divides by the data loader length to average across data</span>
                         <span class="n">avgkspacelossmag</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">loss_mag</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="o">/</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dloader</span><span class="p">)))</span>
                         <span class="n">avgkspacelossforget_gate</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">loss_forget_gate</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="o">/</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dloader</span><span class="p">)))</span>
                         <span class="n">avgkspacelossinput_gate</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">loss_input_gate</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="o">/</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dloader</span><span class="p">)))</span>
                         <span class="k">del</span> <span class="n">loss_phase</span>
                         <span class="k">del</span> <span class="n">loss_mag</span>
-                    <span class="k">else</span><span class="p">:</span>
+
+                    <span class="k">else</span><span class="p">:</span> <span class="c1"># AERS: If we are skipping k-space training, the prediction should be the iFFT of the undersample data FFTs.</span>
+                          <span class="c1"># AERS: This is bascially another experiment in which the k-space model is deleted (ablation study).</span>
                         <span class="n">predr</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifft2</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifftshift</span><span class="p">(</span><span class="n">undersampled_fts</span><span class="p">,</span> <span class="n">dim</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)))</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
                         <span class="n">loss_real</span> <span class="o">=</span> <span class="p">(</span><span class="n">predr</span><span class="o">-</span> <span class="n">og_coiled_vids</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">*</span><span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
                         <span class="n">ss1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SSIM</span><span class="p">(</span><span class="n">predr</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="mi">1</span><span class="p">,</span><span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">4</span><span class="p">]),</span> <span class="p">(</span><span class="n">og_coiled_vids</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="mi">1</span><span class="p">,</span><span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">predr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">4</span><span class="p">]))</span>
@@ -452,9 +527,10 @@
                     <span class="n">avgkspace_l2_loss</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">loss_l2</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">/</span><span class="n">dset</span><span class="o">.</span><span class="n">total_unskipped_frames</span><span class="p">)</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">gpu</span><span class="p">)</span>
                     <span class="k">del</span> <span class="n">loss_real</span>
                 
-                <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+                <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>                   <span class="c1"># AERS: Ensures that gradient computation regardless of any condition.</span>
                     <span class="n">predr_sos</span> <span class="o">=</span> <span class="n">predr_sos</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
 
+                    <span class="c1"># AERS: Computes statistics before U-Net</span>
                     <span class="n">loss_l1_sos</span> <span class="o">=</span> <span class="p">(</span><span class="n">predr_sos</span> <span class="o">-</span> <span class="n">targ_vid</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
                     <span class="n">loss_l2_sos</span> <span class="o">=</span> <span class="p">(((</span><span class="n">predr_sos</span> <span class="o">-</span> <span class="n">targ_vid</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
                     <span class="n">ss1_sos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SSIM</span><span class="p">(</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="mi">1</span><span class="p">,</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">:]),</span> <span class="n">targ_vid</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="mi">1</span><span class="p">,</span><span class="o">*</span><span class="n">predr_sos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">:]))</span>
@@ -464,16 +540,21 @@
                     <span class="n">avgsos_l1_loss</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">loss_l1_sos</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="o">/</span><span class="n">dset</span><span class="o">.</span><span class="n">total_unskipped_frames</span><span class="p">)</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">gpu</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_coils&#39;</span><span class="p">]</span>
                     <span class="n">avgsos_l2_loss</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">loss_l2_sos</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="o">/</span><span class="n">dset</span><span class="o">.</span><span class="n">total_unskipped_frames</span><span class="p">)</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">gpu</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_coils&#39;</span><span class="p">]</span>
 
+                <span class="c1"># AERS: Coil combination. Two ways: SOS or U-Net</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;coil_combine&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;SOS&#39;</span><span class="p">:</span>
                     <span class="n">predr</span> <span class="o">=</span> <span class="p">((</span><span class="n">predr</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">keepdim</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">)[:,</span><span class="n">kspace_skip_frames_loss</span><span class="p">:]</span>
                     <span class="n">predr</span> <span class="o">=</span> <span class="n">predr</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
                     <span class="n">chan</span> <span class="o">=</span> <span class="mi">1</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">predr</span> <span class="o">=</span> <span class="n">predr</span><span class="p">[:,</span><span class="n">kspace_skip_frames_loss</span><span class="p">:]</span>
+                    <span class="n">predr</span> <span class="o">=</span> <span class="n">predr</span><span class="p">[:,</span><span class="n">kspace_skip_frames_loss</span><span class="p">:]</span>    <span class="c1"># AERS: U-Net</span>
 
+                <span class="c1"># ARES: If you want to memoize the image space, we bulk set the data (batches defined with indices[:,0] and indices[:,1])</span>
+                <span class="c1"># AERS: Calls the classmethod bulk_set_data in ACDC_radial_faster.py, which has afor loop to sort the dataset into batches.</span>
+                <span class="c1"># AERS: If not in k-space mode, and we reach here, it means that we are in image space mode and we came here to memoize the image data</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unet_mode</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;memoise_ispace&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">eval</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">eval_on_real</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_mode</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">ispace_trainset</span><span class="o">.</span><span class="n">bulk_set_data</span><span class="p">(</span><span class="n">indices</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">indices</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="n">predr</span><span class="p">,</span> <span class="n">targ_vid</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">ispace_trainset</span><span class="o">.</span><span class="n">bulk_set_data</span><span class="p">(</span><span class="n">indices</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">indices</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="n">predr</span><span class="p">,</span> <span class="n">targ_vid</span><span class="p">)</span>   
 
+<span class="c1">#################### AERS: U-Net (Image Space) Training ####################</span>
             
             <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">set_grad_enabled</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unet_mode</span><span class="p">):</span>
 
@@ -482,13 +563,17 @@
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unet_mode</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">unet_optim</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">(</span><span class="n">set_to_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
                 
+                <span class="c1"># AERS: Prediction. Reshapes the data to the original shape (channels as number of coils)</span>
                 <span class="n">predr</span> <span class="o">=</span> <span class="n">predr</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">batch</span><span class="o">*</span><span class="n">num_frames</span><span class="p">,</span><span class="n">chan</span><span class="p">,</span><span class="n">numr</span><span class="p">,</span> <span class="n">numc</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
                 
+                <span class="c1"># AERS: Ground truth (single coil channel)</span>
                 <span class="n">targ_vid</span> <span class="o">=</span> <span class="n">targ_vid</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">batch</span><span class="o">*</span><span class="n">num_frames</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span> <span class="n">numr</span><span class="p">,</span> <span class="n">numc</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
                 
+                <span class="c1"># AERS: Coil combination using U-Net</span>
                 <span class="n">outp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coil_combine_unet</span><span class="p">(</span><span class="n">predr</span><span class="o">.</span><span class="n">detach</span><span class="p">())</span>
 
-
+                <span class="c1"># AERS: In a previous version this used to be called crop_loss and NRM said not to use it because it creates &#39;bright corners&#39; in k-space. </span>
+                <span class="c1"># In the image domain, there was a DC shift in the log domain. This loss (crop_loss) was not useful. </span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;center_weighted_loss&#39;</span><span class="p">]:</span>
                     <span class="n">mask</span> <span class="o">=</span> <span class="n">gaussian_2d</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_resolution&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_resolution&#39;</span><span class="p">]))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_resolution&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_resolution&#39;</span><span class="p">])</span>
                 <span class="k">else</span><span class="p">:</span>
@@ -496,19 +581,20 @@
 
                 <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">outp</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
-
+                <span class="c1"># AERS: This loss is a combination of MS-SSIM and L1 losses. </span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unet_mode</span><span class="p">:</span>
                     <span class="n">loss_ss1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msssim_loss</span><span class="p">(</span><span class="n">outp</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="mi">1</span><span class="p">,</span><span class="o">*</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">:]),</span> <span class="n">targ_vid</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="mi">1</span><span class="p">,</span><span class="o">*</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">:]))</span>
                     <span class="n">loss</span> <span class="o">=</span> <span class="mf">0.2</span><span class="o">*</span><span class="n">loss_ss1</span>
                     <span class="n">loss</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">l2loss</span><span class="p">(</span><span class="n">outp</span><span class="o">*</span><span class="n">mask</span><span class="p">,</span> <span class="n">targ_vid</span><span class="o">*</span><span class="n">mask</span><span class="p">)</span>
 
-                    <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">unet_optim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
-                    <span class="n">avgispacelossreal</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">loss</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="o">/</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dloader</span><span class="p">)))</span>
+                    <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>                 <span class="c1"># AERS: Backpropagation</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">unet_optim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>          <span class="c1"># AERS: Update the weights</span>
+                    <span class="n">avgispacelossreal</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">loss</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="o">/</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dloader</span><span class="p">)))</span>    
 
 
                 <span class="n">outp</span> <span class="o">=</span> <span class="n">outp</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
 
+                <span class="c1"># AERS: Statistics</span>
                 <span class="n">loss_l1</span> <span class="o">=</span> <span class="p">(</span><span class="n">outp</span><span class="o">-</span> <span class="n">targ_vid</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
                 <span class="n">loss_l2</span> <span class="o">=</span> <span class="p">(((</span><span class="n">outp</span><span class="o">-</span> <span class="n">targ_vid</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
                 <span class="n">ss1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SSIM</span><span class="p">(</span><span class="n">outp</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="mi">1</span><span class="p">,</span><span class="o">*</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">:]),</span> <span class="n">targ_vid</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="mi">1</span><span class="p">,</span><span class="o">*</span><span class="n">outp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">:]))</span>
@@ -517,7 +603,7 @@
                 <span class="n">avgispace_l1_loss</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">loss_l1</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="o">/</span><span class="n">dset</span><span class="o">.</span><span class="n">total_unskipped_frames</span><span class="p">)</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">gpu</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_coils&#39;</span><span class="p">]</span>
                 <span class="n">avgispace_l2_loss</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">loss_l2</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="o">/</span><span class="n">dset</span><span class="o">.</span><span class="n">total_unskipped_frames</span><span class="p">)</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">gpu</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_coils&#39;</span><span class="p">]</span>
 
-
+            <span class="c1"># AERS: If scheduler is CyclicLR, a scheduler step is performed every batch. As opposed to other schedulers where it is done every epoch.</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;scheduler&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;CyclicLR&#39;</span><span class="p">:</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_mode</span><span class="p">:</span>
                     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;skip_kspace_rnn&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_lstm&#39;</span><span class="p">])):</span>
@@ -528,6 +614,7 @@
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unet_scheduler</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unet_mode</span><span class="p">):</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">unet_scheduler</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
         
+        <span class="c1"># AERS: A step LR is performed for each epoch (outside the loop above).</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;scheduler&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;CyclicLR&#39;</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_mode</span><span class="p">:</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;skip_kspace_rnn&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_lstm&#39;</span><span class="p">])):</span>
@@ -543,19 +630,30 @@
             <span class="n">avgkspace_l1_loss</span><span class="p">,</span> <span class="n">avgkspace_l2_loss</span><span class="p">,</span> <span class="n">sosssim_score</span><span class="p">,</span> <span class="n">avgsos_l1_loss</span><span class="p">,</span> <span class="n">avgsos_l2_loss</span><span class="p">,</span> <span class="n">avgispacelossreal</span><span class="p">,</span> <span class="n">ispacessim_score</span><span class="p">,</span> <span class="n">avgispace_l1_loss</span><span class="p">,</span> <span class="n">avgispace_l2_loss</span></div>
 
 
+<span class="c1">#################### AERS: Testing ####################</span>
+<span class="c1"># This code is basically the same as the training code, without:</span>
+<span class="c1">#  loss.backward(), optimizer.step(), optimizer.zero_grad(), </span>
+<span class="c1">#  and enclosed in no_grad().</span>
+
 <div class="viewcode-block" id="Trainer.evaluate">
 <a class="viewcode-back" href="../DDP_LSTMTrainer_nufft.html#DDP_LSTMTrainer_nufft.Trainer.evaluate">[docs]</a>
     <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epoch</span><span class="p">,</span> <span class="n">train</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">print_loss</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Evaluates the model after training for one epoch.</span>
 
-<span class="sd">        Parameters:</span>
-<span class="sd">        epoch (int): The current epoch number.</span>
-<span class="sd">        train (bool): Whether to evaluate on the training set. Default is False.</span>
-<span class="sd">        print_loss (bool): Whether to print the loss values. Default is False.</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        epoch : int</span>
+<span class="sd">            The current epoch number.</span>
+<span class="sd">        train : bool</span>
+<span class="sd">            Whether to evaluate on the training set. Default is False.</span>
+<span class="sd">        print_loss : bool</span>
+<span class="sd">            Whether to print the loss values. Default is False.</span>
 
-<span class="sd">        Returns:</span>
-<span class="sd">        tuple: Averaged losses and scores for the evaluation.</span>
+<span class="sd">        Returns</span>
+<span class="sd">        ----------</span>
+<span class="sd">        tuple</span>
+<span class="sd">            Averaged losses and scores for the evaluation.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">epoch</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_epochs_recurrent&#39;</span><span class="p">]:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_mode</span> <span class="o">=</span> <span class="kc">True</span>
@@ -718,7 +816,8 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Analyzes and prints the average time per frame for the model inference.</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
+<span class="sd">        ----------</span>
 <span class="sd">        None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">tqdm_object</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">testloader</span><span class="p">),</span> <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">testloader</span><span class="p">))</span>
@@ -739,10 +838,13 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Visualizes the model predictions on actual data and saves the plots.</span>
 
-<span class="sd">        Parameters:</span>
-<span class="sd">        epoch (int): The current epoch number.</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        epoch : int</span>
+<span class="sd">            The current epoch number.</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
+<span class="sd">        ----------</span>
 <span class="sd">        None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Saving plots for actual data&#39;</span><span class="p">,</span> <span class="n">flush</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
@@ -755,15 +857,17 @@
             <span class="n">batch</span><span class="p">,</span> <span class="n">num_frames</span><span class="p">,</span> <span class="n">chan</span><span class="p">,</span> <span class="n">numr</span><span class="p">,</span> <span class="n">numc</span> <span class="o">=</span> <span class="n">actual_data</span><span class="o">.</span><span class="n">shape</span>
 
             <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;skip_kspace_rnn&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_lstm&#39;</span><span class="p">])):</span>
+                <span class="c1"># AERS: predr is the image space prediction, predr_kspace is the k-space RNN prediction</span>
                 <span class="n">predr</span><span class="p">,</span> <span class="n">predr_kspace</span><span class="p">,</span> <span class="n">loss_mag</span><span class="p">,</span> <span class="n">loss_phase</span><span class="p">,</span> <span class="n">loss_real</span><span class="p">,</span> <span class="n">loss_forget_gate</span><span class="p">,</span> <span class="n">loss_input_gate</span><span class="p">,</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span><span class="n">_</span><span class="p">,</span><span class="n">_</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">recurrent_model</span><span class="p">(</span><span class="n">actual_data</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">targ_phase</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">targ_mag_log</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">targ_real</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">og_video</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">predr</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifft2</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifftshift</span><span class="p">(</span><span class="n">actual_data</span><span class="p">,</span> <span class="n">dim</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)))</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-                <span class="n">predr_kspace</span> <span class="o">=</span> <span class="n">predr</span>
+                <span class="n">predr_kspace</span> <span class="o">=</span> <span class="n">predr</span>     
 
             <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">predr</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Predr nan&#39;</span><span class="p">,</span><span class="n">torch</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">predr</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">())</span>
             <span class="n">predr</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">predr</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">0</span>
 
+            <span class="c1"># AERS: Sum of squares output</span>
             <span class="n">sos_output</span> <span class="o">=</span> <span class="p">(</span><span class="n">predr</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">keepdim</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span> <span class="o">**</span> <span class="mf">0.5</span>
             <span class="n">sos_output</span> <span class="o">=</span> <span class="n">sos_output</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
 
@@ -777,6 +881,7 @@
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;kspace_architecture&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;MDCNN&#39;</span><span class="p">:</span>
                 <span class="n">chan</span> <span class="o">=</span> <span class="mi">1</span>
             
+            <span class="c1"># AERS: U-Net output</span>
             <span class="n">ispace_input</span> <span class="o">=</span> <span class="n">ispace_input</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">batch</span><span class="o">*</span><span class="n">num_frames</span><span class="p">,</span><span class="n">chan</span><span class="p">,</span><span class="n">numr</span><span class="p">,</span> <span class="n">numc</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
             <span class="n">ispace_outp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coil_combine_unet</span><span class="p">(</span><span class="n">ispace_input</span><span class="p">)</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span><span class="n">num_frames</span><span class="p">,</span><span class="n">numr</span><span class="p">,</span><span class="n">numc</span><span class="p">)</span>
             <span class="n">ispace_outp</span> <span class="o">=</span> <span class="n">ispace_outp</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
@@ -784,6 +889,7 @@
             <span class="n">predr</span> <span class="o">=</span> <span class="n">predr</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span><span class="n">num_frames</span><span class="p">,</span><span class="n">chan</span><span class="p">,</span><span class="n">numr</span><span class="p">,</span> <span class="n">numc</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
             <span class="n">pred_ft</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">predr</span><span class="p">),</span> <span class="n">dim</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
             
+            <span class="c1"># AERS: For loop to generate images</span>
             <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">num_frames</span><span class="p">)</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">f_num</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_frames</span><span class="p">):</span>
                     <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
@@ -859,11 +965,15 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Visualizes and saves the model predictions on the training or testing data.</span>
 
-<span class="sd">        Parameters:</span>
-<span class="sd">        epoch (int): The current epoch number.</span>
-<span class="sd">        train (bool): Whether to visualize the training set. Default is False.</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        epoch : int </span>
+<span class="sd">            The current epoch number.</span>
+<span class="sd">        train : bool</span>
+<span class="sd">            Whether to visualize the training set. Default is False.</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
+<span class="sd">        ----------</span>
 <span class="sd">        None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         

@@ -26,14 +26,19 @@ def setup(rank, world_size, args):                                             #
     """
     Sets up the process group for distributed training.
 
-    Parameters:
-    rank (int): The rank of the current process.
-    world_size (int): The total number of processes.
-    args (Namespace): Arguments containing the port number and GPU configuration.
-
     This function initializes the process group using either 'gloo' or 'nccl' backend
     based on the GPU configuration provided in args. It also sets the master address
     and port for communication.
+
+    Parameters
+    ----------    
+    rank : int
+        The rank of the current process.
+    world_size : int
+        The total number of processes.
+    args : Namespace
+        Arguments containing the port number and GPU configuration.
+
     """
     os.environ['MASTER_ADDR'] = 'localhost'                                    # AERS: Initializes the process group. Standard code from pyTorch documentation.
     os.environ['MASTER_PORT'] = '{}'.format(args.port)
@@ -58,16 +63,22 @@ SAVE_INTERVAL = 1
 def train_paradigm(rank, world_size, args, parameters):
     """
     Trains a distributed model for cardiac MRI reconstruction using DDP.
-
-    Parameters:
-    rank (int): The rank of the current process.
-    world_size (int): The total number of processes.
-    args (Namespace): Arguments containing paths, GPU configuration, logging options, etc.
-    parameters (dict): Training parameters including dataset configuration, model parameters, and training options.
-
+    
     This function sets up the environment for distributed training, initializes the dataset and models,
     loads checkpoint if resuming, and trains the model over a specified number of epochs. Training and
     validation losses are logged, and model checkpoints are saved periodically.
+
+    Parameters
+    ----------
+    rank: int
+        The rank of the current process.
+    world_size : int
+        The total number of processes.
+    args : Namespace
+        Arguments containing paths, GPU configuration, logging options, etc.
+    parameters : dict
+        Training parameters including dataset configuration, model parameters, and training options.
+
     """
     torch.cuda.set_device(args.gpu[rank])
     setup(rank, world_size, args)                                               # AERS: Standard syntax for multi-GPU processes
@@ -399,20 +410,27 @@ def train_paradigm(rank, world_size, args, parameters):
 
     cleanup()                           # AERS: Kills all the processes at the end.
 
-"""
-    Tests a distributed model for cardiac MRI reconstruction using DDP.
 
-    Parameters:
-    rank (int): The rank of the current process.
-    world_size (int): The total number of processes.
-    args (Namespace): Arguments containing paths, GPU configuration, logging options, etc.
-    parameters (dict): Testing parameters including dataset configuration, model parameters, and testing options.
+def test_paradigm(rank, world_size, args, parameters):                                         # AERS: Same as the training paradigm, but just loads the models, does not evaluate. This is done in single GPU.
+    """
+    Tests a distributed model for cardiac MRI reconstruction using DDP.
 
     This function sets up the environment for distributed testing, initializes the dataset and models,
     loads checkpoint if resuming, and evaluates the model on the test dataset. Test losses are logged,
     and model performance is visualized if specified.
+
+    Parameters
+    ----------
+    rank : int
+        The rank of the current process.
+    world_size : int
+        The total number of processes.
+    args : Namespace
+        Arguments containing paths, GPU configuration, logging options, etc.
+    parameters : dict
+    Testing parameters including dataset configuration, model parameters, and testing options.
+
     """
-def test_paradigm(rank, world_size, args, parameters):                                         # AERS: Same as the training paradigm, but just loads the models, does not evaluate. This is done in single GPU.
     torch.cuda.set_device(args.gpu[rank])
     setup(rank, world_size, args)
     proc_device = torch.device('cuda:{}'.format(args.gpu[rank]))

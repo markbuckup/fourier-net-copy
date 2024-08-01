@@ -27,9 +27,12 @@ class Identity(nn.Module):
     """
     A simple identity module - placeholder for absent modules during ablation studies
 
-    Attributes:
-        n_rnn_cells (int): Place holder argument
-        m (nn.Module): Place holder attribute so that the module has parameters.
+    Attributes
+    --------
+        n_rnn_cells : int
+            Place holder argument
+        m : nn.Module
+            Place holder attribute so that the module has parameters.
     """
 
     def __init__(self, n_rnn_cells = 1, image_lstm = False):   # AERS: Added param_dic because sphinx needed it
@@ -41,17 +44,25 @@ class Identity(nn.Module):
     
     def forward(self, hist_mag, hist_phase, gt_mask = None, mag_prev_outputs = None, phase_prev_outputs = None):
         """
-        Place holder Forward pass - will never be used
+        Place holder Forward pass - **will never be used**
 
         Args:
-            hist_mag (Tensor): Historical magnitude data.
-            hist_phase (Tensor): Historical phase data.
-            gt_mask (Tensor, optional): Ground truth mask.
-            mag_prev_outputs (Tensor, optional): Previous magnitude outputs.
-            phase_prev_outputs (Tensor, optional): Previous phase outputs.
+        --------
+        hist_mag : Tensor
+            Historical magnitude data.
+        hist_phase : Tensor
+            Historical phase data.
+        gt_mask : Tensor, optional
+            Ground truth mask.
+        mag_prev_outputs : Tensor, optional
+            Previous magnitude outputs.
+        phase_prev_outputs : Tensor, optional
+            Previous phase outputs.
 
-        Returns:
-            Tuple[List[Tensor], List[Tensor]]: The same outputs as input
+        Returns
+        --------
+            Tuple[List[Tensor], List[Tensor]]
+                The same outputs as input
         """
         new_mag_outputs = [hist_mag for i in range(self.n_rnn_cells)]
         new_phase_outputs = [hist_phase for i in range(self.n_rnn_cells)]
@@ -68,11 +79,20 @@ class Identity_param(nn.Module):
 
     def __init__(self, parameters, proc_device):
         """
-        Placeholder Initialization
+        AERS
+        Initialize the Identity_param module.
+
+        This method initializes an instance of the Identity_param module, setting up the internal 
+        components and parameters. It includes a placeholder linear layer as an example.
 
         Args:
-            parameters (dict): Dictionary of parameters.
-            proc_device (str): Processing device.
+        -----
+        - parameters (dict): 
+            A dictionary containing the configuration parameters for the module. 
+            The specific contents and structure of this dictionary depend on the use case.
+        - proc_device (str): 
+            The device on which the module's computations will be performed. Typically, this 
+            is either 'cpu' or 'cuda' to specify the processing device.
         """
         super(Identity_param, self).__init__()
         self.m = nn.Linear(3,3)
@@ -151,7 +171,8 @@ def fetch_models(parameters):
     Fetches the LSTM model types based on the given parameters.
 
     Args:
-        parameters (dict): Dictionary of parameters.
+        parameters : dict
+            Dictionary of parameters.
 
     Returns:
         Tuple[Type[nn.Module], Type[nn.Module]]: LSTM model types for image and k-space.
@@ -174,24 +195,37 @@ class concatConv(nn.Module):
     """
     Concatenated convolutional layers module.
 
-    Attributes:
-        layerlist (nn.ModuleList): List of convolutional layers.
-        skip_connections (bool): Flag for using skip connections.
-        relu_func (nn.Module): ReLU activation function.
-        n_layers (int): Number of layers.
+    Attributes
+    ----------
+    layerlist : nn.ModuleList
+        List of convolutional layers.
+    skip_connections : bool
+        Flag for using skip connections.
+    relu_func : nn.Module
+        ReLU activation function.
+    n_layers : int
+        Number of layers.
     """
     def __init__(self, cnn_func, relu_func, gate_input_size = 8, hidden_channels = 32, gate_output_size = 1, n_layers = 4, skip_connections = True):
         """
         Initializes the concatConv module.
 
         Args:
-            cnn_func (Type[nn.Module]): Convolution function - real or complex
-            relu_func (Type[nn.Module]): ReLU function.
-            gate_input_size (int, optional): Input size of the gate. Defaults to 8.
-            hidden_channels (int, optional): Number of hidden channels. Defaults to 32.
-            gate_output_size (int, optional): Output size of the gate. Defaults to 1.
-            n_layers (int, optional): Number of layers. Defaults to 4.
-            skip_connections (bool, optional): Flag for using skip connections. Defaults to True.
+        ----------
+        - cnn_func : Type[nn.Module]
+            Convolution function - real or complex.
+        - relu_func : Type[nn.Module]
+            ReLU function.
+        - gate_input_size : int, optional
+            Input size of the gate. Defaults to 8.
+        - hidden_channels : int, optional
+            Number of hidden channels. Defaults to 32.
+        - gate_output_size : int, optional
+            Output size of the gate. Defaults to 1.
+        - n_layers : int, optional
+            Number of layers. Defaults to 4.
+        - skip_connections : bool, optional
+            Flag for using skip connections. Defaults to True.
         """
         super(concatConv, self).__init__()
         self.layerlist = []
@@ -219,10 +253,14 @@ class concatConv(nn.Module):
         Forward pass of the concatConv module.
 
         Args:
-            x (Tensor): Input tensor.
+        ----------
+        x : Tensor
+            Input tensor.
 
-        Returns:
-            Tensor: Output tensor.
+        Returns
+        ----------
+        Tensor
+            Output tensor.
         """
         if self.n_layers == 1:
             return self.layerlist[0](x)
@@ -249,7 +287,8 @@ class RecurrentModule(nn.Module):
     """
     The Recurrent Module for undersampled k-space data processing. Contains the kspace-RNN and the image LSTM.
 
-    Attributes:
+    Attributes
+    ----------
         Various attributes for LSTM cell configuration.
     """
     def __init__(self, history_length = 0, num_coils = 8, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, rnn_input_mask = True, skip_connections = False, n_layers = 3, n_hidden = 12, n_rnn_cells = 1, coilwise = True, gate_cat_prev_output = False):
@@ -257,18 +296,43 @@ class RecurrentModule(nn.Module):
         Initializes the convLSTMcell_kspace module.
 
         Args:
-            history_length (int, optional): Length of the history to append to the undersampled input. Appends historical frames from previous cardiac cycles. Defaults to 0.
-            num_coils (int, optional): Number of coils. Defaults to 8.
-            forget_gate_coupled (bool, optional): Flag for coupled forget gate - forget gate mask and input gate mask sum to 1. Defaults to False.
-            forget_gate_same_coils (bool, optional): Flag for same forget gate for all coils. Defaults to False.
-            forget_gate_same_phase_mag (bool, optional): Flag for same forget gate for phase and magnitude. Defaults to False.
-            rnn_input_mask (bool, optional): Flag for appending the mask of the locations of newly acquired data to the RNN input. Defaults to True.
-            skip_connections (bool, optional): Flag for having skip connections. Defaults to False.
-            n_layers (int, optional): Number of layers in the K-space RNN gates. Defaults to 3.
-            n_hidden (int, optional): Number of channels in the K-space RNN gates. Defaults to 12.
-            n_rnn_cells (int, optional): Number of RNN cells - can be coupled one after the other. Defaults to 1.
-            coilwise (bool, optional): If enabled, each coil of the input is processed independently. Defaults to True.
-            gate_cat_prev_output (bool, optional): Flag for appending the previously predicted frame to the RNN input. Defaults to True.
+        ----------
+        history_length : int, optional
+            Length of the history to append to the undersampled input. Appends historical frames from previous cardiac cycles. 
+                Defaults to 0.
+        num_coils : int, optional
+            Number of coils. 
+                Defaults to 8.
+        forget_gate_coupled : bool, optional
+            Flag for coupled forget gate - forget gate mask and input gate mask sum to 1. 
+                Defaults to False.
+        forget_gate_same_coils : bool, optional
+            Flag for same forget gate for all coils. 
+                Defaults to False.
+        forget_gate_same_phase_mag : bool, optional
+            Flag for same forget gate for phase and magnitude. 
+                Defaults to False.
+        rnn_input_mask : bool, optional
+            Flag for appending the mask of the locations of newly acquired data to the RNN input. 
+                Defaults to True.
+        skip_connections : bool, optional
+            Flag for having skip connections. 
+                Defaults to False.
+        n_layers : int, optional
+            Number of layers in the K-space RNN gates. 
+                Defaults to 3.
+        n_hidden :int, optional
+            Number of channels in the K-space RNN gates. 
+                Defaults to 12.
+        n_rnn_cells : int, optional
+            Number of RNN cells - can be coupled one after the other. 
+                Defaults to 1.
+        coilwise : bool, optional
+            If enabled, each coil of the input is processed independently. 
+                Defaults to True.
+        gate_cat_prev_output : bool, optional
+            Flag for appending the previously predicted frame to the RNN input. 
+                Defaults to True.
         """
         super(RecurrentModule, self).__init__()
         self.n_rnn_cells = n_rnn_cells
