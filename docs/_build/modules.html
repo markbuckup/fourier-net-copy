@@ -14,7 +14,7 @@
     <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="utils.models" href="utils.models.html" />
+    <link rel="next" title="DDP_LSTMTrainer_nufft module" href="DDP_LSTMTrainer_nufft.html" />
     <link rel="prev" title="FOURIER-Net documentation" href="index.html" /> 
   </head><body>
       <div class="header" role="banner"><h1 class="heading"><a href="index.html">
@@ -28,7 +28,7 @@
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="utils.models.html">utils.models</a>&#160;&#160;»
+        <a href="DDP_LSTMTrainer_nufft.html">DDP_LSTMTrainer_nufft module</a>&#160;&#160;»
         </p>
 
       </div>
@@ -40,22 +40,15 @@
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="utils.models.html">utils.models</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html">utils.models.complexCNNs module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="DDP_LSTMTrainer_nufft.html">DDP_LSTMTrainer_nufft module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="DDP_LSTMTrainer_nufft.html#DDP_LSTMTrainer_nufft.Trainer"><code class="docutils literal notranslate"><span class="pre">Trainer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="DDP_LSTMTrainer_nufft.html#DDP_LSTMTrainer_nufft.myimshow"><code class="docutils literal notranslate"><span class="pre">myimshow()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="DDP_LSTMTrainer_nufft.html#DDP_LSTMTrainer_nufft.show_difference_image"><code class="docutils literal notranslate"><span class="pre">show_difference_image()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="DDP_LSTMTrainer_nufft.html#DDP_LSTMTrainer_nufft.special_trim"><code class="docutils literal notranslate"><span class="pre">special_trim()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="DDP_LSTMTrainer_nufft.html#DDP_LSTMTrainer_nufft.torch_trim"><code class="docutils literal notranslate"><span class="pre">torch_trim()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="utils.models.complexCNNs.html">utils.models.complexCNNs module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs.cmplx_activation">complexCNNs.cmplx_activation module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs.cmplx_conv">complexCNNs.cmplx_conv module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs.cmplx_dropout">complexCNNs.cmplx_dropout module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs.cmplx_fc">complexCNNs.cmplx_fc module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs.cmplx_upsample">complexCNNs.cmplx_upsample module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs.polar_transforms">complexCNNs.polar_transforms module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs.radial_bn">complexCNNs.radial_bn module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs">Module contents</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="DDP_LSTMTrainer_nufft.html#class-diagram">Class Diagram</a></li>
 <li class="toctree-l1"><a class="reference internal" href="DDP_paradigms_LSTM_nufft.html">DDP_paradigms_LSTM_nufft module</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="DDP_paradigms_LSTM_nufft.html#DDP_paradigms_LSTM_nufft.cleanup"><code class="docutils literal notranslate"><span class="pre">cleanup()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="DDP_paradigms_LSTM_nufft.html#DDP_paradigms_LSTM_nufft.setup"><code class="docutils literal notranslate"><span class="pre">setup()</span></code></a></li>
@@ -63,15 +56,16 @@
 <li class="toctree-l2"><a class="reference internal" href="DDP_paradigms_LSTM_nufft.html#DDP_paradigms_LSTM_nufft.train_paradigm"><code class="docutils literal notranslate"><span class="pre">train_paradigm()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="functions.html">functions module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="functions.html#functions.dual_fft_loss"><code class="docutils literal notranslate"><span class="pre">dual_fft_loss()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="functions.html#functions.fetch_loss_function"><code class="docutils literal notranslate"><span class="pre">fetch_loss_function()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="functions.html#functions.fspecial_gauss"><code class="docutils literal notranslate"><span class="pre">fspecial_gauss()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="functions.html#functions.get_coil_mask"><code class="docutils literal notranslate"><span class="pre">get_coil_mask()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="functions.html#functions.get_golden_bars"><code class="docutils literal notranslate"><span class="pre">get_golden_bars()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="functions.html#functions.get_window_mask"><code class="docutils literal notranslate"><span class="pre">get_window_mask()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="functions.html#functions.mask_theta"><code class="docutils literal notranslate"><span class="pre">mask_theta()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="functions.html#functions.save_coils"><code class="docutils literal notranslate"><span class="pre">save_coils()</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="flops.html">flops module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.functions.html">utils.functions module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="utils.functions.html#utils.functions.dual_fft_loss"><code class="docutils literal notranslate"><span class="pre">dual_fft_loss()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.functions.html#utils.functions.fetch_loss_function"><code class="docutils literal notranslate"><span class="pre">fetch_loss_function()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.functions.html#utils.functions.fspecial_gauss"><code class="docutils literal notranslate"><span class="pre">fspecial_gauss()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.functions.html#utils.functions.get_coil_mask"><code class="docutils literal notranslate"><span class="pre">get_coil_mask()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.functions.html#utils.functions.get_golden_bars"><code class="docutils literal notranslate"><span class="pre">get_golden_bars()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.functions.html#utils.functions.get_window_mask"><code class="docutils literal notranslate"><span class="pre">get_window_mask()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.functions.html#utils.functions.mask_theta"><code class="docutils literal notranslate"><span class="pre">mask_theta()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.functions.html#utils.functions.save_coils"><code class="docutils literal notranslate"><span class="pre">save_coils()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="MDCNN.html">MDCNN module</a><ul>
@@ -87,7 +81,7 @@
 <li class="toctree-l2"><a class="reference internal" href="MDCNN.html#MDCNN.no_bn_forward"><code class="docutils literal notranslate"><span class="pre">no_bn_forward()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="flops.html">flops module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MDCNN.html#class-diagram">Class Diagram</a></li>
 <li class="toctree-l1"><a class="reference internal" href="periodLSTM.html">periodLSTM module</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="periodLSTM.html#periodLSTM.CoupledDown"><code class="docutils literal notranslate"><span class="pre">CoupledDown</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="periodLSTM.html#periodLSTM.CoupledDownReal"><code class="docutils literal notranslate"><span class="pre">CoupledDownReal</span></code></a></li>
@@ -107,27 +101,37 @@
 <li class="toctree-l2"><a class="reference internal" href="periodLSTM.html#periodLSTM.special_trim"><code class="docutils literal notranslate"><span class="pre">special_trim()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="periodLSTM.html#class-diagram">Class Diagram</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.models.complexCNNs.html">utils.models.complexCNNs module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs.cmplx_activation">complexCNNs.cmplx_activation module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs.cmplx_conv">complexCNNs.cmplx_conv module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs.cmplx_dropout">complexCNNs.cmplx_dropout module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs.cmplx_fc">complexCNNs.cmplx_fc module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs.cmplx_upsample">complexCNNs.cmplx_upsample module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs.polar_transforms">complexCNNs.polar_transforms module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs.radial_bn">complexCNNs.radial_bn module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.models.complexCNNs.html#module-complexCNNs">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="utils.models.complexCNNs.html#class-diagram">Class Diagram</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.myDatasets.ACDC_radial.html">utils.myDatasets.ACDC_radial module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="utils.myDatasets.ACDC_radial.html#utils.myDatasets.ACDC_radial.ACDC_radial"><code class="docutils literal notranslate"><span class="pre">ACDC_radial</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.myDatasets.ACDC_radial.html#utils.myDatasets.ACDC_radial.complex_log"><code class="docutils literal notranslate"><span class="pre">complex_log()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.myDatasets.ACDC_radial.html#utils.myDatasets.ACDC_radial.seed_torch"><code class="docutils literal notranslate"><span class="pre">seed_torch()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="utils.myDatasets.ACDC_radial.html#class-diagram">Class Diagram</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.myDatasets.ACDC_radial_faster.html">utils.myDatasets.ACDC_radial_faster module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="utils.myDatasets.ACDC_radial_faster.html#utils.myDatasets.ACDC_radial_faster.ACDC_radial"><code class="docutils literal notranslate"><span class="pre">ACDC_radial</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.myDatasets.ACDC_radial_faster.html#utils.myDatasets.ACDC_radial_faster.ACDC_radial_ispace"><code class="docutils literal notranslate"><span class="pre">ACDC_radial_ispace</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.myDatasets.ACDC_radial_faster.html#utils.myDatasets.ACDC_radial_faster.seed_torch"><code class="docutils literal notranslate"><span class="pre">seed_torch()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="utils.myDatasets.ACDC_radial_faster.html#class-diagram">Class Diagram</a></li>
 <li class="toctree-l1"><a class="reference internal" href="utils.Trainers.html">utils.models</a><ul class="simple">
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="DDP_LSTMTrainer_nufft.html">DDP_LSTMTrainer_nufft module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="DDP_LSTMTrainer_nufft.html#DDP_LSTMTrainer_nufft.Trainer"><code class="docutils literal notranslate"><span class="pre">Trainer</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="DDP_LSTMTrainer_nufft.html#DDP_LSTMTrainer_nufft.myimshow"><code class="docutils literal notranslate"><span class="pre">myimshow()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="DDP_LSTMTrainer_nufft.html#DDP_LSTMTrainer_nufft.show_difference_image"><code class="docutils literal notranslate"><span class="pre">show_difference_image()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="DDP_LSTMTrainer_nufft.html#DDP_LSTMTrainer_nufft.special_trim"><code class="docutils literal notranslate"><span class="pre">special_trim()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="DDP_LSTMTrainer_nufft.html#DDP_LSTMTrainer_nufft.torch_trim"><code class="docutils literal notranslate"><span class="pre">torch_trim()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="utils.myDatasets.html">utils.myDatasets</a><ul class="simple">
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="ACDC_radial_faster.html">ACDC_radial_faster module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="ACDC_radial_faster.html#ACDC_radial_faster.ACDC_radial"><code class="docutils literal notranslate"><span class="pre">ACDC_radial</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="ACDC_radial_faster.html#ACDC_radial_faster.ACDC_radial_ispace"><code class="docutils literal notranslate"><span class="pre">ACDC_radial_ispace</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="ACDC_radial_faster.html#ACDC_radial_faster.seed_torch"><code class="docutils literal notranslate"><span class="pre">seed_torch()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="ACDC_radial.html">ACDC_radial module</a></li>
 </ul>
 </div>
 </section>
@@ -141,7 +145,7 @@
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="utils.models.html">utils.models</a>&#160;&#160;»
+        <a href="DDP_LSTMTrainer_nufft.html">DDP_LSTMTrainer_nufft module</a>&#160;&#160;»
         </p>
 
       </div>

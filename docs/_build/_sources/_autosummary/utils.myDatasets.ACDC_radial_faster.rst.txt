@@ -1,0 +1,19 @@
+﻿utils.myDatasets.ACDC\_radial\_faster
+=====================================
+
+.. automodule:: utils.myDatasets.ACDC_radial_faster
+
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      seed_torch
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      ACDC_radial
+      ACDC_radial_ispace
+   

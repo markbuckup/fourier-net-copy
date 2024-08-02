@@ -32,9 +32,11 @@ def get_golden_bars(num_bars = 376, resolution = 128):
     Parameters:
     -----------
     - num_bars : int, optional
-        The number of golden angle masks to generate. Default is 376.
+        The number of golden angle masks to generate. 
+            Default is 376.
     - resolution : int, optional
-        The resolution of each mask, specifying both the height and width. Default is 128.
+        The resolution of each mask, specifying both the height and width. 
+            Default is 128.
 
     Returns:
     --------
@@ -209,7 +211,7 @@ def mask_theta(theta, size):
     --------
     - torch.Tensor
         A binary tensor of the specified size with a line drawn at the specified angle. The line is represented 
-        by `1`s in the tensor, and the rest of the tensor is filled with `0`s.
+        by 1s in the tensor, and the rest of the tensor is filled with 0s.
 
     Notes:
     ------
@@ -334,7 +336,7 @@ def get_coil_mask(theta_init = 0, n_coils = 8, resolution = 128):
     is modeled as a Gaussian distribution centered at a specific location determined by the angle `theta_init`.
 
     Parameters:
-    -----------
+    ------------
     - theta_init : float, optional
         The initial angle (in radians) where the first coil's sensitivity is centered. Default is 0.
     - n_coils : int, optional
@@ -420,7 +422,6 @@ def save_coils(theta_init, n_coils = 4):
     - The generated images are saved in the PNG format, with the filename format `Coil_<index>.png`.
     - The function uses a grayscale colormap (`cmap='gray'`) when saving the images.
 
-    ================================================================================================
     """    
     coils = get_coil_mask(theta_init = theta_init, n_coils = n_coils)
     for ci in range(coils.shape[0]):

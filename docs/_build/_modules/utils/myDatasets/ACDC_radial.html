@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>utils.myDatasets.ACDC_radial &#8212; FOURIER-Net 20240614 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=f63d8bfa" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/haiku.css?v=dfa0e015" />
+    <script src="../../../_static/documentation_options.js?v=6ad00ebc"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+      <div class="header" role="banner"><h1 class="heading"><a href="../../../index.html">
+          <span>FOURIER-Net 20240614 documentation</span></a></h1>
+        <h2 class="heading"><span>utils.myDatasets.ACDC_radial</span></h2>
+      </div>
+      <div class="topnav" role="navigation" aria-label="Top">
+      
+        <p>
+        <a class="uplink" href="../../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content" role="main">
+        
+        
+  <h1>Source code for utils.myDatasets.ACDC_radial</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;/root/Cardiac-MRI-Reconstrucion/&#39;</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">PIL</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">scipy</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torchvision</span>
+<span class="kn">import</span> <span class="nn">torchkbnufft</span> <span class="k">as</span> <span class="nn">tkbn</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="kn">from</span> <span class="nn">scipy.ndimage</span> <span class="kn">import</span> <span class="n">median_filter</span> <span class="k">as</span> <span class="n">median_filter_func</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span><span class="p">,</span> <span class="n">datasets</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data.dataset</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="c1"># from utils.functions import get_window_mask</span>
+<span class="kn">from</span> <span class="nn">utils.functions</span> <span class="kn">import</span> <span class="n">get_coil_mask</span><span class="p">,</span> <span class="n">get_golden_bars</span>
+<span class="kn">from</span> <span class="nn">utils.models.MDCNN</span> <span class="kn">import</span> <span class="n">MDCNN</span>
+
+<span class="n">EPS</span> <span class="o">=</span> <span class="mf">1e-10</span>
+<span class="n">CEPS</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">complex</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">EPS</span><span class="p">),</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">EPS</span><span class="p">))</span><span class="o">.</span><span class="n">exp</span><span class="p">()</span>
+
+<div class="viewcode-block" id="complex_log">
+<a class="viewcode-back" href="../../../utils.myDatasets.ACDC_radial.html#utils.myDatasets.ACDC_radial.complex_log">[docs]</a>
+<span class="k">def</span> <span class="nf">complex_log</span><span class="p">(</span><span class="n">ct</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    ** ######## This is a test. ACDC_radial.py did not contain documentation. ######## **</span>
+
+<span class="sd">    Paramers:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    - bla : int</span>
+<span class="sd">        my test</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">indices</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">1e-10</span>
+    <span class="n">ct</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">CEPS</span>
+    <span class="k">return</span> <span class="n">ct</span><span class="o">.</span><span class="n">log</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="seed_torch">
+<a class="viewcode-back" href="../../../utils.myDatasets.ACDC_radial.html#utils.myDatasets.ACDC_radial.seed_torch">[docs]</a>
+<span class="k">def</span> <span class="nf">seed_torch</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;PYTHONHASHSEED&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">manual_seed_all</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span> <span class="c1"># if you are using multi-GPU.</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="o">.</span><span class="n">benchmark</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="o">.</span><span class="n">deterministic</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+<span class="c1"># Manual CROP</span>
+<div class="viewcode-block" id="ACDC_radial">
+<a class="viewcode-back" href="../../../utils.myDatasets.ACDC_radial.html#utils.myDatasets.ACDC_radial.ACDC_radial">[docs]</a>
+<span class="k">class</span> <span class="nc">ACDC_radial</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+<span class="c1"># AERS: Initialization saves training parameters from params.py</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">train</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ACDC_radial</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train</span> <span class="o">=</span> <span class="n">train</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_split</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;train_test_split&#39;</span><span class="p">]</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">final_resolution</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_resolution&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resolution</span> <span class="o">=</span> <span class="mi">256</span>
+        <span class="k">assert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span> <span class="o">==</span> <span class="mi">256</span><span class="p">)</span>
+        <span class="k">assert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">final_resolution</span> <span class="o">&lt;=</span> <span class="mi">256</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_coils</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_coils&#39;</span><span class="p">]</span>
+        <span class="k">assert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_coils</span> <span class="o">==</span> <span class="mi">8</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ft_num_radial_views</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;FT_radial_sampling&#39;</span><span class="p">]</span>
+
+        <span class="n">nufft_numpoints</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;NUFFT_numpoints&#39;</span><span class="p">]</span>
+        <span class="n">nufft_kbwidth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;NUFFT_kbwidth&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">loop_videos</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;loop_videos&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shm_loop</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;SHM_looping&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">memoise_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;radial_memoised/manual_crop_views</span><span class="si">{}</span><span class="s1">_res</span><span class="si">{}</span><span class="s1">_nufftneighbors</span><span class="si">{}</span><span class="s1">_nufftkbwidth</span><span class="si">{}</span><span class="s1">_loop</span><span class="si">{}</span><span class="s1">_shmloop</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ft_num_radial_views</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">final_resolution</span><span class="p">,</span> <span class="n">nufft_numpoints</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">nufft_kbwidth</span><span class="o">*</span><span class="mi">100</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">loop_videos</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shm_loop</span><span class="p">)))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;normalisation&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shuffle_coils</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;shuffle_coils&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memoise</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;memoise&#39;</span><span class="p">]</span>
+        <span class="k">assert</span><span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm</span><span class="p">)</span>
+
+        
+        <span class="c1"># Read metadata</span>
+        <span class="n">metadic</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;radial/metadata.pth&#39;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span> <span class="o">=</span> <span class="n">metadic</span><span class="p">[</span><span class="s1">&#39;num_patients&#39;</span><span class="p">]</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">omega</span> <span class="o">=</span> <span class="n">metadic</span><span class="p">[</span><span class="s1">&#39;omega&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">omega</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">omega</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">377</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">metadic</span><span class="p">[</span><span class="s1">&#39;num_vids_per_patient&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actual_frames_per_vid_per_patient</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">metadic</span><span class="p">[</span><span class="s1">&#39;frames_per_vid_per_patient&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">metadic</span><span class="p">[</span><span class="s1">&#39;frames_per_vid_per_patient&#39;</span><span class="p">])</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">adjkb_ob</span> <span class="o">=</span> <span class="n">tkbn</span><span class="o">.</span><span class="n">KbInterpAdjoint</span><span class="p">(</span><span class="n">im_size</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="o">*</span><span class="mi">3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="o">*</span><span class="mi">3</span><span class="p">),</span> <span class="n">grid_size</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="o">*</span><span class="mi">3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="o">*</span><span class="mi">3</span><span class="p">),</span> <span class="n">numpoints</span> <span class="o">=</span> <span class="n">nufft_numpoints</span><span class="p">,</span> <span class="n">kbwidth</span> <span class="o">=</span> <span class="n">nufft_kbwidth</span><span class="p">,</span> <span class="n">device</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">train</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_split</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_split</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_split</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actual_frames_per_vid_per_patient</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">actual_frames_per_vid_per_patient</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span><span class="p">]</span>
+            
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">loop_videos</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span> <span class="o">*=</span><span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loop_videos</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vid_frame_cumsum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vid_cumsum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_videos</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">RAM_memoised</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_videos</span><span class="p">)]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_frames</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_coils</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">draw_radial_views_indices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="mi">377</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">draw_radial_views_indices</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">ft_num_radial_views</span><span class="p">,(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">ft_num_radial_views</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">draw_radial_views_indices</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="o">%</span><span class="mi">377</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">draw_radial_views_indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">draw_radial_views_indices</span> <span class="o">==</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="ACDC_radial.index_to_location">
+<a class="viewcode-back" href="../../../utils.myDatasets.ACDC_radial.html#utils.myDatasets.ACDC_radial.ACDC_radial.index_to_location">[docs]</a>
+    <span class="k">def</span> <span class="nf">index_to_location</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="n">p_num</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vid_cumsum</span> <span class="o">&lt;=</span> <span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">p_num</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">v_num</span> <span class="o">=</span> <span class="n">i</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">v_num</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">vid_cumsum</span><span class="p">[</span><span class="n">p_num</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">p_num</span><span class="p">,</span> <span class="n">v_num</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+
+        <span class="c1"># actual_pnum = 1</span>
+        <span class="c1"># v_num = 1</span>
+        <span class="c1"># grid_data = torch.zeros(30,8,256,256)</span>
+        <span class="c1"># grid_data = torch.complex(grid_data, grid_data)</span>
+        <span class="c1"># og_coiled_fft = grid_data</span>
+        <span class="c1"># og_video_coils = torch.zeros(30,8,256,256)</span>
+        <span class="c1"># og_video = torch.zeros(30,256,256)</span>
+        <span class="c1"># Nf = 30</span>
+
+        <span class="c1"># return torch.tensor([actual_pnum, v_num]), grid_data, og_coiled_fft, og_video_coils, og_video, Nf</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;memoise_RAM&#39;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">RAM_memoised</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">ind</span><span class="p">,</span> <span class="n">grid_data</span><span class="p">,</span> <span class="n">og_coiled_fft</span><span class="p">,</span> <span class="n">og_video_coils</span><span class="p">,</span> <span class="n">og_video</span><span class="p">,</span> <span class="n">Nf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">RAM_memoised</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="k">return</span> <span class="n">ind</span><span class="p">,</span> <span class="n">grid_data</span><span class="p">,</span> <span class="n">og_coiled_fft</span><span class="p">,</span> <span class="n">og_video_coils</span><span class="p">,</span> <span class="n">og_video</span><span class="p">,</span> <span class="n">Nf</span>
+
+
+        <span class="n">p_num</span><span class="p">,</span> <span class="n">v_num</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">index_to_location</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">actual_pnum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">+</span> <span class="n">p_num</span>
+
+        <span class="c1"># Loop all videos</span>
+        <span class="n">limit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span><span class="p">[</span><span class="n">p_num</span><span class="p">]</span>
+        <span class="n">max_avail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">actual_frames_per_vid_per_patient</span><span class="p">[</span><span class="n">p_num</span><span class="p">]</span>
+        <span class="n">loop_indices</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="nb">iter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">iter</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">limit</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="k">if</span> <span class="nb">iter</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">choose</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">limit</span><span class="p">,</span> <span class="n">max_avail</span><span class="p">)</span>
+                <span class="n">loop_indices</span> <span class="o">+=</span> <span class="nb">range</span><span class="p">(</span><span class="n">choose</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">choose</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">limit</span><span class="p">,</span> <span class="n">max_avail</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">shm_loop</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">iter</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">loop_indices</span> <span class="o">+=</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_avail</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="n">max_avail</span><span class="o">-</span><span class="mi">2</span><span class="o">-</span><span class="n">choose</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">loop_indices</span> <span class="o">+=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="o">+</span><span class="n">choose</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">loop_indices</span> <span class="o">+=</span> <span class="nb">range</span><span class="p">(</span><span class="n">choose</span><span class="p">)</span>
+            <span class="n">limit</span> <span class="o">-=</span> <span class="n">choose</span>
+        <span class="n">loop_indices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">loop_indices</span><span class="p">)</span>
+
+
+        <span class="n">datadic</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;radial/patient_</span><span class="si">{}</span><span class="s1">/vid_</span><span class="si">{}</span><span class="s1">.pth&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">actual_pnum</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">v_num</span><span class="p">)))</span>
+        <span class="n">og_video</span> <span class="o">=</span> <span class="n">datadic</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span>      <span class="c1"># Nf, RES, RES</span>
+        <span class="n">og_video</span> <span class="o">=</span> <span class="p">(</span><span class="n">og_video</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">/</span><span class="mf">255.</span><span class="p">)</span>
+        <span class="n">og_video</span> <span class="o">=</span> <span class="n">og_video</span><span class="p">[</span><span class="n">loop_indices</span><span class="p">,:,:]</span> <span class="c1"># Nf2, RES, RES</span>
+        <span class="n">coil</span> <span class="o">=</span> <span class="n">datadic</span><span class="p">[</span><span class="s1">&#39;coil&#39;</span><span class="p">]</span>          <span class="c1"># Nc, RES, RES</span>
+        <span class="n">Nf</span> <span class="o">=</span> <span class="n">og_video</span><span class="p">[</span><span class="n">loop_indices</span><span class="p">,:,:]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">memoise_path</span><span class="p">,</span> <span class="s1">&#39;patient_</span><span class="si">{}</span><span class="s1">/location_</span><span class="si">{}</span><span class="s1">.pth&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">actual_pnum</span><span class="p">,</span> <span class="n">v_num</span><span class="p">))):</span>
+            <span class="n">load_dic</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">memoise_path</span><span class="p">,</span> <span class="s1">&#39;patient_</span><span class="si">{}</span><span class="s1">/location_</span><span class="si">{}</span><span class="s1">.pth&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">actual_pnum</span><span class="p">,</span> <span class="n">v_num</span><span class="p">)))</span>
+
+            <span class="n">grid_data</span> <span class="o">=</span> <span class="n">load_dic</span><span class="p">[</span><span class="s1">&#39;grid_data&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ft_data</span> <span class="o">=</span> <span class="n">datadic</span><span class="p">[</span><span class="s1">&#39;ft_radial&#39;</span><span class="p">]</span>      <span class="c1"># Nf, Nc, 377, 3*RES+1</span>
+            <span class="n">ft_data</span> <span class="o">=</span> <span class="n">ft_data</span><span class="p">[</span><span class="n">loop_indices</span><span class="p">,:,:,:]</span> <span class="c1"># Nf2, Nc, 377, 3*RES+1</span>
+            <span class="c1"># undersampled lines</span>
+            <span class="n">istart</span> <span class="o">=</span> <span class="n">i</span><span class="o">%</span><span class="n">ft_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+            <span class="n">temp_draw_radial_views_indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">draw_radial_views_indices</span><span class="p">[:</span><span class="n">Nf</span><span class="p">,:]</span>
+            <span class="n">temp_draw_radial_views_indices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">temp_draw_radial_views_indices</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+            <span class="n">undersampled_lines</span> <span class="o">=</span> <span class="n">ft_data</span><span class="p">[</span><span class="n">temp_draw_radial_views_indices</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">*</span><span class="n">ft_data</span><span class="o">.</span><span class="n">shape</span><span class="p">)]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">Nf</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">num_coils</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">loop_omegas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">omega</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">Nf</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">loop_omegas</span> <span class="o">=</span> <span class="n">loop_omegas</span><span class="p">[</span><span class="n">temp_draw_radial_views_indices</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">*</span><span class="n">loop_omegas</span><span class="o">.</span><span class="n">shape</span><span class="p">)]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">Nf</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">Nf</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">num_coils</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">Nf</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">num_coils</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+            <span class="n">nufft_numpoints</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;NUFFT_numpoints&#39;</span><span class="p">]</span>
+            <span class="n">nufft_kbwidth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;NUFFT_kbwidth&#39;</span><span class="p">]</span>
+            <span class="n">dcomp</span> <span class="o">=</span> <span class="n">tkbn</span><span class="o">.</span><span class="n">calc_density_compensation_function</span><span class="p">(</span><span class="n">ktraj</span><span class="o">=</span><span class="n">loop_omegas</span><span class="p">,</span> <span class="n">im_size</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="o">*</span><span class="mi">3</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="o">*</span><span class="mi">3</span><span class="p">),</span> <span class="n">grid_size</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="o">*</span><span class="mi">3</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="o">*</span><span class="mi">3</span><span class="p">),</span> <span class="n">numpoints</span> <span class="o">=</span> <span class="n">nufft_numpoints</span><span class="p">,</span> <span class="n">kbwidth</span> <span class="o">=</span> <span class="n">nufft_kbwidth</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">grid_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adjkb_ob</span><span class="p">(</span><span class="n">dcomp</span><span class="o">*</span><span class="n">undersampled_lines</span><span class="p">,</span> <span class="n">loop_omegas</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_coils</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="o">*</span><span class="mi">3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="o">*</span><span class="mi">3</span><span class="p">)</span>
+
+            <span class="n">grid_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="n">grid_data</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span> <span class="c1"># Nc, Nf2, 3*RES, 3*RES</span>
+            <span class="n">undersampled_lines</span> <span class="o">=</span> <span class="n">undersampled_lines</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
+            <span class="n">loop_omegas</span> <span class="o">=</span> <span class="n">loop_omegas</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
+            <span class="n">dcomp</span> <span class="o">=</span> <span class="n">dcomp</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
+
+            <span class="n">start_ind</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">final_resolution</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span>
+
+            <span class="n">grid_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifft2</span><span class="p">(</span><span class="n">grid_data</span><span class="p">,</span> <span class="n">dim</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))[:,:,</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="p">:</span><span class="mi">2</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="p">:</span><span class="mi">2</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="p">]</span> <span class="c1"># Nc, Nf2, RES*3, RES*3</span>
+            <span class="n">grid_data</span> <span class="o">=</span> <span class="n">grid_data</span><span class="p">[:,:,</span><span class="n">start_ind</span><span class="p">:</span><span class="n">start_ind</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">final_resolution</span><span class="p">,</span><span class="n">start_ind</span><span class="p">:</span><span class="n">start_ind</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">final_resolution</span><span class="p">]</span>
+            <span class="n">grid_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">grid_data</span><span class="p">),</span> <span class="n">dim</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span> <span class="c1"># Nc, Nf2, RES, RES</span>
+            <span class="n">grid_data</span> <span class="o">=</span> <span class="n">grid_data</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span> <span class="c1"># Nc, Nf, RES, RES</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memoise</span><span class="p">:</span>
+                <span class="n">load_dic</span> <span class="o">=</span> <span class="p">{}</span>
+
+                <span class="n">load_dic</span><span class="p">[</span><span class="s1">&#39;grid_data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">grid_data</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">memoise_path</span><span class="p">,</span> <span class="s1">&#39;patient_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">actual_pnum</span><span class="p">))):</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">memoise_path</span><span class="p">,</span> <span class="s1">&#39;patient_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">actual_pnum</span><span class="p">)))</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">load_dic</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">memoise_path</span><span class="p">,</span> <span class="s1">&#39;patient_</span><span class="si">{}</span><span class="s1">/location_</span><span class="si">{}</span><span class="s1">.pth&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">actual_pnum</span><span class="p">,</span> <span class="n">v_num</span><span class="p">)))</span>
+
+        <span class="n">start_ind</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">final_resolution</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span>
+        <span class="n">og_video</span> <span class="o">=</span> <span class="n">og_video</span><span class="p">[:,</span><span class="n">start_ind</span><span class="p">:</span><span class="n">start_ind</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">final_resolution</span><span class="p">,</span><span class="n">start_ind</span><span class="p">:</span><span class="n">start_ind</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">final_resolution</span><span class="p">]</span>
+        <span class="n">coil</span> <span class="o">=</span> <span class="n">coil</span><span class="p">[:,</span><span class="n">start_ind</span><span class="p">:</span><span class="n">start_ind</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">final_resolution</span><span class="p">,</span><span class="n">start_ind</span><span class="p">:</span><span class="n">start_ind</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">final_resolution</span><span class="p">]</span>
+        <span class="c1"># grid_data = torch.fft.fftshift(grid_data, dim = (-2, -1)) # Nc, Nf2, RES, RES</span>
+        <span class="c1"># grid_data = grid_data[:,:,::3,::3]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">shuffle_coils</span><span class="p">:</span>
+            <span class="n">coil_perm</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="n">coil</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">coil</span> <span class="o">=</span> <span class="n">coil</span><span class="p">[</span><span class="n">coil_perm</span><span class="p">,:,:]</span>
+            <span class="n">grid_data</span> <span class="o">=</span> <span class="n">grid_data</span><span class="p">[</span><span class="n">coil_perm</span><span class="p">,:,:,:]</span>
+
+        <span class="n">og_video_coils</span> <span class="o">=</span> <span class="n">og_video</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">*</span><span class="n">coil</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># Nc, Nf2, RES, RES</span>
+        <span class="n">og_coiled_fft</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">og_video_coils</span><span class="p">),</span> <span class="n">dim</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span> <span class="c1"># Nc, Nf, RES, RES</span>
+        
+
+        <span class="c1"># All data Nf, Nc, RES, RES</span>
+        <span class="n">grid_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="n">grid_data</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+        <span class="n">og_video_coils</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="n">og_video_coils</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+        <span class="n">og_coiled_fft</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="n">og_coiled_fft</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;memoise_RAM&#39;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">RAM_memoised</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">RAM_memoised</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">actual_pnum</span><span class="p">,</span> <span class="n">v_num</span><span class="p">]),</span> <span class="n">grid_data</span><span class="p">,</span> <span class="n">og_coiled_fft</span><span class="p">,</span> <span class="n">og_video_coils</span><span class="p">,</span> <span class="n">og_video</span><span class="p">,</span> <span class="n">Nf</span><span class="p">]</span>
+
+
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">actual_pnum</span><span class="p">,</span> <span class="n">v_num</span><span class="p">]),</span> <span class="n">grid_data</span><span class="p">,</span> <span class="n">og_coiled_fft</span><span class="p">,</span> <span class="n">og_video_coils</span><span class="p">,</span> <span class="n">og_video</span><span class="p">,</span> <span class="n">Nf</span>
+
+        
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_videos</span></div>
+
+
+
+<span class="c1"># # AUTO CROP</span>
+<span class="c1"># class ACDC_radial(Dataset):</span>
+
+<span class="c1">#     def __init__(self, path, parameters, device, train = True):</span>
+<span class="c1">#         super(ACDC_radial, self).__init__()</span>
+        
+<span class="c1">#         self.path = path</span>
+<span class="c1">#         self.train = train</span>
+<span class="c1">#         self.parameters = parameters</span>
+<span class="c1">#         self.device = device</span>
+<span class="c1">#         self.train_split = parameters[&#39;train_test_split&#39;]</span>
+        
+<span class="c1">#         self.final_resolution = parameters[&#39;image_resolution&#39;]</span>
+<span class="c1">#         self.resolution = 256</span>
+<span class="c1">#         assert(self.resolution == 256)</span>
+<span class="c1">#         assert(self.final_resolution &lt;= 256)</span>
+        
+<span class="c1">#         self.num_coils = parameters[&#39;num_coils&#39;]</span>
+<span class="c1">#         assert(self.num_coils == 8)</span>
+
+<span class="c1">#         self.ft_num_radial_views = parameters[&#39;FT_radial_sampling&#39;]</span>
+
+<span class="c1">#         nufft_numpoints = self.parameters[&#39;NUFFT_numpoints&#39;]</span>
+<span class="c1">#         nufft_kbwidth = self.parameters[&#39;NUFFT_kbwidth&#39;]</span>
+
+<span class="c1">#         self.loop_videos = parameters[&#39;loop_videos&#39;]</span>
+<span class="c1">#         self.shm_loop = parameters[&#39;SHM_looping&#39;]</span>
+
+<span class="c1">#         self.memoise_path = os.path.join(self.path, &#39;radial_memoised/views{}_res{}_nufftneighbors{}_nufftkbwidth{}_loop{}_shmloop{}&#39;.format(self.ft_num_radial_views, self.final_resolution, nufft_numpoints, int(nufft_kbwidth*100), self.loop_videos, int(self.shm_loop)))</span>
+
+<span class="c1">#         self.norm = parameters[&#39;normalisation&#39;]</span>
+<span class="c1">#         self.shuffle_coils = parameters[&#39;shuffle_coils&#39;]</span>
+<span class="c1">#         self.memoise = parameters[&#39;memoise&#39;]</span>
+<span class="c1">#         assert(not self.norm)</span>
+
+        
+<span class="c1">#         # Read metadata</span>
+<span class="c1">#         metadic = torch.load(os.path.join(self.path, &#39;radial/metadata.pth&#39;))</span>
+<span class="c1">#         self.num_patients = metadic[&#39;num_patients&#39;]</span>
+        
+<span class="c1">#         self.omega = metadic[&#39;omega&#39;]</span>
+<span class="c1">#         self.omega = self.omega.reshape(2,377,-1)</span>
+        
+
+<span class="c1">#         self.num_vids_per_patient = np.array(metadic[&#39;num_vids_per_patient&#39;])</span>
+<span class="c1">#         self.actual_frames_per_vid_per_patient = np.array(metadic[&#39;frames_per_vid_per_patient&#39;])</span>
+<span class="c1">#         self.frames_per_vid_per_patient = np.array(metadic[&#39;frames_per_vid_per_patient&#39;])</span>
+        
+<span class="c1">#         self.adjkb_ob = tkbn.KbInterpAdjoint(im_size=(self.final_resolution,self.final_resolution), grid_size = (self.final_resolution,self.final_resolution), numpoints = nufft_numpoints, kbwidth = nufft_kbwidth, device = self.device)</span>
+
+<span class="c1">#         if self.train:</span>
+<span class="c1">#             self.offset = 0</span>
+<span class="c1">#             self.num_patients = int(self.train_split*self.num_patients)</span>
+<span class="c1">#         else:</span>
+<span class="c1">#             self.offset = int(self.train_split*self.num_patients)</span>
+<span class="c1">#             self.num_patients = self.num_patients - int(self.train_split*self.num_patients)</span>
+<span class="c1">#         self.num_vids_per_patient = self.num_vids_per_patient[self.offset:self.offset+self.num_patients]</span>
+<span class="c1">#         self.frames_per_vid_per_patient = self.frames_per_vid_per_patient[self.offset:self.offset+self.num_patients]</span>
+<span class="c1">#         self.actual_frames_per_vid_per_patient = self.actual_frames_per_vid_per_patient[self.offset:self.offset+self.num_patients]</span>
+            
+<span class="c1">#         if self.loop_videos != -1:</span>
+<span class="c1">#             self.frames_per_vid_per_patient *=0</span>
+<span class="c1">#             self.frames_per_vid_per_patient += self.loop_videos</span>
+<span class="c1">#         self.vid_frame_cumsum = np.cumsum(self.num_vids_per_patient*self.frames_per_vid_per_patient)</span>
+<span class="c1">#         self.vid_cumsum = np.cumsum(self.num_vids_per_patient)</span>
+
+<span class="c1">#         self.num_videos = int(self.num_vids_per_patient.sum())</span>
+
+<span class="c1">#         self.total_frames = self.num_coils*(self.frames_per_vid_per_patient*self.num_vids_per_patient).sum()</span>
+
+<span class="c1">#         self.draw_radial_views_indices = torch.zeros(self.frames_per_vid_per_patient.max(), 377)</span>
+<span class="c1">#         for i in range(self.draw_radial_views_indices.shape[0]):</span>
+<span class="c1">#             self.draw_radial_views_indices[i,i:i+self.ft_num_radial_views] = 1</span>
+<span class="c1">#         self.draw_radial_views_indices = self.draw_radial_views_indices == 1</span>
+
+<span class="c1">#     def index_to_location(self, i):</span>
+<span class="c1">#         p_num = (self.vid_cumsum &lt;= i).sum()</span>
+<span class="c1">#         if p_num == 0:</span>
+<span class="c1">#             v_num = i</span>
+<span class="c1">#         else:</span>
+<span class="c1">#             v_num = i - self.vid_cumsum[p_num-1]</span>
+
+<span class="c1">#         return p_num, v_num</span>
+
+<span class="c1">#     def __getitem__(self, i):</span>
+<span class="c1">#         p_num, v_num = self.index_to_location(i)</span>
+<span class="c1">#         Nf = self.actual_frames_per_vid_per_patient[p_num]</span>
+
+<span class="c1">#         # Loop all videos</span>
+<span class="c1">#         limit = self.frames_per_vid_per_patient[p_num]</span>
+<span class="c1">#         max_avail = self.actual_frames_per_vid_per_patient[p_num]</span>
+<span class="c1">#         loop_indices = []</span>
+<span class="c1">#         iter = 0</span>
+<span class="c1">#         while 1:</span>
+<span class="c1">#             iter += 1</span>
+<span class="c1">#             if limit == 0:</span>
+<span class="c1">#                 break</span>
+<span class="c1">#             if iter == 1:</span>
+<span class="c1">#                 choose = min(limit, max_avail)</span>
+<span class="c1">#                 loop_indices += range(choose)</span>
+<span class="c1">#             else:</span>
+<span class="c1">#                 choose = min(limit, max_avail-1)</span>
+<span class="c1">#                 if self.shm_loop:</span>
+<span class="c1">#                     if iter % 2 == 0:</span>
+<span class="c1">#                         loop_indices += range(max_avail-2,max_avail-2-choose,-1)</span>
+<span class="c1">#                     else:</span>
+<span class="c1">#                         loop_indices += range(1,1+choose)</span>
+<span class="c1">#                 else:</span>
+<span class="c1">#                     loop_indices += range(choose)</span>
+<span class="c1">#             limit -= choose</span>
+<span class="c1">#         loop_indices = torch.tensor(loop_indices)</span>
+
+<span class="c1">#         datadic = torch.load(os.path.join(self.path, &#39;radial/patient_{}/vid_{}.pth&#39;.format(p_num+1+self.offset, v_num)))</span>
+<span class="c1">#         og_video = datadic[&#39;data&#39;]      # Nf, RES, RES</span>
+<span class="c1">#         coil = datadic[&#39;coil&#39;]          # Nc, RES, RES</span>
+
+<span class="c1">#         og_video = og_video[loop_indices,:,:] # Nf2, RES, RES</span>
+        
+
+<span class="c1">#         if os.path.exists(os.path.join(self.memoise_path, &#39;patient_{}/location_{}.pth&#39;.format(p_num, v_num))):</span>
+<span class="c1">#             load_dic = torch.load(os.path.join(self.memoise_path, &#39;patient_{}/location_{}.pth&#39;.format(p_num, v_num)))</span>
+
+<span class="c1">#             grid_data = load_dic[&#39;grid_data&#39;]</span>
+<span class="c1">#         else:</span>
+
+<span class="c1">#             ft_data = datadic[&#39;ft_radial&#39;]      # Nf, Nc, 377, 3*RES+1</span>
+<span class="c1">#             ft_data = ft_data[loop_indices,:,:,:] # Nf2, Nc, 377, 3*RES+1</span>
+
+<span class="c1">#             # undersampled lines</span>
+<span class="c1">#             istart = i%ft_data.shape[2]</span>
+<span class="c1">#             Nf = og_video.shape[0]</span>
+
+<span class="c1">#             temp_draw_radial_views_indices = self.draw_radial_views_indices[:Nf,:]</span>
+<span class="c1">#             temp_draw_radial_views_indices = torch.roll(temp_draw_radial_views_indices, i, 1).unsqueeze(1).unsqueeze(3)</span>
+
+<span class="c1">#             undersampled_lines = ft_data[temp_draw_radial_views_indices.expand(*ft_data.shape)].reshape(Nf*self.num_coils, 1, -1).to(self.device)</span>
+<span class="c1">#             loop_omegas = self.omega.unsqueeze(0).repeat(Nf, 1, 1, 1)</span>
+<span class="c1">#             loop_omegas = loop_omegas[temp_draw_radial_views_indices.expand(*loop_omegas.shape)].reshape(Nf, 1, 2, -1).expand(Nf,self.num_coils,2,-1).reshape(Nf*self.num_coils, 2, -1).to(self.device)</span>
+
+<span class="c1">#             nufft_numpoints = self.parameters[&#39;NUFFT_numpoints&#39;]</span>
+<span class="c1">#             nufft_kbwidth = self.parameters[&#39;NUFFT_kbwidth&#39;]</span>
+<span class="c1">#             dcomp = tkbn.calc_density_compensation_function(ktraj=loop_omegas, im_size=(self.final_resolution,self.final_resolution), grid_size = (self.final_resolution,self.final_resolution), numpoints = nufft_numpoints, kbwidth = nufft_kbwidth).to(self.device)</span>
+<span class="c1">#             grid_data = self.adjkb_ob(dcomp*undersampled_lines, loop_omegas).squeeze().reshape(-1, self.num_coils, self.final_resolution, self.final_resolution)</span>
+
+<span class="c1">#             grid_data = torch.permute(grid_data, (1,0,2,3)) # Nc, Nf2, 3*RES, 3*RES</span>
+<span class="c1">#             undersampled_lines = undersampled_lines.cpu()</span>
+<span class="c1">#             loop_omegas = loop_omegas.cpu()</span>
+<span class="c1">#             dcomp = dcomp.cpu()</span>
+<span class="c1">#             grid_data = torch.fft.fftshift(grid_data, dim = (-2, -1)).cpu() # Nc, Nf2, RES, RES</span>
+
+<span class="c1">#             if self.memoise:</span>
+<span class="c1">#                 load_dic = {}</span>
+
+<span class="c1">#                 load_dic[&#39;grid_data&#39;] = grid_data</span>
+<span class="c1">#                 if not os.path.isdir(os.path.join(self.memoise_path, &#39;patient_{}&#39;.format(p_num))):</span>
+<span class="c1">#                     os.makedirs(os.path.join(self.memoise_path, &#39;patient_{}&#39;.format(p_num)))</span>
+<span class="c1">#                 torch.save(load_dic, os.path.join(self.memoise_path, &#39;patient_{}/location_{}.pth&#39;.format(p_num, v_num)))</span>
+
+<span class="c1">#         start_ind = (self.resolution - self.final_resolution)//2</span>
+
+<span class="c1">#         og_video = og_video[:,start_ind:start_ind+self.final_resolution,start_ind:start_ind+self.final_resolution]</span>
+<span class="c1">#         coil = coil[:,start_ind:start_ind+self.final_resolution,start_ind:start_ind+self.final_resolution]</span>
+
+<span class="c1">#         if self.shuffle_coils:</span>
+<span class="c1">#             coil_perm = torch.randperm(coil.shape[0])</span>
+<span class="c1">#             coil = coil[coil_perm,:,:]</span>
+<span class="c1">#             grid_data = grid_data[coil_perm,:,:,:]</span>
+
+<span class="c1">#         og_video_coils = og_video.unsqueeze(0)*coil.unsqueeze(1) # Nc, Nf2, RES, RES</span>
+<span class="c1">#         og_coiled_fft = torch.fft.fftshift(torch.fft.fft2(og_video_coils), dim = (-2, -1)) # Nc, Nf, RES, RES</span>
+        
+<span class="c1">#         # All data Nf, Nc, RESm RES</span>
+<span class="c1">#         grid_data = torch.permute(grid_data, (1,0,2,3))</span>
+<span class="c1">#         og_video_coils = torch.permute(og_video_coils, (1,0,2,3))</span>
+<span class="c1">#         og_coiled_fft = torch.permute(og_coiled_fft, (1,0,2,3))</span>
+
+<span class="c1">#         return torch.tensor([p_num, v_num]), grid_data, og_coiled_fft, og_video_coils, og_video, Nf</span>
+
+        
+<span class="c1">#     def __len__(self):</span>
+<span class="c1">#         return self.num_videos</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">parameters</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_resolution&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">64</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;train_batch_size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">64</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;test_batch_size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">164</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;lr_kspace&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">3e-4</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;lr_ispace&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1e-5</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_epochs_ispace&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_epochs_kspace&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1000</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;kspace_architecture&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;KLSTM1&#39;</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;ispace_architecture&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;ILSTM1&#39;</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;history_length&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;loop_videos&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">30</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;dataset&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;acdc&#39;</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;train_test_split&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.8</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;normalisation&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;window_size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;init_skip_frames&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;SHM_looping&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;FT_radial_sampling&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">20</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;memoise_RAM&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_coils&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;scale_input_fft&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;dataloader_num_workers&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;optimizer&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Adam&#39;</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;scheduler&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;StepLR&#39;</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;optimizer_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.999</span><span class="p">)</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;scheduler_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;base_lr&#39;</span><span class="p">:</span> <span class="mf">3e-4</span><span class="p">,</span>
+        <span class="s1">&#39;max_lr&#39;</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span>
+        <span class="s1">&#39;step_size_up&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="s1">&#39;mode&#39;</span><span class="p">:</span> <span class="s1">&#39;triangular&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;step_size&#39;</span><span class="p">:</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_epochs_kspace&#39;</span><span class="p">]</span><span class="o">//</span><span class="mi">3</span><span class="p">,</span>
+        <span class="s1">&#39;gamma&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+        <span class="s1">&#39;verbose&#39;</span><span class="p">:</span> <span class="kc">True</span>
+    <span class="p">}</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;Automatic_Mixed_Precision&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;predicted_frame&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;last&#39;</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;loss_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;SSIM_window&#39;</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span>
+        <span class="s1">&#39;alpha_phase&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s1">&#39;alpha_amp&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s1">&#39;grayscale&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s1">&#39;deterministic&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;watson_pretrained&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;NUFFT_numpoints&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;NUFFT_kbwidth&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.84</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;shuffle_coils&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;memoise&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+
+    <span class="n">dd</span> <span class="o">=</span> <span class="n">ACDC_radial</span><span class="p">(</span><span class="s1">&#39;../../datasets/ACDC/&#39;</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cuda:1&#39;</span><span class="p">),</span> <span class="n">train</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="c1"># import time</span>
+    <span class="c1"># t1 = time.time()</span>
+    <span class="c1"># a = dd[0]</span>
+    <span class="c1"># print(&#39;Time taken = {}&#39;.format(time.time()-t1))</span>
+    <span class="c1"># grid_data = a[1]</span>
+    <span class="c1"># for i in range(8):</span>
+    <span class="c1">#     tt = torch.fft.ifft2(torch.fft.ifftshift(grid_data[0,i,:,:])) </span>
+    <span class="c1">#     plt.imsave(&#39;aim2_coil{}.png&#39;.format(i),tt.real, cmap = &#39;gray&#39;)</span>
+    <span class="c1"># plt.imsave(&#39;aim.png&#39;,(grid_data[0,0,:,:].abs()+1).log(), cmap = &#39;gray&#39;)</span>
+    <span class="c1"># plt.imsave(&#39;aim_orig.png&#39;,a[-2][0,:,:], cmap = &#39;gray&#39;)</span>
+
+    <span class="c1"># for i in range(8):</span>
+    <span class="c1">#     tt = torch.fft.ifft2(torch.fft.ifftshift(grid_data[1,i,:,:])) </span>
+    <span class="c1">#     plt.imsave(&#39;bim2_coil{}.png&#39;.format(i),tt.real, cmap = &#39;gray&#39;)</span>
+    <span class="c1"># plt.imsave(&#39;bim.png&#39;,(grid_data[1,0,:,:].abs()+1).log(), cmap = &#39;gray&#39;)</span>
+    <span class="c1"># plt.imsave(&#39;bim_orig.png&#39;,a[-2][1,:,:], cmap = &#39;gray&#39;)</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav" role="navigation" aria-label="Bottom">
+      
+        <p>
+        <a class="uplink" href="../../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2024, AERS + NRM.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.4.7.
+    </div>
+  </body>
+</html>

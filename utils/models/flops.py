@@ -10,6 +10,31 @@ from params_flops.params_mdcnn import parameters as parameters_mdcnn
 from params_flops.params_lstm import parameters as parameters_lstm
 
 def spec_format(num):
+    """
+    AERS:
+    Format a number into a human-readable string with appropriate suffixes.
+
+    The function converts large numbers into a string with 'K', 'M', or 'B' suffixes, representing
+    thousands, millions, or billions, respectively.
+
+    Parameters:
+    --------------
+    - num (int or float): The number to format.
+
+    Returns:
+    -----------
+    -str: The formatted string with a suffix.
+    
+    Examples:
+    --------------
+    >>> spec_format(1500)
+    '1K'
+    >>> spec_format(1500000)
+    '1.5M'
+    >>> spec_format(2500000000)
+    '2.5B'
+    ===================================================================================================
+    """
     if num > 1000000000:
         if not num % 1000000000:
             return f'{num // 1000000000}B'

@@ -26,7 +26,7 @@ CEPS = torch.complex(torch.tensor(EPS),torch.tensor(EPS)).exp()
 
 def complex_log(ct):
     """
-    This is a test
+    ** ######## This is a test. ACDC_radial.py did not contain documentation. ######## **
 
     Paramers:
     -----------

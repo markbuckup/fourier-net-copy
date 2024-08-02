@@ -204,8 +204,7 @@ class ACDC_radial_ispace(Dataset):
         AERS:
         Sets and stores input and ground truth data in bulk for multiple patients and videos.
 
-        This class method iterates over a batch of input and ground truth data, storing each item 
-        individually for the corresponding patient ID (`pnum`) and video ID (`vnum`).
+        This class method iterates over a batch of input and ground truth data, storing each item individually for the corresponding patient ID (`pnum`) and video ID (`vnum`).
 
         Parameters:
         -----------
@@ -225,8 +224,7 @@ class ACDC_radial_ispace(Dataset):
 
         Notes:
         ------
-        - This method ensures that the data for each patient and video in the batch is individually scaled 
-        and stored using the `set_data` method.
+        - This method ensures that the data for each patient and video in the batch is individually scaled and stored using the `set_data` method.
         - The 120 frames were set by NRM's experiment for ACDC dataset.
 
         ====================================================================================================================
@@ -384,6 +382,7 @@ class ACDC_radial(Dataset):
     - __init__(path, parameters, device, train=True, visualise_only=False): Initializes the dataset.
     - __getitem__(i): Retrieves an item from the dataset.
     - __len__(): Returns the length of the dataset.
+    
     ===================================================================================================
     """
     def __init__(self, path, parameters, device, train = True, visualise_only = False): # AERS: Each video has 150 frames, 120 are used in training and 30 are used in testing. 

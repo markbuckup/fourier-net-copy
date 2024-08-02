@@ -24,7 +24,7 @@ sys.path.insert(0,os.path.abspath("../utils/models/complexCNNs"))
 sys.path.insert(0,os.path.abspath("../utils/Trainers"))
 sys.path.insert(0,os.path.abspath("../utils/myDatasets"))
 
-extensions = ["sphinx.ext.todo", "sphinx.ext.viewcode", "sphinx.ext.autodoc", "sphinx.ext.napoleon"]
+extensions = ["sphinx.ext.todo", "sphinx.ext.viewcode", "sphinx.ext.autodoc", "sphinx.ext.napoleon", "sphinx.ext.autosummary"]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
