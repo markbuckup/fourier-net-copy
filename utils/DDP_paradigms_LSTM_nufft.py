@@ -30,15 +30,16 @@ def setup(rank, world_size, args):                                             #
     based on the GPU configuration provided in args. It also sets the master address
     and port for communication.
 
-    Parameters
-    ----------    
-    rank : int
+    Parameters:
+    ------------    
+    - rank : int
         The rank of the current process.
-    world_size : int
+    - world_size : int
         The total number of processes.
-    args : Namespace
+    - args : Namespace
         Arguments containing the port number and GPU configuration.
 
+    ================================================================================================
     """
     os.environ['MASTER_ADDR'] = 'localhost'                                    # AERS: Initializes the process group. Standard code from pyTorch documentation.
     os.environ['MASTER_PORT'] = '{}'.format(args.port)
@@ -51,8 +52,9 @@ def cleanup():
     """
     Cleans up the process group for distributed training.
 
-    This function destroys the process group, ensuring that all processes are properly
-    terminated and resources are released.
+    This function destroys the process group, ensuring that all processes are properly terminated and resources are released.
+
+    ================================================================================================
     """
     dist.destroy_process_group()
 
@@ -68,17 +70,18 @@ def train_paradigm(rank, world_size, args, parameters):
     loads checkpoint if resuming, and trains the model over a specified number of epochs. Training and
     validation losses are logged, and model checkpoints are saved periodically.
 
-    Parameters
-    ----------
-    rank: int
+    Parameters:
+    ------------
+    - rank: int
         The rank of the current process.
-    world_size : int
+    - world_size : int
         The total number of processes.
-    args : Namespace
+    - args : Namespace
         Arguments containing paths, GPU configuration, logging options, etc.
-    parameters : dict
+    - parameters : dict
         Training parameters including dataset configuration, model parameters, and training options.
 
+    ================================================================================================
     """
     torch.cuda.set_device(args.gpu[rank])
     setup(rank, world_size, args)                                               # AERS: Standard syntax for multi-GPU processes
@@ -419,17 +422,18 @@ def test_paradigm(rank, world_size, args, parameters):                          
     loads checkpoint if resuming, and evaluates the model on the test dataset. Test losses are logged,
     and model performance is visualized if specified.
 
-    Parameters
-    ----------
-    rank : int
+    Parameters:
+    ------------
+    - rank : int
         The rank of the current process.
-    world_size : int
+    - world_size : int
         The total number of processes.
-    args : Namespace
+    - args : Namespace
         Arguments containing paths, GPU configuration, logging options, etc.
-    parameters : dict
-    Testing parameters including dataset configuration, model parameters, and testing options.
+    - parameters : dict
+        Testing parameters including dataset configuration, model parameters, and testing options.
 
+    ================================================================================================
     """
     torch.cuda.set_device(args.gpu[rank])
     setup(rank, world_size, args)

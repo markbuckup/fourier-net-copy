@@ -62,15 +62,16 @@
 <span class="sd">    based on the GPU configuration provided in args. It also sets the master address</span>
 <span class="sd">    and port for communication.</span>
 
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------    </span>
-<span class="sd">    rank : int</span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    ------------    </span>
+<span class="sd">    - rank : int</span>
 <span class="sd">        The rank of the current process.</span>
-<span class="sd">    world_size : int</span>
+<span class="sd">    - world_size : int</span>
 <span class="sd">        The total number of processes.</span>
-<span class="sd">    args : Namespace</span>
+<span class="sd">    - args : Namespace</span>
 <span class="sd">        Arguments containing the port number and GPU configuration.</span>
 
+<span class="sd">    ================================================================================================</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;MASTER_ADDR&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;localhost&#39;</span>                                    <span class="c1"># AERS: Initializes the process group. Standard code from pyTorch documentation.</span>
     <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;MASTER_PORT&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
@@ -86,8 +87,9 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Cleans up the process group for distributed training.</span>
 
-<span class="sd">    This function destroys the process group, ensuring that all processes are properly</span>
-<span class="sd">    terminated and resources are released.</span>
+<span class="sd">    This function destroys the process group, ensuring that all processes are properly terminated and resources are released.</span>
+
+<span class="sd">    ================================================================================================</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">dist</span><span class="o">.</span><span class="n">destroy_process_group</span><span class="p">()</span></div>
 
@@ -106,17 +108,18 @@
 <span class="sd">    loads checkpoint if resuming, and trains the model over a specified number of epochs. Training and</span>
 <span class="sd">    validation losses are logged, and model checkpoints are saved periodically.</span>
 
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    rank: int</span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    ------------</span>
+<span class="sd">    - rank: int</span>
 <span class="sd">        The rank of the current process.</span>
-<span class="sd">    world_size : int</span>
+<span class="sd">    - world_size : int</span>
 <span class="sd">        The total number of processes.</span>
-<span class="sd">    args : Namespace</span>
+<span class="sd">    - args : Namespace</span>
 <span class="sd">        Arguments containing paths, GPU configuration, logging options, etc.</span>
-<span class="sd">    parameters : dict</span>
+<span class="sd">    - parameters : dict</span>
 <span class="sd">        Training parameters including dataset configuration, model parameters, and training options.</span>
 
+<span class="sd">    ================================================================================================</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">gpu</span><span class="p">[</span><span class="n">rank</span><span class="p">])</span>
     <span class="n">setup</span><span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">world_size</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>                                               <span class="c1"># AERS: Standard syntax for multi-GPU processes</span>
@@ -460,17 +463,18 @@
 <span class="sd">    loads checkpoint if resuming, and evaluates the model on the test dataset. Test losses are logged,</span>
 <span class="sd">    and model performance is visualized if specified.</span>
 
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    rank : int</span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    ------------</span>
+<span class="sd">    - rank : int</span>
 <span class="sd">        The rank of the current process.</span>
-<span class="sd">    world_size : int</span>
+<span class="sd">    - world_size : int</span>
 <span class="sd">        The total number of processes.</span>
-<span class="sd">    args : Namespace</span>
+<span class="sd">    - args : Namespace</span>
 <span class="sd">        Arguments containing paths, GPU configuration, logging options, etc.</span>
-<span class="sd">    parameters : dict</span>
-<span class="sd">    Testing parameters including dataset configuration, model parameters, and testing options.</span>
+<span class="sd">    - parameters : dict</span>
+<span class="sd">        Testing parameters including dataset configuration, model parameters, and testing options.</span>
 
+<span class="sd">    ================================================================================================</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">gpu</span><span class="p">[</span><span class="n">rank</span><span class="p">])</span>
     <span class="n">setup</span><span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">world_size</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>

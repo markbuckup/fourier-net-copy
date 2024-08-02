@@ -25,6 +25,14 @@ EPS = 1e-10
 CEPS = torch.complex(torch.tensor(EPS),torch.tensor(EPS)).exp()
 
 def complex_log(ct):
+    """
+    This is a test
+
+    Paramers:
+    -----------
+    - bla : int
+        my test
+    """
     indices = ct.abs() < 1e-10
     ct[indices] = CEPS
     return ct.log()

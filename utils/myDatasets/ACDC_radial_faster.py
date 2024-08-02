@@ -17,7 +17,12 @@ def seed_torch(seed=0):
     Sets the random seed for reproducibility across various libraries.
 
     Parameters:
-    seed (int, optional): The seed value to use. Defaults to 0.
+    -------------
+    - seed : int, optional
+        The seed value to use. 
+            Defaults to 0.
+
+    ================================================================================================
     """
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -34,22 +39,32 @@ class ACDC_radial_ispace(Dataset):
     A memoised version of the ACDC_radial class defined further is this module
 
     Attributes:
-    mem_inputs (list): List of tensors to store inputs.
-    mem_inputs_min (list): List of tensors to store minimum values of inputs.
-    mem_inputs_max (list): List of tensors to store maximum values of inputs.
-    mem_gts (list): List of tensors to store ground truth data.
-    mem_stored_bool (list): List of boolean flags to indicate stored data.
-    data_init_done (bool): Flag to indicate if data initialization is done.
+    -------------
+    - mem_inputs : list
+        List of tensors to store inputs.
+    - mem_inputs_min : list
+        List of tensors to store minimum values of inputs.
+    - mem_inputs_max : list
+        List of tensors to store maximum values of inputs.
+    - mem_gts : list
+        List of tensors to store ground truth data.
+    - mem_stored_bool : list
+        List of boolean flags to indicate stored data.
+    - data_init_done : bool
+        Flag to indicate if data initialization is done.
     
     Methods:
-    set_data(input, gt, pat_id, vid_id): Sets the data for a given patient and video ID.
-    get_data(pat_id, vid_id): Retrieves the data for a given patient and video ID.
-    check_data(pat_id, vid_id): Checks if data for a given patient and video ID is stored.
-    bulk_set_data(actual_pnums, vnums, inputs, gts): Sets data for multiple patients and videos in bulk.
-    data_init(whole_num_vids_per_patient, parameters): Initializes data storage.
-    __init__(path, parameters, device, train=True, visualise_only=False): Initializes the dataset.
-    __getitem__(i): Retrieves an item from the dataset.
-    __len__(): Returns the length of the dataset.
+    -------------
+    - set_data(input, gt, pat_id, vid_id)x: Sets the data for a given patient and video ID.
+    - get_data(pat_id, vid_id): Retrieves the data for a given patient and video ID.
+    - check_data(pat_id, vid_id): Checks if data for a given patient and video ID is stored.
+    - bulk_set_data(actual_pnums, vnums, inputs, gts): Sets data for multiple patients and videos in bulk.
+    - data_init(whole_num_vids_per_patient, parameters): Initializes data storage.
+    - __init__(path, parameters, device, train=True, visualise_only=False): Initializes the dataset.
+    - __getitem__(i): Retrieves an item from the dataset.
+    - __len__(): Returns the length of the dataset.
+
+    ==============================================================================================================
     """
 
     # AERS: These class variables are created outside the functions, and each instance of the ACDC_radial_ispace class will have access to these variable (basically like global variables). 
@@ -65,6 +80,34 @@ class ACDC_radial_ispace(Dataset):
     
     @classmethod
     def set_data(cls, input, gt, pat_id, vid_id):
+        """
+        AERS:
+        Sets and scales input data, then stores it along with the ground truth data.
+
+        This class method takes input data and ground truth data, scales the input, and stores both the scaled 
+        input and the ground truth data as 8-bit unsigned integers. The data is stored in memory, indexed by 
+        patient ID (`pat_id`) and video ID (`vid_id`).
+
+        Parameters:
+        ------------
+        - input : torch.Tensor
+            The input data tensor to be scaled and stored. The tensor is expected to be multi-dimensional 
+            (e.g., a video or image stack).
+        - gt : torch.Tensor
+            The ground truth data tensor to be stored, typically in the same shape as `input`.
+        - pat_id : int or str
+            The patient ID used to index the data in memory.
+        - vid_id : int or str
+            The video ID used to index the data in memory.
+
+        Notes:
+        -------
+        - The input data is scaled to the range [0, 255] after subtracting the minimum value and dividing by the maximum value to ensure normalized intensity. The scaled data is then stored as 8-bit unsigned integers.
+        - The ground truth data is also scaled to the range [0, 255] and stored as 8-bit unsigned integers.
+        - This method updates the class-level memory (`cls.mem_inputs`, `cls.mem_gts`, etc.) for the corresponding patient and video IDs.
+
+        ====================================================================================================================
+        """
         # print('setting', pat_id, vid_id)
         
         cls.mem_inputs_max[pat_id][vid_id] = input.max(-1)[0].max(-1)[0]
@@ -79,6 +122,40 @@ class ACDC_radial_ispace(Dataset):
 
     @classmethod
     def get_data(cls, pat_id, vid_id):
+        """
+        AERS: 
+        Retrieves and reconstructs the stored input and ground truth data.
+
+        This class method retrieves the scaled input and ground truth data for a specific patient ID (`pat_id`) 
+        and video ID (`vid_id`) from the class-level memory. The method then reconstructs the original input 
+        data by applying the inverse of the scaling operation.
+
+        Parameters:
+        ------------
+        - pat_id : int or str
+            The patient ID used to retrieve the data from memory.
+        - vid_id : int or str
+            The video ID used to retrieve the data from memory.
+
+        Returns:
+        --------
+        - tuple of torch.Tensor
+            A tuple containing:
+            - `ret_inp` (torch.Tensor): The reconstructed input data tensor.
+            - `ret_gt` (torch.Tensor): The ground truth data tensor.
+        
+        Raises:
+        -------
+        - AssertionError
+            If the data for the specified `pat_id` and `vid_id` has not been stored yet.
+        
+        Notes:
+        ------
+        - The input data is reconstructed from its stored scaled version by reversing the normalization process.
+        - The ground truth data is also retrieved and returned as a float tensor.
+
+        ====================================================================================================================
+        """
         # print('loading', pat_id, vid_id)
 
         maxs = (cls.mem_inputs_max[pat_id][vid_id]).unsqueeze(-1).unsqueeze(-1)
@@ -93,11 +170,67 @@ class ACDC_radial_ispace(Dataset):
 
     @classmethod
     def check_data(cls, pat_id, vid_id):          # AERS: checks if these data are stored yet?
+        """
+        AERS:
+        Checks if the data for a specific patient and video ID is stored in memory.
+
+        This class method verifies whether the input and ground truth data for the given patient ID (`pat_id`) 
+        and video ID (`vid_id`) have already been stored in the class-level memory.
+
+        Parameters:
+        -----------
+        - pat_id : int or str
+            The patient ID used to check the data in memory.
+        - vid_id : int or str
+            The video ID used to check the data in memory.
+
+        Returns:
+        --------
+        - bool
+            Returns `True` if the data for the specified `pat_id` and `vid_id` is stored, otherwise `False`.
+        
+        Notes:
+        ------
+        - This method is useful for determining whether data retrieval or initialization processes should be triggered.
+
+        ====================================================================================================================
+        """
         # print('checking', pat_id, vid_id)
         return cls.mem_stored_bool[pat_id][vid_id] == 1
 
     @classmethod
     def bulk_set_data(cls, actual_pnums, vnums, inputs, gts):
+        """
+        AERS:
+        Sets and stores input and ground truth data in bulk for multiple patients and videos.
+
+        This class method iterates over a batch of input and ground truth data, storing each item 
+        individually for the corresponding patient ID (`pnum`) and video ID (`vnum`).
+
+        Parameters:
+        -----------
+        - actual_pnums : list of int or str
+            A list of patient IDs corresponding to the batch of data.
+        - vnums : list of int or str
+            A list of video IDs corresponding to the batch of data.
+        - inputs : torch.Tensor
+            A batch of input data tensors with shape `(B, 120, Chan, 256, 256)`, where `B` is the batch size.
+        - gts : torch.Tensor
+            A batch of ground truth data tensors with shape `(B, 120, 1, 256, 256)`, where `B` is the batch size.
+
+        Raises:
+        -------
+        - AssertionError
+            If the `inputs` or `gts` tensors do not have 5 dimensions as expected.
+
+        Notes:
+        ------
+        - This method ensures that the data for each patient and video in the batch is individually scaled 
+        and stored using the `set_data` method.
+        - The 120 frames were set by NRM's experiment for ACDC dataset.
+
+        ====================================================================================================================
+        """
         assert(len(inputs.shape) == 5)
         assert(len(gts.shape) == 5)
         for i,(pnum, vnum) in enumerate(zip(actual_pnums, vnums)):
@@ -107,6 +240,37 @@ class ACDC_radial_ispace(Dataset):
 
     @classmethod            # AERS: class methods is used here because for image space data, each GPU will have a separate copy
     def data_init(cls, whole_num_vids_per_patient, parameters):
+        """
+        AERS:
+        Initializes the data storage for each patient and video.
+
+        This class method sets up the data structures needed to store input and ground truth data 
+        for each patient and video during training or testing. The method initializes the memory 
+        with zeros or empty structures based on the provided parameters.
+
+        Parameters:
+        -----------
+        - whole_num_vids_per_patient : list of int
+            A list where each entry represents the number of videos per patient.
+        - parameters : dict
+                A dictionary of parameters that control the initialization process. 
+                Expected keys include:
+                
+                - 'memoise_ispace' (bool): Flag indicating whether to memoize image space data.
+                - 'coil_combine' (str): Method for coil combination ('SOS' or other methods).
+                - 'init_skip_frames' (int): Number of initial frames to skip.
+                - 'max_frames' (int): Maximum number of frames per video.
+                - 'num_coils' (int): Number of coils for imaging.
+                - 'image_resolution' (int): The resolution of the image (width and height in pixels).
+
+        Notes:
+        ------
+        - This method uses class-level memory (e.g., `cls.mem_inputs`, `cls.mem_gts`) to store data structures for each patient and video.
+        - The method also uses shared memory to allow multiple processes to access the data concurrently.
+        - This method only runs once to avoid re-initializing the data (controlled by `cls.data_init_done`).
+
+        ====================================================================================================================
+        """
         if cls.data_init_done:
             return
         for n_vids in whole_num_vids_per_patient:  # AERS: Load all data for training or testing
@@ -134,18 +298,26 @@ class ACDC_radial_ispace(Dataset):
 
         cls.data_init_done = True
 
-
-
     def __init__(self, path, parameters, device, train = True, visualise_only = False):
         """
         Initializes the ACDC_radial_ispace dataset.
 
         Parameters:
-        path (str): Path to the dataset.
-        parameters (dict): Dictionary of parameters for dataset configuration.
-        device (torch.device): Device to use for computations.
-        train (bool, optional): Whether the dataset is for training. Defaults to True.
-        visualise_only (bool, optional): Whether to only visualize the data. Defaults to False.
+        -------------
+        - path : str
+            Path to the dataset.
+        - parameters : dict
+            Dictionary of parameters for dataset configuration.
+        - device : torch.device
+            Device to use for computations.
+        - train : bool, optional
+            Whether the dataset is for training. 
+                Defaults to True.
+        - visualise_only : bool, optional
+            Whether to only visualize the data. 
+                Defaults to False.
+
+        ==========================================================================
         """
 
         super(ACDC_radial_ispace, self).__init__()
@@ -164,10 +336,16 @@ class ACDC_radial_ispace(Dataset):
         Retrieves an item from the dataset.
 
         Parameters:
-        i (int): Index of the item to retrieve.
+        -------------
+        - i : int
+            Index of the item to retrieve.
 
         Returns:
-        tuple: A tuple containing the memory flag, data, and ground truth.
+        -----------
+        - tuple
+            A tuple containing the memory flag, data, and ground truth.
+
+        ==========================================================================
         """
         if not ACDC_radial_ispace.data_init_done:                  # AERS: First thing it does is to make sure that the initialization is done
             ACDC_radial_ispace.data_init(self.orig_dataset.whole_num_vids_per_patient, self.parameters)
@@ -201,10 +379,12 @@ class ACDC_radial(Dataset):
     Custom dataset for ACDC radial data.
 
     Methods:
-    index_to_location(i): Converts a flat index to patient and video IDs.
-    __init__(path, parameters, device, train=True, visualise_only=False): Initializes the dataset.
-    __getitem__(i): Retrieves an item from the dataset.
-    __len__(): Returns the length of the dataset.
+    ----------
+    - index_to_location(i): Converts a flat index to patient and video IDs.
+    - __init__(path, parameters, device, train=True, visualise_only=False): Initializes the dataset.
+    - __getitem__(i): Retrieves an item from the dataset.
+    - __len__(): Returns the length of the dataset.
+    ===================================================================================================
     """
     def __init__(self, path, parameters, device, train = True, visualise_only = False): # AERS: Each video has 150 frames, 120 are used in training and 30 are used in testing. 
         # AERS: ACTUALLY, as per Niraj, June 7th 11:30AM video 53:07. He doesn't use 120 frames for training because the memory runs out, so he used 32 defined in params.py 'loop_videos'
@@ -213,11 +393,21 @@ class ACDC_radial(Dataset):
         Initializes the ACDC_radial dataset.
 
         Parameters:
-        path (str): Path to the dataset.
-        parameters (dict): Dictionary of parameters for dataset configuration.
-        device (torch.device): Device to use for computations.
-        train (bool, optional): Whether the dataset is for training. Defaults to True.
-        visualise_only (bool, optional): Whether to only visualize the data. Defaults to False.
+        -------------
+        - path : str
+            Path to the dataset.
+        - parameters : dict
+            Dictionary of parameters for dataset configuration.
+        - device : torch.device
+            Device to use for computations.
+        - train : bool, optional
+            Whether the dataset is for training. 
+                Defaults to True.
+        - visualise_only : bool, optional
+            Whether to only visualize the data. 
+                Defaults to False.
+
+        ====================================================================================================
         """
         super(ACDC_radial, self).__init__()
         self.path = path
@@ -289,10 +479,16 @@ class ACDC_radial(Dataset):
         Converts a flat index to patient and video IDs.
 
         Parameters:
-        i (int): The flat index.
+        --------------
+        - i : int
+            The flat index.
 
         Returns:
-        tuple: The patient and video IDs corresponding to the flat index.
+        ----------
+        - tuple
+            The patient and video IDs corresponding to the flat index.
+            
+        ====================================================================================================
         """
         p_num = (self.vid_cumsum <= i).sum()
         if p_num == 0:
@@ -307,10 +503,16 @@ class ACDC_radial(Dataset):
         Retrieves an item from the dataset.
 
         Parameters:
-        i (int): The index of the item to retrieve.
+        -------------
+        - i : int
+            The index of the item to retrieve.
 
         Returns:
-        tuple: A tuple containing various data tensors related to the item.
+        -----------
+        - tuple
+            A tuple containing various data tensors related to the item.
+
+        ====================================================================================================
         """
 
         p_num, v_num = self.index_to_location(i)
@@ -343,6 +545,9 @@ class ACDC_radial(Dataset):
         Returns the length of the dataset.
 
         Returns:
-        int: The length of the dataset.
+        -----------
+        - int 
+            The length of the dataset.
+
         """
         return self.num_videos 

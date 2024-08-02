@@ -39,13 +39,122 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="functions.dual_fft_loss">
 <span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">dual_fft_loss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">phase_loss</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp_loss</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha_phase</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha_amp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/functions.html#dual_fft_loss"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#functions.dual_fft_loss" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>AERS:
+Combines phase and amplitude losses for complex-valued inputs using Fourier transforms.</p>
+<p>This function creates a composite loss function that applies separate loss functions to the phase and
+amplitude components of complex-valued data. The phase and amplitude components are first extracted from
+the real and imaginary parts of the input, and then the respective loss functions are applied and
+combined using the specified weighting factors.</p>
+<section id="parameters">
+<h2>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>phase_loss<span class="classifier">callable</span></dt><dd><p>A loss function that will be applied to the phase components of the inputs.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>amp_loss<span class="classifier">callable</span></dt><dd><p>A loss function that will be applied to the amplitude components of the inputs.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>alpha_phase<span class="classifier">float, optional</span></dt><dd><p>A weighting factor for the phase loss. Default is 1.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>alpha_amp<span class="classifier">float, optional</span></dt><dd><p>A weighting factor for the amplitude loss. Default is 1.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="returns">
+<h2>Returns:<a class="headerlink" href="#returns" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>callable</dt><dd><p>A composite loss function that can be applied to pairs of complex-valued tensors.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="notes">
+<h2>Notes:<a class="headerlink" href="#notes" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>This function returns a callable that expects two inputs, which are complex-valued tensors with their last dimension containing the real and imaginary parts.</p></li>
+<li><p>The returned function will first unbind the complex-valued inputs into their real and imaginary parts, convert these to amplitude and phase, and then apply the respective loss functions.</p></li>
+</ul>
+</section>
+</dd></dl>
 
+<hr class="docutils" />
 <dl class="py function">
 <dt class="sig sig-object py" id="functions.fetch_loss_function">
 <span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">fetch_loss_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loss_str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loss_params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/functions.html#fetch_loss_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#functions.fetch_loss_function" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>AERS:
+Returns the appropriate loss function based on the provided loss type string.</p>
+<p>This function selects and returns the specified loss function, potentially with additional
+parameters and configurations. If the loss function is a combination of multiple losses,
+it constructs the appropriate composite loss.</p>
+<section id="id1">
+<h2>Parameters:<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>loss_str<span class="classifier">str</span></dt><dd><p>The type of loss function to return. Expected values include:</p>
+<ul>
+<li><p>‘None’ : No loss function, returns None.</p></li>
+<li><p>‘Cosine’ : Cosine similarity loss.</p></li>
+<li><p>‘L1’ : L1 loss (mean absolute error).</p></li>
+<li><p>‘L2’ : L2 loss (mean squared error).</p></li>
+<li><p>‘SSIM’ : Structural Similarity Index Measure loss.</p></li>
+<li><p>‘MS_SSIM’ : Multi-Scale Structural Similarity Index Measure loss.</p></li>
+<li><p>‘Cosine-L1’ : Combined Cosine similarity and L1 loss.</p></li>
+<li><p>‘Cosine-L2’ : Combined Cosine similarity and L2 loss.</p></li>
+<li><p>‘Cosine-SSIM’ : Combined Cosine similarity and SSIM loss.</p></li>
+<li><p>‘Cosine-MS_SSIM’ : Combined Cosine similarity and MS-SSIM loss.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>device<span class="classifier">torch.device</span></dt><dd><p>The device on which the loss function will be computed (e.g., ‘cpu’ or ‘cuda’).</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>loss_params<span class="classifier">dict</span></dt><dd><p>A dictionary of parameters needed for specific loss functions, such as:</p>
+<ul>
+<li><p>‘SSIM_window’ : The window size for SSIM loss.</p></li>
+<li><p>‘alpha_phase’ : The weighting factor for phase in combined losses.</p></li>
+<li><p>‘alpha_amp’ : The weighting factor for amplitude in combined losses.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id2">
+<h2>Returns:<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>callable or None</dt><dd><p>The requested loss function as a callable object, or None if ‘None’ is specified.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id3">
+<h2>Notes:<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Composite losses like ‘Cosine-L1’ and ‘Cosine-L2’ are constructed using the <cite>dual_fft_loss</cite> function, which expects shifted Fourier transforms as input.</p></li>
+<li><p>Ensure that <cite>loss_params</cite> contains all the required parameters for the selected loss function.</p></li>
+</ul>
+</section>
+</dd></dl>
 
+<hr class="docutils" />
 <dl class="py function">
 <dt class="sig sig-object py" id="functions.fspecial_gauss">
 <span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">fspecial_gauss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/functions.html#fspecial_gauss"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#functions.fspecial_gauss" title="Link to this definition">¶</a></dt>
@@ -55,27 +164,238 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="functions.get_coil_mask">
 <span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">get_coil_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta_init</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_coils</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">128</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/functions.html#get_coil_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#functions.get_coil_mask" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>AERS:
+Generates coil sensitivity masks based on Gaussian distributions for a specified number of coils.</p>
+<p>This function creates a set of coil sensitivity masks, where each mask represents the sensitivity pattern
+of a coil in a parallel MRI system. The coils are evenly distributed around a circle, and each coil’s sensitivity
+is modeled as a Gaussian distribution centered at a specific location determined by the angle <cite>theta_init</cite>.</p>
+<section id="id4">
+<h2>Parameters:<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>theta_init<span class="classifier">float, optional</span></dt><dd><p>The initial angle (in radians) where the first coil’s sensitivity is centered. Default is 0.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>n_coils<span class="classifier">int, optional</span></dt><dd><p>The number of coils for which sensitivity masks are generated. Default is 8.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>resolution<span class="classifier">int, optional</span></dt><dd><p>The resolution of each coil mask, specifying both the height and width of the square mask. Default is 128.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id5">
+<h2>Returns:<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>torch.Tensor</dt><dd><p>A tensor of shape <cite>(n_coils, resolution, resolution)</cite> containing the generated coil sensitivity masks,
+where each mask is normalized between 0 and 1.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id6">
+<h2>Notes:<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>The function uses a Gaussian filter to model each coil’s sensitivity, with the sigma value controlling the spread.</p></li>
+<li><p>The masks are generated by placing the Gaussian distributions on a larger grid, then extracting and normalizing the subregion that corresponds to the desired resolution.</p></li>
+</ul>
+</section>
+</dd></dl>
 
+<hr class="docutils" />
 <dl class="py function">
 <dt class="sig sig-object py" id="functions.get_golden_bars">
 <span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">get_golden_bars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_bars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">376</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">128</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/functions.html#get_golden_bars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#functions.get_golden_bars" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>AERS:
+Generates Golden Angle (GA) masks for a specified number of bars and resolution.</p>
+<p>This function creates a series of binary masks using the Golden Angle (GA) method, where each mask is
+rotated by an increment determined by the golden angle. The function generates masks for a finite
+number of GAs (default is 376), because GA of n=0 and n=377 are very similar.</p>
+<section id="id7">
+<h2>Parameters:<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>num_bars<span class="classifier">int, optional</span></dt><dd><p>The number of golden angle masks to generate. Default is 376.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>resolution<span class="classifier">int, optional</span></dt><dd><p>The resolution of each mask, specifying both the height and width. Default is 128.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id8">
+<h2>Returns:<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>torch.Tensor</dt><dd><p>A tensor containing the generated golden angle masks with dimensions <cite>(num_bars, resolution, resolution)</cite>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id9">
+<h2>Notes:<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>The generated masks are useful in applications where rotational symmetry or uniform sampling over angles is required.</p></li>
+<li><p>The output tensor has dimensions <cite>num_bars x resolution x resolution</cite>, where each slice along the first dimension corresponds to a different angle generated using the Golden Angle method.</p></li>
+</ul>
+</section>
+</dd></dl>
 
+<hr class="docutils" />
 <dl class="py function">
 <dt class="sig sig-object py" id="functions.get_window_mask">
 <span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">get_window_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta_init</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_radial_views</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">14</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">128</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/functions.html#get_window_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#functions.get_window_mask" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>AERS:
+Generates a windowed binary mask based on radial views and an initial angle.</p>
+<p>This function creates a windowed binary mask, where each window corresponds to a different
+set of angles, calculated based on the specified number of radial views and an initial angle.
+The masks for each window are summed and then binarized.</p>
+<section id="id10">
+<h2>Parameters:<a class="headerlink" href="#id10" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>theta_init<span class="classifier">float, optional</span></dt><dd><p>The initial angle (in degrees) for the first radial view. Default is 0.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>window_size<span class="classifier">int, optional</span></dt><dd><p>The number of windows (or layers) in the mask. Default is 7.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>number_of_radial_views<span class="classifier">int, optional</span></dt><dd><p>The number of radial views used to calculate angles for the mask. Default is 14.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>resolution<span class="classifier">int, optional</span></dt><dd><p>The resolution of each window in the mask, specifying both the height and width. Default is 128.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id11">
+<h2>Returns:<a class="headerlink" href="#id11" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>torch.Tensor</dt><dd><p>A binary tensor of shape <cite>(window_size, resolution, resolution)</cite> where each layer in the
+first dimension corresponds to a different window with radial masks.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id12">
+<h2>Notes:<a class="headerlink" href="#id12" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>The function first calculates the angles for each radial view and then creates a binary mask for each combination of window and radial view.</p></li>
+<li><p>The resulting mask for each window is the sum of masks generated for that window, and is then binarized using the sign function.</p></li>
+</ul>
+</section>
+</dd></dl>
 
+<hr class="docutils" />
 <dl class="py function">
 <dt class="sig sig-object py" id="functions.mask_theta">
 <span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">mask_theta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/functions.html#mask_theta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#functions.mask_theta" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>AERS:
+Generates a binary mask with a line drawn at a specific angle.</p>
+<p>This function creates a binary mask of a given size and draws a line at the specified angle <cite>theta</cite>.
+The line is drawn using a custom algorithm that finds the closest approximation to the desired angle
+within the specified mask dimensions.</p>
+<section id="id13">
+<h2>Parameters:<a class="headerlink" href="#id13" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>theta<span class="classifier">float</span></dt><dd><p>The angle at which to draw the line, in degrees. The angle is taken modulo 180 to ensure it falls
+within the range [0, 180).</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>size<span class="classifier">tuple of int</span></dt><dd><p>The dimensions of the output mask. Expected to be a tuple in the format <cite>(channels, height, width)</cite>
+where <cite>channels</cite> is typically 1 for a 2D mask.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id14">
+<h2>Returns:<a class="headerlink" href="#id14" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>torch.Tensor</dt><dd><p>A binary tensor of the specified size with a line drawn at the specified angle. The line is represented
+by <a href="#id15"><span class="problematic" id="id16">`</span></a>1`s in the tensor, and the rest of the tensor is filled with <a href="#id17"><span class="problematic" id="id18">`</span></a>0`s.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id19">
+<h2>Notes:<a class="headerlink" href="#id19" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>The algorithm determines the best line to approximate the desired angle by calculating the cosine of the angle
+and comparing it to possible lines within the grid.</p></li>
+<li><p>The function handles cases where the line extends beyond the mask’s boundaries by adjusting the start and end points.</p></li>
+<li><p>The <cite>draw_line</cite> function is called to actually render the line on the binary mask.</p></li>
+</ul>
+</section>
+</dd></dl>
 
+<hr class="docutils" />
 <dl class="py function">
 <dt class="sig sig-object py" id="functions.save_coils">
 <span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">save_coils</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta_init</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_coils</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/functions.html#save_coils"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#functions.save_coils" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>AERS: Generates and saves coil sensitivity masks as images.</p>
+<p>This function generates coil sensitivity masks using the <cite>get_coil_mask</cite> function and saves each mask
+as a grayscale image file. The images are saved in the current directory with filenames <cite>Coil_0.png</cite>,
+<cite>Coil_1.png</cite>, etc., corresponding to each coil.</p>
+<section id="id20">
+<h2>Parameters:<a class="headerlink" href="#id20" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>theta_init<span class="classifier">float</span></dt><dd><p>The initial angle (in radians) where the first coil’s sensitivity is centered.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>n_coils<span class="classifier">int, optional</span></dt><dd><p>The number of coil sensitivity masks to generate and save. Default is 4.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id21">
+<h2>Returns:<a class="headerlink" href="#id21" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>None</dt><dd><p>This function saves images to the file system and does not return any value.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id22">
+<h2>Notes:<a class="headerlink" href="#id22" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>The generated images are saved in the PNG format, with the filename format <cite>Coil_&lt;index&gt;.png</cite>.</p></li>
+<li><p>The function uses a grayscale colormap (<cite>cmap=’gray’</cite>) when saving the images.</p></li>
+</ul>
+<hr class="docutils" />
+</section>
+</dd></dl>
 
 </section>
 

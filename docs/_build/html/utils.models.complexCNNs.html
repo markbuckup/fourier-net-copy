@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>utils.models.complexCNNs module &#8212; FOURIER-Net 20240614 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=f63d8bfa" />
+    <link rel="stylesheet" type="text/css" href="_static/haiku.css?v=dfa0e015" />
+    <script src="_static/documentation_options.js?v=6ad00ebc"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="DDP_paradigms_LSTM_nufft module" href="DDP_paradigms_LSTM_nufft.html" />
+    <link rel="prev" title="utils.models" href="utils.models.html" /> 
+  </head><body>
+      <div class="header" role="banner"><h1 class="heading"><a href="index.html">
+          <span>FOURIER-Net 20240614 documentation</span></a></h1>
+        <h2 class="heading"><span>utils.models.complexCNNs module</span></h2>
+      </div>
+      <div class="topnav" role="navigation" aria-label="Top">
+      
+        <p>
+        «&#160;&#160;<a href="utils.models.html">utils.models</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="DDP_paradigms_LSTM_nufft.html">DDP_paradigms_LSTM_nufft module</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content" role="main">
+        
+        
+  <section id="module-utils.models.complexCNNs">
+<span id="utils-models-complexcnns-module"></span><h1>utils.models.complexCNNs module<a class="headerlink" href="#module-utils.models.complexCNNs" title="Link to this heading">¶</a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">¶</a></h2>
+</section>
+<section id="module-complexCNNs.cmplx_activation">
+<span id="complexcnns-cmplx-activation-module"></span><h2>complexCNNs.cmplx_activation module<a class="headerlink" href="#module-complexCNNs.cmplx_activation" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_activation.CReLU">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.cmplx_activation.</span></span><span class="sig-name descname"><span class="pre">CReLU</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_activation.html#CReLU"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_activation.CReLU" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ReLU</span></code></p>
+<p>AERS:
+Custom ReLU activation function that extends the PyTorch nn.ReLU class.</p>
+<p>This class implements a variation of the Rectified Linear Unit (ReLU) activation function.</p>
+<section id="paramaters">
+<h3>Paramaters:<a class="headerlink" href="#paramaters" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>inplace<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>If set to True, will do the operation in-place without using extra memory for a new tensor.</dt><dd><p>Default=False</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_activation.ModReLU">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.cmplx_activation.</span></span><span class="sig-name descname"><span class="pre">ModReLU</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_channels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_activation.html#ModReLU"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_activation.ModReLU" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<section id="id1">
+<h3>Paramaters:<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>in_channels<span class="classifier">int</span></dt><dd><p>The number of input channels.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>inplace<span class="classifier">bool</span></dt><dd><p>If True, the input is modified.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<hr class="docutils" />
+<dl class="py method">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_activation.ModReLU.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_activation.html#ModReLU.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_activation.ModReLU.forward" title="Link to this definition">¶</a></dt>
+<dd><p>AERS
+Forward pass of the ModReLU layer.</p>
+<p>This method takes a complex-valued input tensor, separates it into its real and imaginary components,
+converts these components from cylindrical to polar coordinates, applies the ModReLU activation
+function on the magnitude, and then converts the result back to cylindrical coordinates.
+The output is a complex-valued tensor.</p>
+<section id="id2">
+<h4>Paramaters:<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><dl class="simple">
+<dt>input<span class="classifier">torch.Tensor</span></dt><dd><p>A complex-valued tensor with shape <cite>(…, 2)</cite>, where the last dimension contains the real and imaginary parts of the input.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="returns">
+<h4>Returns:<a class="headerlink" href="#returns" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><dl class="simple">
+<dt>output<span class="classifier">torch.Tensor</span></dt><dd><p>A complex-valued tensor with the same shape as the input, where the ModReLU activation function has been applied.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="notes">
+<h4>Notes:<a class="headerlink" href="#notes" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>The <cite>input</cite> tensor is assumed to be in a format where the last dimension contains the real and imaginary parts (i.e., <cite>[…, 2]</cite>).</p></li>
+<li><p>The method relies on helper functions <cite>convert_cylindrical_to_polar</cite> and <cite>convert_polar_to_cylindrical</cite> for coordinate transformations.</p></li>
+<li><p>The activation function applied is the ReLU function with an added bias term broadcasted to match the shape of the magnitude component.</p></li>
+</ul>
+</section>
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="py method">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_activation.ModReLU.reset_parameters">
+<span class="sig-name descname"><span class="pre">reset_parameters</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_activation.html#ModReLU.reset_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_activation.ModReLU.reset_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>AERS:
+Resets the parameters of the module to their initial state.</p>
+<p>This method initializes the parameter <cite>b</cite> of the module by setting its values to a uniform distribution
+within the range [-0.1, 0.1].</p>
+<section id="id3">
+<h4>Returns:<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h4>
+<p>None.</p>
+</section>
+</dd></dl>
+
+</section>
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_activation.ZReLU">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.cmplx_activation.</span></span><span class="sig-name descname"><span class="pre">ZReLU</span></span><a class="reference internal" href="_modules/complexCNNs/cmplx_activation.html#ZReLU"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_activation.ZReLU" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>AERS:
+ZReLU activation function.</p>
+<p>This class implements the ZReLU activation function, which applies a ReLU-like operation on complex-valued inputs,         zeroing out parts of the input based on the phase of the complex numbers.</p>
+<hr class="docutils" />
+<p>AERS:
+Initializes the ZReLU activation function.</p>
+<p>This is a basic initialization function that calls the parent class’s initializer.</p>
+<hr class="docutils" />
+<dl class="py method">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_activation.ZReLU.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_activation.html#ZReLU.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_activation.ZReLU.forward" title="Link to this definition">¶</a></dt>
+<dd><p>AERS:
+Forward pass of the ZReLU layer.</p>
+<p>This method processes a complex-valued input tensor by separating it into its real
+and imaginary components, converting them to polar coordinates, and then applying
+a condition where only complex numbers with a phase between 0 and π/2 are retained,
+while others are set to zero.</p>
+<section id="id4">
+<h3>Paramaters:<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>input<span class="classifier">torch.Tensor</span></dt><dd><p>A complex-valued tensor with shape (…, 2), where the last dimension contains
+the real and imaginary parts of the input.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id5">
+<h3>Returns:<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>output<span class="classifier">torch.Tensor</span></dt><dd><p>A complex-valued tensor with the same shape as the input, where elements that
+do not meet the phase condition are set to zero.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<hr class="docutils" />
+<section id="module-complexCNNs.cmplx_conv">
+<span id="complexcnns-cmplx-conv-module"></span><h2>complexCNNs.cmplx_conv module<a class="headerlink" href="#module-complexCNNs.cmplx_conv" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_conv.ComplexConv">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.cmplx_conv.</span></span><span class="sig-name descname"><span class="pre">ComplexConv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_channels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_channels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stride</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dilation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groups</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conv_transposed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_conv.html#ComplexConv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_conv.ComplexConv" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Initialize internal Module state, shared by both nn.Module and ScriptModule.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_conv.ComplexConv.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_conv.html#ComplexConv.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_conv.ComplexConv.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Considering a complex-valued input <cite>z = x + iy</cite> to be convolved by a complex-valued filter <cite>h = a + ib</cite>,
+where the output <cite>O = z * h</cite> (where <cite>*</cite> is a complex convolution operator), then:</p>
+<blockquote>
+<div><p><cite>O = (x * a) + i(x * b) + i(y * a) - (y * b)</cite></p>
+</div></blockquote>
+<p>To calculate each of the 4 convolution operations in the equation, a simple way to implement this is by using two convolution layers:
+one layer for the real weights <cite>a</cite> and the other for the imaginary weights <cite>b</cite>. This can be done by concatenating both the real
+and imaginary parts of the input and convolving over both as follows:</p>
+<blockquote>
+<div><p><span class="math notranslate nohighlight">\(c_r = [x; y] * a\)</span>, and <span class="math notranslate nohighlight">\(c_i = [x; y] * b\)</span></p>
+</div></blockquote>
+<p>So that:</p>
+<p><span class="math notranslate nohighlight">\(O_{      {real}} = c_r[  {real}] - c_i[  {real}]\)</span></p>
+<p><span class="math notranslate nohighlight">\(O_{      {imag}} = c_r[  {imag}] - c_i[  {imag}]\)</span></p>
+</dd></dl>
+
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_conv.ComplexConv1d">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.cmplx_conv.</span></span><span class="sig-name descname"><span class="pre">ComplexConv1d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_channels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_channels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stride</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dilation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groups</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_conv.html#ComplexConv1d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_conv.ComplexConv1d" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#complexCNNs.cmplx_conv.ComplexConv" title="complexCNNs.cmplx_conv.ComplexConv"><code class="xref py py-class docutils literal notranslate"><span class="pre">ComplexConv</span></code></a></p>
+<p>Applies a 1D Complex convolution over an input signal composed of several input planes.</p>
+<section id="shape">
+<h3>Shape:<a class="headerlink" href="#shape" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li><p>Input : <span class="math notranslate nohighlight">\((N, C_{in}, L_{in}, 2)\)</span></p></li>
+<li><p>Output : <span class="math notranslate nohighlight">\((N, C_{out}, L_{out}, 2)\)</span></p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="id6">
+<h3>Paramaters:<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>in_channels<span class="classifier">int</span></dt><dd><p>Number of channels in the input image</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>out_channels<span class="classifier">int</span></dt><dd><p>Number of channels produced by the convolution</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>kernel_size<span class="classifier">int or tuple</span></dt><dd><p>Size of the convolving kernel</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>stride<span class="classifier">int or tuple, optional</span></dt><dd><dl class="simple">
+<dt>Stride of the convolution.</dt><dd><p>Default: 1</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>padding<span class="classifier">int or tuple, optional</span></dt><dd><dl class="simple">
+<dt>Zero-padding added to both sides of the input.</dt><dd><p>Default: 0</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>dilation :int or tuple, optional</dt><dd><dl class="simple">
+<dt>Spacing between kernel elements.</dt><dd><p>Default: 1</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>groups<span class="classifier">int, optional</span></dt><dd><dl class="simple">
+<dt>Number of blocked connections from input channels to output channels.</dt><dd><p>Default: 1</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>bias<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, adds a learnable bias to the output.</dt><dd><p>Default: <code class="docutils literal notranslate"><span class="pre">True</span></code></p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="attributes">
+<h3>Attributes:<a class="headerlink" href="#attributes" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>weight<span class="classifier">Tensor</span></dt><dd><p>The learnable weights of the module of shape (out_channels, in_channels, kernel_size, 2)</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>bias<span class="classifier">Tensor</span></dt><dd><p>The learnable bias of the module of shape (out_channels, 2)</p>
+</dd>
+</dl>
+</li>
+</ul>
+<hr class="docutils" />
+<p>Initialize internal Module state, shared by both nn.Module and ScriptModule.</p>
+</section>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_conv.ComplexConv2d">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.cmplx_conv.</span></span><span class="sig-name descname"><span class="pre">ComplexConv2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_channels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_channels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stride</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1,</span> <span class="pre">1)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0,</span> <span class="pre">0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dilation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1,</span> <span class="pre">1)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groups</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_conv.html#ComplexConv2d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_conv.ComplexConv2d" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#complexCNNs.cmplx_conv.ComplexConv" title="complexCNNs.cmplx_conv.ComplexConv"><code class="xref py py-class docutils literal notranslate"><span class="pre">ComplexConv</span></code></a></p>
+<p>Applies a 2D Complex convolution over an input signal composed of several input planes.</p>
+<section id="id7">
+<h3>Shape:<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Input: <span class="math notranslate nohighlight">\((N, C_{in}, L_{in}, 2)\)</span></p></li>
+<li><p>Output: <span class="math notranslate nohighlight">\((N, C_{out}, L_{out}, 2)\)</span></p></li>
+</ul>
+</section>
+<section id="id8">
+<h3>Paramaters:<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>in_channels<span class="classifier">int</span></dt><dd><p>Number of channels in the input image</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>out_channels<span class="classifier">int</span></dt><dd><p>Number of channels produced by the convolution</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>kernel_size<span class="classifier">int or tuple</span></dt><dd><p>Size of the convolving kernel</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>stride<span class="classifier">int or tuple, optional</span></dt><dd><dl class="simple">
+<dt>Stride of the convolution.</dt><dd><p>Default: 1</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>padding<span class="classifier">int or tuple, optional)</span></dt><dd><dl class="simple">
+<dt>Zero-padding added to both sides of the input.</dt><dd><p>Default: 0</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>dilation<span class="classifier">int or tuple, optional</span></dt><dd><dl class="simple">
+<dt>Spacing between kernel elements.</dt><dd><p>Default: 1</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>groups<span class="classifier">int, optional</span></dt><dd><dl class="simple">
+<dt>Number of blocked connections from input channels to output channels.</dt><dd><p>Default: 1</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>bias<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, adds a learnable bias to the output.</dt><dd><p>Default: <code class="docutils literal notranslate"><span class="pre">True</span></code></p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id9">
+<h3>Attributes:<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>weight<span class="classifier">Tensor</span></dt><dd><p>The learnable weights of the module of shape (out_channels, in_channels, kernel_size, 2)</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>bias<span class="classifier">Tensor</span></dt><dd><p>The learnable bias of the module of shape (out_channels, 2)</p>
+</dd>
+</dl>
+</li>
+</ul>
+<hr class="docutils" />
+<p>Initialize internal Module state, shared by both nn.Module and ScriptModule.</p>
+</section>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_conv.ComplexConv3d">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.cmplx_conv.</span></span><span class="sig-name descname"><span class="pre">ComplexConv3d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_channels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_channels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stride</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1,</span> <span class="pre">1,</span> <span class="pre">1)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0,</span> <span class="pre">0,</span> <span class="pre">0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dilation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1,</span> <span class="pre">1,</span> <span class="pre">1)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groups</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_conv.html#ComplexConv3d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_conv.ComplexConv3d" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#complexCNNs.cmplx_conv.ComplexConv" title="complexCNNs.cmplx_conv.ComplexConv"><code class="xref py py-class docutils literal notranslate"><span class="pre">ComplexConv</span></code></a></p>
+<p>Applies a 3D complex convolution over an input signal composed of several input planes.</p>
+<section id="id10">
+<h3>Paramaters:<a class="headerlink" href="#id10" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>in_channels<span class="classifier">int</span></dt><dd><p>Number of channels in the input image</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>out_channels<span class="classifier">int</span></dt><dd><p>Number of channels produced by the convolution</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>kernel_size<span class="classifier">int or tuple</span></dt><dd><p>Size of the convolving kernel</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>stride int or tuple, optional</dt><dd><dl class="simple">
+<dt>Stride of the convolution.</dt><dd><p>Default: 1</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>padding<span class="classifier">int or tuple, optional</span></dt><dd><dl class="simple">
+<dt>Zero-padding added to both sides of the input.</dt><dd><p>Default: 0</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>dilation<span class="classifier">int or tuple, optional</span></dt><dd><dl class="simple">
+<dt>Spacing between kernel elements.</dt><dd><p>Default: 1</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>groups<span class="classifier">int, optional</span></dt><dd><dl class="simple">
+<dt>Number of blocked connections from input channels to output channels.</dt><dd><p>Default: 1</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>bias<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, adds a learnable bias to the output.</dt><dd><p>Default: <code class="docutils literal notranslate"><span class="pre">True</span></code></p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id11">
+<h3>Shape:<a class="headerlink" href="#id11" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li><p>Input: <span class="math notranslate nohighlight">\((N, C_{in}, L_{in}, 2)\)</span></p></li>
+<li><p>Output: <span class="math notranslate nohighlight">\((N, C_{out}, L_{out}, 2)\)</span></p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="id12">
+<h3>Attributes:<a class="headerlink" href="#id12" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>weight<span class="classifier">Tensor</span></dt><dd><p>The learnable weights of the module of shape (out_channels, in_channels, kernel_size, 2)</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>bias<span class="classifier">Tensor</span></dt><dd><p>The learnable bias of the module of shape (out_channels, 2)</p>
+</dd>
+</dl>
+</li>
+</ul>
+<hr class="docutils" />
+<p>Initialize internal Module state, shared by both nn.Module and ScriptModule.</p>
+</section>
+</dd></dl>
+
+</section>
+<section id="module-complexCNNs.cmplx_dropout">
+<span id="complexcnns-cmplx-dropout-module"></span><h2>complexCNNs.cmplx_dropout module<a class="headerlink" href="#module-complexCNNs.cmplx_dropout" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_dropout.ComplexDropout">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.cmplx_dropout.</span></span><span class="sig-name descname"><span class="pre">ComplexDropout</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_dropout.html#ComplexDropout"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_dropout.ComplexDropout" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Initialize internal Module state, shared by both nn.Module and ScriptModule.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_dropout.ComplexDropout.extra_repr">
+<span class="sig-name descname"><span class="pre">extra_repr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_dropout.html#ComplexDropout.extra_repr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_dropout.ComplexDropout.extra_repr" title="Link to this definition">¶</a></dt>
+<dd><p>Set the extra representation of the module.</p>
+<p>To print customized extra information, you should re-implement
+this method in your own modules. Both single-line and multi-line
+strings are acceptable.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_dropout.ComplexDropout.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_dropout.html#ComplexDropout.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_dropout.ComplexDropout.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_dropout.ComplexDropout1d">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.cmplx_dropout.</span></span><span class="sig-name descname"><span class="pre">ComplexDropout1d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_dropout.html#ComplexDropout1d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_dropout.ComplexDropout1d" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#complexCNNs.cmplx_dropout.ComplexDropout" title="complexCNNs.cmplx_dropout.ComplexDropout"><code class="xref py py-class docutils literal notranslate"><span class="pre">ComplexDropout</span></code></a></p>
+<p>Randomly zeroes whole channels of the complex input tensor.
+The channels to zero are randomized on every forward call.
+Usually the input comes from <code class="xref py py-class docutils literal notranslate"><span class="pre">nn.Conv3d</span></code> modules.</p>
+<section id="id13">
+<h3>Paramaters:<a class="headerlink" href="#id13" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>p<span class="classifier">float, optional</span></dt><dd><p>Probability of an element to be zeroed.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>inplace<span class="classifier">bool, optional</span></dt><dd><p>If set to <code class="docutils literal notranslate"><span class="pre">True</span></code>, will do this operation in-place</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id14">
+<h3>Shape:<a class="headerlink" href="#id14" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li><p>Input: <span class="math notranslate nohighlight">\((N, C, D, H, W, 2)\)</span></p></li>
+<li><p>Output: <span class="math notranslate nohighlight">\((N, C, D, H, W, 2)\)</span> (same shape as input)</p></li>
+</ul>
+</div></blockquote>
+<hr class="docutils" />
+<p>Initialize internal Module state, shared by both nn.Module and ScriptModule.</p>
+</section>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_dropout.ComplexDropout2d">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.cmplx_dropout.</span></span><span class="sig-name descname"><span class="pre">ComplexDropout2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_dropout.html#ComplexDropout2d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_dropout.ComplexDropout2d" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#complexCNNs.cmplx_dropout.ComplexDropout" title="complexCNNs.cmplx_dropout.ComplexDropout"><code class="xref py py-class docutils literal notranslate"><span class="pre">ComplexDropout</span></code></a></p>
+<p>Randomly zeroes whole channels of the complex input tensor.
+The channels to zero-out are randomized on every forward call.
+Usually the input comes from <code class="xref py py-class docutils literal notranslate"><span class="pre">nn.Conv2d</span></code> modules.</p>
+<section id="id15">
+<h3>Paramaters:<a class="headerlink" href="#id15" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>p<span class="classifier">float, optional</span></dt><dd><p>Probability of an element to be zero-ed.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>inplace<span class="classifier">bool, optional</span></dt><dd><p>If set to <code class="docutils literal notranslate"><span class="pre">True</span></code>, will do this operation in-place</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id16">
+<h3>Shape:<a class="headerlink" href="#id16" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li><p>Input: <span class="math notranslate nohighlight">\((N, C, H, W, 2)\)</span></p></li>
+<li><p>Output: <span class="math notranslate nohighlight">\((N, C, H, W, 2)\)</span> (same shape as input)</p></li>
+</ul>
+</div></blockquote>
+<hr class="docutils" />
+<p>Initialize internal Module state, shared by both nn.Module and ScriptModule.</p>
+</section>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_dropout.ComplexDropout3d">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.cmplx_dropout.</span></span><span class="sig-name descname"><span class="pre">ComplexDropout3d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_dropout.html#ComplexDropout3d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_dropout.ComplexDropout3d" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#complexCNNs.cmplx_dropout.ComplexDropout" title="complexCNNs.cmplx_dropout.ComplexDropout"><code class="xref py py-class docutils literal notranslate"><span class="pre">ComplexDropout</span></code></a></p>
+<p>Randomly zeroes whole channels of the complex input tensor.
+The channels to zero are randomized on every forward call.
+Usually the input comes from <code class="xref py py-class docutils literal notranslate"><span class="pre">nn.Conv3d</span></code> modules.</p>
+<section id="id17">
+<h3>Paramaters:<a class="headerlink" href="#id17" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>p<span class="classifier">float, optional</span></dt><dd><p>Probability of an element to be zeroed.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>inplace<span class="classifier">bool, optional</span></dt><dd><p>If set to <code class="docutils literal notranslate"><span class="pre">True</span></code>, will do this operation in-place</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id18">
+<h3>Shape:<a class="headerlink" href="#id18" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li><p>Input: <span class="math notranslate nohighlight">\((N, C, D, H, W, 2)\)</span></p></li>
+<li><p>Output: <span class="math notranslate nohighlight">\((N, C, D, H, W, 2)\)</span> (same shape as input)</p></li>
+</ul>
+</div></blockquote>
+<hr class="docutils" />
+<p>Initialize internal Module state, shared by both nn.Module and ScriptModule.</p>
+</section>
+</dd></dl>
+
+</section>
+<section id="module-complexCNNs.cmplx_fc">
+<span id="complexcnns-cmplx-fc-module"></span><h2>complexCNNs.cmplx_fc module<a class="headerlink" href="#module-complexCNNs.cmplx_fc" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_fc.ComplexLinear">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.cmplx_fc.</span></span><span class="sig-name descname"><span class="pre">ComplexLinear</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_fc.html#ComplexLinear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_fc.ComplexLinear" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>AERS A linear transformation layer for complex-valued inputs.</p>
+<p>This module applies separate linear transformations to the real and imaginary parts of the input tensor.</p>
+<hr class="docutils" />
+<blockquote>
+<div><p>AERS Initializes the ComplexLinear layer.</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>in_features<span class="classifier">int</span></dt><dd><p>The number of input features.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>out_features<span class="classifier">int</span></dt><dd><p>The number of output features.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>bias<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>If True, includes a bias term in the linear transformations.</dt><dd><p>Default is True.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+<hr class="docutils" />
+<dl class="py method">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_fc.ComplexLinear.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_fc.html#ComplexLinear.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_fc.ComplexLinear.forward" title="Link to this definition">¶</a></dt>
+<dd><p>AERS Forward pass of the ComplexLinear layer.</p>
+<p>This method splits the input tensor into its real and imaginary components, applies the linear transformations
+to each component, and then recombines them to form the complex-valued output.</p>
+<section id="id19">
+<h3>Paramaters:<a class="headerlink" href="#id19" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>input<span class="classifier">torch.Tensor</span></dt><dd><p>A complex-valued tensor with shape (…, 2), where the last dimension contains the real and imaginary parts of the input.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id20">
+<h3>Returns:<a class="headerlink" href="#id20" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>torch.Tensor</dt><dd><p>A complex-valued tensor with the same shape as the input, where each part has been linearly transformed.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<hr class="docutils" />
+<section id="module-complexCNNs.cmplx_upsample">
+<span id="complexcnns-cmplx-upsample-module"></span><h2>complexCNNs.cmplx_upsample module<a class="headerlink" href="#module-complexCNNs.cmplx_upsample" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_upsample.ComplexUpsample">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.cmplx_upsample.</span></span><span class="sig-name descname"><span class="pre">ComplexUpsample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nearest'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">align_corners</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recompute_scale_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_upsample.html#ComplexUpsample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_upsample.ComplexUpsample" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Upsample layer for complex inputs.</p>
+<section id="parameters">
+<h3>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading">¶</a></h3>
+<ul>
+<li><dl class="simple">
+<dt>size<span class="classifier">int or Tuple[int] or Tuple[int, int] or Tuple[int, int, int], optional</span></dt><dd><p>Output spatial sizes</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>scale_factor<span class="classifier">float or Tuple[float] or Tuple[float, float] or Tuple[float, float, float], optional</span></dt><dd><p>Multiplier for spatial size. Has to match input size if it is a tuple.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>mode<span class="classifier">str, optional</span></dt><dd><dl class="simple">
+<dt>The upsampling algorithm: one of <code class="docutils literal notranslate"><span class="pre">'nearest'</span></code>, <code class="docutils literal notranslate"><span class="pre">'linear'</span></code>, <code class="docutils literal notranslate"><span class="pre">'bilinear'</span></code>, <code class="docutils literal notranslate"><span class="pre">'bicubic'</span></code> and <code class="docutils literal notranslate"><span class="pre">'trilinear'</span></code>.</dt><dd><p>Default: <code class="docutils literal notranslate"><span class="pre">'nearest'</span></code></p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>align_corners<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, the corner pixels of the input and output tensors are aligned, and thus preserving the values at those pixels.                 This only has effect when <code class="xref py py-attr docutils literal notranslate"><span class="pre">mode</span></code> is <code class="docutils literal notranslate"><span class="pre">'linear'</span></code>, <code class="docutils literal notranslate"><span class="pre">'bilinear'</span></code>, <code class="docutils literal notranslate"><span class="pre">'bicubic'</span></code>, or <code class="docutils literal notranslate"><span class="pre">'trilinear'</span></code>.</dt><dd><p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt>recompute_scale_factor<span class="classifier">bool, optional</span></dt><dd><p>Recompute the scale_factor for use in the interpolation calculation. If <cite>recompute_scale_factor</cite> is <code class="docutils literal notranslate"><span class="pre">True</span></code>, then             <cite>scale_factor</cite> must be passed in and <cite>scale_factor</cite> is used to compute the output <cite>size</cite>. The computed output <cite>size</cite>            will be used to infer new scales for the interpolation.</p>
+<p><strong>Note:</strong> When <cite>scale_factor</cite> is floating-point, it may differ from the recomputed <cite>scale_factor</cite> due to rounding                 and precision issues. If <cite>recompute_scale_factor</cite> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, then <cite>size</cite> or <cite>scale_factor</cite> will be used directly for interpolation.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<hr class="docutils" />
+<dl class="py method">
+<dt class="sig sig-object py" id="complexCNNs.cmplx_upsample.ComplexUpsample.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/cmplx_upsample.html#ComplexUpsample.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.cmplx_upsample.ComplexUpsample.forward" title="Link to this definition">¶</a></dt>
+<dd><p>AERS:
+Forward pass for the upsampling of complex-valued inputs.</p>
+<p>This method takes a complex-valued input tensor, separates it into its real and imaginary components,
+applies an upsampling operation to both components independently, and then recombines them into a
+complex-valued output tensor.</p>
+<section id="id21">
+<h4>Parameters:<a class="headerlink" href="#id21" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><dl class="simple">
+<dt>input<span class="classifier">torch.Tensor</span></dt><dd><p>A complex-valued tensor with shape (…, 2), where the last dimension contains
+the real and imaginary parts of the input.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id22">
+<h4>Returns:<a class="headerlink" href="#id22" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><dl class="simple">
+<dt>torch.Tensor</dt><dd><p>A complex-valued tensor with the same shape as the input, where each part has been upsampled.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</dd></dl>
+
+</section>
+</dd></dl>
+
+</section>
+<hr class="docutils" />
+<section id="module-complexCNNs.polar_transforms">
+<span id="complexcnns-polar-transforms-module"></span><h2>complexCNNs.polar_transforms module<a class="headerlink" href="#module-complexCNNs.polar_transforms" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="complexCNNs.polar_transforms.convert_cylindrical_to_polar">
+<span class="sig-prename descclassname"><span class="pre">complexCNNs.polar_transforms.</span></span><span class="sig-name descname"><span class="pre">convert_cylindrical_to_polar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">real</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">imag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/complexCNNs/polar_transforms.html#convert_cylindrical_to_polar"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.polar_transforms.convert_cylindrical_to_polar" title="Link to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Convert the cylindrical representation (i.e. real and imaginary) to</dt><dd><p>polar representation (i.e. magnitude and phase)</p>
+</dd>
+</dl>
+<section id="id23">
+<h3>Parameters:<a class="headerlink" href="#id23" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>real<span class="classifier">torch.Tensor</span></dt><dd><p>The real part of the complex tensor</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>imag<span class="classifier">torch.Tensor</span></dt><dd><p>The imaginary part of the complex tensor</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id24">
+<h3>Returns:<a class="headerlink" href="#id24" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Tuple[torch.Tensor, torch.Tensor]</dt><dd><p>The magnitude and phase of the complex tensor</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="py function">
+<dt class="sig sig-object py" id="complexCNNs.polar_transforms.convert_polar_to_cylindrical">
+<span class="sig-prename descclassname"><span class="pre">complexCNNs.polar_transforms.</span></span><span class="sig-name descname"><span class="pre">convert_polar_to_cylindrical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">magnitude</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phase</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/complexCNNs/polar_transforms.html#convert_polar_to_cylindrical"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.polar_transforms.convert_polar_to_cylindrical" title="Link to this definition">¶</a></dt>
+<dd><p>Convert the polar representation (i.e. magnitude and phase) to cylindrical representation (i.e. real and imaginary)</p>
+<section id="id25">
+<h3>Parameters:<a class="headerlink" href="#id25" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>magnitude<span class="classifier">torch.Tensor</span></dt><dd><p>The magnitude of the complex tensor</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>phase<span class="classifier">torch.Tensor</span></dt><dd><p>The phase of the complex tensor</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id26">
+<h3>Returns:<a class="headerlink" href="#id26" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Tuple[torch.Tensor, torch.Tensor]</dt><dd><p>The real and imaginary part of the complex tensor</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</dd></dl>
+
+</section>
+<hr class="docutils" />
+<section id="module-complexCNNs.radial_bn">
+<span id="complexcnns-radial-bn-module"></span><h2>complexCNNs.radial_bn module<a class="headerlink" href="#module-complexCNNs.radial_bn" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.radial_bn.RadialBatchNorm1d">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.radial_bn.</span></span><span class="sig-name descname"><span class="pre">RadialBatchNorm1d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">affine</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_running_stats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/radial_bn.html#RadialBatchNorm1d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.radial_bn.RadialBatchNorm1d" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#complexCNNs.radial_bn.RadialNorm" title="complexCNNs.radial_bn.RadialNorm"><code class="xref py py-class docutils literal notranslate"><span class="pre">RadialNorm</span></code></a></p>
+<p>Applies Radial Batch Normalization over a 2D or 3D input, typically used for a mini-batch of 1D complex inputs with an optional additional channel dimension.</p>
+<section id="id27">
+<h3>Shape:<a class="headerlink" href="#id27" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li><p>Input: <span class="math notranslate nohighlight">\((N, C)\)</span> or <span class="math notranslate nohighlight">\((N, C, L, 2)\)</span></p></li>
+<li><p>Output: <span class="math notranslate nohighlight">\((N, C)\)</span> or <span class="math notranslate nohighlight">\((N, C, L, 2)\)</span> (same shape as input)</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="id28">
+<h3>Parameters:<a class="headerlink" href="#id28" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>num_features<span class="classifier">int</span></dt><dd><p><span class="math notranslate nohighlight">\(C\)</span> from an expected input of size <span class="math notranslate nohighlight">\((N, C, L)\)</span> or <span class="math notranslate nohighlight">\(L\)</span> from input of size <span class="math notranslate nohighlight">\((N, L)\)</span>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>eps<span class="classifier">float, optional</span></dt><dd><dl class="simple">
+<dt>A value added to the denominator for numerical stability.</dt><dd><p>Default: 1e-5.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>momentum<span class="classifier">float, optional</span></dt><dd><dl class="simple">
+<dt>The value used for the running mean and running variance computation. Can be set to <code class="docutils literal notranslate"><span class="pre">None</span></code> for cumulative moving average (i.e., simple average).</dt><dd><p>Default: 0.1.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>affine<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, this module has learnable affine parameters.</dt><dd><p>Default: <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>track_running_stats<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, this module tracks the running mean and variance, and when set to <code class="docutils literal notranslate"><span class="pre">False</span></code>, this module does not track such statistics and always uses batch statistics in both training and evaluation modes.</dt><dd><p>Default: <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+<hr class="docutils" />
+<p>Radial Batch Normalization</p>
+</section>
+<section id="id29">
+<h3>Parameters:<a class="headerlink" href="#id29" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>rank<span class="classifier">int</span></dt><dd><p>The spatial dimension of the input tensor.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>num_features<span class="classifier">int</span></dt><dd><p>The number of features of the input tensor.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>t<span class="classifier">float</span></dt><dd><p>The threshold for the normalization.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>eps<span class="classifier">float</span></dt><dd><p>The epsilon for the normalization.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>momentum<span class="classifier">float</span></dt><dd><p>The momentum for the normalization.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>affine<span class="classifier">bool</span></dt><dd><p>If True, this module has learnable affine parameters.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>track_running_stats<span class="classifier">bool</span></dt><dd><p>If True, this module tracks the running mean and variance,
+and during training time uses the running mean and variance to normalize.
+During testing time, this module uses the mean and variance of the
+input statistics to normalize.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>polar<span class="classifier">bool</span></dt><dd><ul>
+<li><p>If True, the input is in the polar form (magnitude and phase).</p></li>
+<li><p>If False, the input is in the cylindrical form (real and imag).</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.radial_bn.RadialBatchNorm2d">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.radial_bn.</span></span><span class="sig-name descname"><span class="pre">RadialBatchNorm2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">affine</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_running_stats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/radial_bn.html#RadialBatchNorm2d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.radial_bn.RadialBatchNorm2d" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#complexCNNs.radial_bn.RadialNorm" title="complexCNNs.radial_bn.RadialNorm"><code class="xref py py-class docutils literal notranslate"><span class="pre">RadialNorm</span></code></a></p>
+<p>Applies Radial Batch Normalization over a 5D complex input, typically used for a mini-batch of 2D
+complex inputs with an optional additional channel dimension.</p>
+<section id="id30">
+<h3>Shape:<a class="headerlink" href="#id30" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Input: <span class="math notranslate nohighlight">\((N, C, H, W, 2)\)</span></p></li>
+<li><p>Output: <span class="math notranslate nohighlight">\((N, C, H, W, 2)\)</span> (same shape as input)</p></li>
+</ul>
+</section>
+<section id="id31">
+<h3>Parameters:<a class="headerlink" href="#id31" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>num_features<span class="classifier">int</span></dt><dd><p><span class="math notranslate nohighlight">\(C\)</span> from an expected input of size <span class="math notranslate nohighlight">\((N, C, H, W, 2)\)</span>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>eps<span class="classifier">float, optional</span></dt><dd><dl class="simple">
+<dt>A value added to the denominator for numerical stability.</dt><dd><p>Default: 1e-5.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>momentum<span class="classifier">float, optional</span></dt><dd><dl class="simple">
+<dt>The value used for the running mean and running variance computation. Can be set to <code class="docutils literal notranslate"><span class="pre">None</span></code> for cumulative moving average (i.e., simple average).</dt><dd><p>Default: 0.1.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>affine<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, this module has learnable affine parameters.</dt><dd><p>Default: <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>track_running_stats<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, this module tracks the running mean and variance, and when set to <code class="docutils literal notranslate"><span class="pre">False</span></code>, this module does not track such statistics and always uses batch statistics in both training and evaluation modes.</dt><dd><p>Default: <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+<hr class="docutils" />
+<p>Radial Batch Normalization</p>
+</section>
+<section id="id32">
+<h3>Parameters:<a class="headerlink" href="#id32" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>rank<span class="classifier">int</span></dt><dd><p>The spatial dimension of the input tensor.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>num_features<span class="classifier">int</span></dt><dd><p>The number of features of the input tensor.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>t<span class="classifier">float</span></dt><dd><p>The threshold for the normalization.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>eps<span class="classifier">float</span></dt><dd><p>The epsilon for the normalization.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>momentum<span class="classifier">float</span></dt><dd><p>The momentum for the normalization.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>affine<span class="classifier">bool</span></dt><dd><p>If True, this module has learnable affine parameters.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>track_running_stats<span class="classifier">bool</span></dt><dd><p>If True, this module tracks the running mean and variance,
+and during training time uses the running mean and variance to normalize.
+During testing time, this module uses the mean and variance of the
+input statistics to normalize.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>polar<span class="classifier">bool</span></dt><dd><ul>
+<li><p>If True, the input is in the polar form (magnitude and phase).</p></li>
+<li><p>If False, the input is in the cylindrical form (real and imag).</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.radial_bn.RadialBatchNorm3d">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.radial_bn.</span></span><span class="sig-name descname"><span class="pre">RadialBatchNorm3d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">affine</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_running_stats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/radial_bn.html#RadialBatchNorm3d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.radial_bn.RadialBatchNorm3d" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#complexCNNs.radial_bn.RadialNorm" title="complexCNNs.radial_bn.RadialNorm"><code class="xref py py-class docutils literal notranslate"><span class="pre">RadialNorm</span></code></a></p>
+<p>Applies Radial Batch Normalization over a 6D complex input, typically used for a mini-batch of 3D
+complex inputs with an optional additional channel dimension.</p>
+<section id="id33">
+<h3>Shape:<a class="headerlink" href="#id33" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li><p>Input: <span class="math notranslate nohighlight">\((N, C, D, H, W, 2)\)</span></p></li>
+<li><p>Output: <span class="math notranslate nohighlight">\((N, C, D, H, W, 2)\)</span> (same shape as input)</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="id34">
+<h3>Parameters:<a class="headerlink" href="#id34" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>num_features<span class="classifier">int</span></dt><dd><p><span class="math notranslate nohighlight">\(C\)</span> from an expected input of size <span class="math notranslate nohighlight">\((N, C, D, H, W, 2)\)</span>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>eps<span class="classifier">float, optional</span></dt><dd><dl class="simple">
+<dt>A value added to the denominator for numerical stability.</dt><dd><p>Default: 1e-5.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>momentum<span class="classifier">float, optional</span></dt><dd><dl class="simple">
+<dt>The value used for the running mean and running variance computation. Can be set to <code class="docutils literal notranslate"><span class="pre">None</span></code> for </dt><dd><p>cumulative moving average (i.e., simple average).
+Default: 0.1.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>affine<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, this module has learnable affine parameters.</dt><dd><p>Default: <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>track_running_stats<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, this module tracks the running mean and variance, and when set to <code class="docutils literal notranslate"><span class="pre">False</span></code>, this module does not track such statistics and always uses batch statistics in both training and evaluation modes.</dt><dd><p>Default: <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+<hr class="docutils" />
+<p>Radial Batch Normalization</p>
+</section>
+<section id="id35">
+<h3>Parameters:<a class="headerlink" href="#id35" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>rank<span class="classifier">int</span></dt><dd><p>The spatial dimension of the input tensor.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>num_features<span class="classifier">int</span></dt><dd><p>The number of features of the input tensor.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>t<span class="classifier">float</span></dt><dd><p>The threshold for the normalization.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>eps<span class="classifier">float</span></dt><dd><p>The epsilon for the normalization.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>momentum<span class="classifier">float</span></dt><dd><p>The momentum for the normalization.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>affine<span class="classifier">bool</span></dt><dd><p>If True, this module has learnable affine parameters.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>track_running_stats<span class="classifier">bool</span></dt><dd><p>If True, this module tracks the running mean and variance,
+and during training time uses the running mean and variance to normalize.
+During testing time, this module uses the mean and variance of the
+input statistics to normalize.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>polar<span class="classifier">bool</span></dt><dd><ul>
+<li><p>If True, the input is in the polar form (magnitude and phase).</p></li>
+<li><p>If False, the input is in the cylindrical form (real and imag).</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="py class">
+<dt class="sig sig-object py" id="complexCNNs.radial_bn.RadialNorm">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">complexCNNs.radial_bn.</span></span><span class="sig-name descname"><span class="pre">RadialNorm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">affine</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_running_stats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/radial_bn.html#RadialNorm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.radial_bn.RadialNorm" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Radial Batch Normalization</p>
+<section id="id36">
+<h3>Parameters:<a class="headerlink" href="#id36" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>rank<span class="classifier">int</span></dt><dd><p>The spatial dimension of the input tensor.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>num_features<span class="classifier">int</span></dt><dd><p>The number of features of the input tensor.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>t<span class="classifier">float</span></dt><dd><p>The threshold for the normalization.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>eps<span class="classifier">float</span></dt><dd><p>The epsilon for the normalization.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>momentum<span class="classifier">float</span></dt><dd><p>The momentum for the normalization.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>affine<span class="classifier">bool</span></dt><dd><p>If True, this module has learnable affine parameters.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>track_running_stats<span class="classifier">bool</span></dt><dd><p>If True, this module tracks the running mean and variance,
+and during training time uses the running mean and variance to normalize.
+During testing time, this module uses the mean and variance of the
+input statistics to normalize.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>polar<span class="classifier">bool</span></dt><dd><ul>
+<li><p>If True, the input is in the polar form (magnitude and phase).</p></li>
+<li><p>If False, the input is in the cylindrical form (real and imag).</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<hr class="docutils" />
+<dl class="py method">
+<dt class="sig sig-object py" id="complexCNNs.radial_bn.RadialNorm.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/complexCNNs/radial_bn.html#RadialNorm.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#complexCNNs.radial_bn.RadialNorm.forward" title="Link to this definition">¶</a></dt>
+<dd><p>AERS:
+Forward pass for the Radial Batch Normalization layer.</p>
+<section id="id37">
+<h4>Parameters:<a class="headerlink" href="#id37" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><dl class="simple">
+<dt>input<span class="classifier">torch.Tensor</span></dt><dd><p>A complex-valued tensor with shape (…, 2), where the last dimension contains
+the real and imaginary parts of the input.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id38">
+<h4>Returns:<a class="headerlink" href="#id38" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><dl class="simple">
+<dt>torch.Tensor</dt><dd><p>A complex-valued tensor with the same shape as the input, where the magnitudes have been normalized.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</dd></dl>
+
+</section>
+</dd></dl>
+
+</section>
+<hr class="docutils" />
+<section id="module-complexCNNs">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-complexCNNs" title="Link to this heading">¶</a></h2>
+</section>
+</section>
+
+
+      </div>
+      <div class="bottomnav" role="navigation" aria-label="Bottom">
+      
+        <p>
+        «&#160;&#160;<a href="utils.models.html">utils.models</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="DDP_paradigms_LSTM_nufft.html">DDP_paradigms_LSTM_nufft module</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2024, AERS + NRM.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.4.7.
+    </div>
+  </body>
+</html>

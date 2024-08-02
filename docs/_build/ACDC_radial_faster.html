@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>ACDC_radial_faster module &#8212; FOURIER-Net 20240614 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=f63d8bfa" />
+    <link rel="stylesheet" type="text/css" href="_static/haiku.css?v=dfa0e015" />
+    <script src="_static/documentation_options.js?v=6ad00ebc"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="ACDC_radial module" href="ACDC_radial.html" />
+    <link rel="prev" title="utils.myDatasets" href="utils.myDatasets.html" /> 
+  </head><body>
+      <div class="header" role="banner"><h1 class="heading"><a href="index.html">
+          <span>FOURIER-Net 20240614 documentation</span></a></h1>
+        <h2 class="heading"><span>ACDC_radial_faster module</span></h2>
+      </div>
+      <div class="topnav" role="navigation" aria-label="Top">
+      
+        <p>
+        «&#160;&#160;<a href="utils.myDatasets.html">utils.myDatasets</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="ACDC_radial.html">ACDC_radial module</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content" role="main">
+        
+        
+  <section id="module-ACDC_radial_faster">
+<span id="acdc-radial-faster-module"></span><h1>ACDC_radial_faster module<a class="headerlink" href="#module-ACDC_radial_faster" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="ACDC_radial_faster.ACDC_radial">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ACDC_radial_faster.</span></span><span class="sig-name descname"><span class="pre">ACDC_radial</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visualise_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ACDC_radial_faster.html#ACDC_radial"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ACDC_radial_faster.ACDC_radial" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></p>
+<p>Custom dataset for ACDC radial data.</p>
+<section id="methods">
+<h2>Methods:<a class="headerlink" href="#methods" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>index_to_location(i): Converts a flat index to patient and video IDs.</p></li>
+<li><p>__init__(path, parameters, device, train=True, visualise_only=False): Initializes the dataset.</p></li>
+<li><p>__getitem__(i): Retrieves an item from the dataset.</p></li>
+<li><p>__len__(): Returns the length of the dataset.</p></li>
+</ul>
+<hr class="docutils" />
+<p>Initializes the ACDC_radial dataset.</p>
+</section>
+<section id="parameters">
+<h2>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>path<span class="classifier">str</span></dt><dd><p>Path to the dataset.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>parameters<span class="classifier">dict</span></dt><dd><p>Dictionary of parameters for dataset configuration.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>device<span class="classifier">torch.device</span></dt><dd><p>Device to use for computations.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>train<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>Whether the dataset is for training.</dt><dd><p>Defaults to True.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>visualise_only<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>Whether to only visualize the data.</dt><dd><p>Defaults to False.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+<hr class="docutils" />
+<dl class="py method">
+<dt class="sig sig-object py" id="ACDC_radial_faster.ACDC_radial.index_to_location">
+<span class="sig-name descname"><span class="pre">index_to_location</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ACDC_radial_faster.html#ACDC_radial.index_to_location"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ACDC_radial_faster.ACDC_radial.index_to_location" title="Link to this definition">¶</a></dt>
+<dd><p>Converts a flat index to patient and video IDs.</p>
+<section id="id1">
+<h3>Parameters:<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>i<span class="classifier">int</span></dt><dd><p>The flat index.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="returns">
+<h3>Returns:<a class="headerlink" href="#returns" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>tuple</dt><dd><p>The patient and video IDs corresponding to the flat index.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</dd></dl>
+
+</section>
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="py class">
+<dt class="sig sig-object py" id="ACDC_radial_faster.ACDC_radial_ispace">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ACDC_radial_faster.</span></span><span class="sig-name descname"><span class="pre">ACDC_radial_ispace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visualise_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ACDC_radial_faster.html#ACDC_radial_ispace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ACDC_radial_faster.ACDC_radial_ispace" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></p>
+<p>Custom dataset for ACDC radial data with in-memory storage optimization.
+A memoised version of the ACDC_radial class defined further is this module</p>
+<section id="attributes">
+<h2>Attributes:<a class="headerlink" href="#attributes" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>mem_inputs<span class="classifier">list</span></dt><dd><p>List of tensors to store inputs.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>mem_inputs_min<span class="classifier">list</span></dt><dd><p>List of tensors to store minimum values of inputs.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>mem_inputs_max<span class="classifier">list</span></dt><dd><p>List of tensors to store maximum values of inputs.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>mem_gts<span class="classifier">list</span></dt><dd><p>List of tensors to store ground truth data.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>mem_stored_bool<span class="classifier">list</span></dt><dd><p>List of boolean flags to indicate stored data.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>data_init_done<span class="classifier">bool</span></dt><dd><p>Flag to indicate if data initialization is done.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id2">
+<h2>Methods:<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>set_data(input, gt, pat_id, vid_id)x: Sets the data for a given patient and video ID.</p></li>
+<li><p>get_data(pat_id, vid_id): Retrieves the data for a given patient and video ID.</p></li>
+<li><p>check_data(pat_id, vid_id): Checks if data for a given patient and video ID is stored.</p></li>
+<li><p>bulk_set_data(actual_pnums, vnums, inputs, gts): Sets data for multiple patients and videos in bulk.</p></li>
+<li><p>data_init(whole_num_vids_per_patient, parameters): Initializes data storage.</p></li>
+<li><p>__init__(path, parameters, device, train=True, visualise_only=False): Initializes the dataset.</p></li>
+<li><p>__getitem__(i): Retrieves an item from the dataset.</p></li>
+<li><p>__len__(): Returns the length of the dataset.</p></li>
+</ul>
+<hr class="docutils" />
+<p>Initializes the ACDC_radial_ispace dataset.</p>
+</section>
+<section id="id3">
+<h2>Parameters:<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>path<span class="classifier">str</span></dt><dd><p>Path to the dataset.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>parameters<span class="classifier">dict</span></dt><dd><p>Dictionary of parameters for dataset configuration.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>device<span class="classifier">torch.device</span></dt><dd><p>Device to use for computations.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>train<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>Whether the dataset is for training.</dt><dd><p>Defaults to True.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>visualise_only<span class="classifier">bool, optional</span></dt><dd><dl class="simple">
+<dt>Whether to only visualize the data.</dt><dd><p>Defaults to False.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+<hr class="docutils" />
+<dl class="py method">
+<dt class="sig sig-object py" id="ACDC_radial_faster.ACDC_radial_ispace.bulk_set_data">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bulk_set_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">actual_pnums</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vnums</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gts</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ACDC_radial_faster.html#ACDC_radial_ispace.bulk_set_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ACDC_radial_faster.ACDC_radial_ispace.bulk_set_data" title="Link to this definition">¶</a></dt>
+<dd><p>AERS:
+Sets and stores input and ground truth data in bulk for multiple patients and videos.</p>
+<p>This class method iterates over a batch of input and ground truth data, storing each item
+individually for the corresponding patient ID (<cite>pnum</cite>) and video ID (<cite>vnum</cite>).</p>
+<section id="id4">
+<h3>Parameters:<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>actual_pnums<span class="classifier">list of int or str</span></dt><dd><p>A list of patient IDs corresponding to the batch of data.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>vnums<span class="classifier">list of int or str</span></dt><dd><p>A list of video IDs corresponding to the batch of data.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>inputs<span class="classifier">torch.Tensor</span></dt><dd><p>A batch of input data tensors with shape <cite>(B, 120, Chan, 256, 256)</cite>, where <cite>B</cite> is the batch size.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>gts<span class="classifier">torch.Tensor</span></dt><dd><p>A batch of ground truth data tensors with shape <cite>(B, 120, 1, 256, 256)</cite>, where <cite>B</cite> is the batch size.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="raises">
+<h3>Raises:<a class="headerlink" href="#raises" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>AssertionError</dt><dd><p>If the <cite>inputs</cite> or <cite>gts</cite> tensors do not have 5 dimensions as expected.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="notes">
+<h3>Notes:<a class="headerlink" href="#notes" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>This method ensures that the data for each patient and video in the batch is individually scaled</p></li>
+</ul>
+<p>and stored using the <cite>set_data</cite> method.
+- The 120 frames were set by NRM’s experiment for ACDC dataset.</p>
+</section>
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="py method">
+<dt class="sig sig-object py" id="ACDC_radial_faster.ACDC_radial_ispace.check_data">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">check_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pat_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vid_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ACDC_radial_faster.html#ACDC_radial_ispace.check_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ACDC_radial_faster.ACDC_radial_ispace.check_data" title="Link to this definition">¶</a></dt>
+<dd><p>AERS:
+Checks if the data for a specific patient and video ID is stored in memory.</p>
+<p>This class method verifies whether the input and ground truth data for the given patient ID (<cite>pat_id</cite>)
+and video ID (<cite>vid_id</cite>) have already been stored in the class-level memory.</p>
+<section id="id5">
+<h3>Parameters:<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>pat_id<span class="classifier">int or str</span></dt><dd><p>The patient ID used to check the data in memory.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>vid_id<span class="classifier">int or str</span></dt><dd><p>The video ID used to check the data in memory.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id6">
+<h3>Returns:<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>bool</dt><dd><p>Returns <cite>True</cite> if the data for the specified <cite>pat_id</cite> and <cite>vid_id</cite> is stored, otherwise <cite>False</cite>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id7">
+<h3>Notes:<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>This method is useful for determining whether data retrieval or initialization processes should be triggered.</p></li>
+</ul>
+</section>
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="py method">
+<dt class="sig sig-object py" id="ACDC_radial_faster.ACDC_radial_ispace.data_init">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">data_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">whole_num_vids_per_patient</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ACDC_radial_faster.html#ACDC_radial_ispace.data_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ACDC_radial_faster.ACDC_radial_ispace.data_init" title="Link to this definition">¶</a></dt>
+<dd><p>AERS:
+Initializes the data storage for each patient and video.</p>
+<p>This class method sets up the data structures needed to store input and ground truth data
+for each patient and video during training or testing. The method initializes the memory
+with zeros or empty structures based on the provided parameters.</p>
+<section id="id8">
+<h3>Parameters:<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>whole_num_vids_per_patient<span class="classifier">list of int</span></dt><dd><p>A list where each entry represents the number of videos per patient.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>parameters<span class="classifier">dict</span></dt><dd><p>A dictionary of parameters that control the initialization process.
+Expected keys include:</p>
+<ul>
+<li><p>‘memoise_ispace’ (bool): Flag indicating whether to memoize image space data.</p></li>
+<li><p>‘coil_combine’ (str): Method for coil combination (‘SOS’ or other methods).</p></li>
+<li><p>‘init_skip_frames’ (int): Number of initial frames to skip.</p></li>
+<li><p>‘max_frames’ (int): Maximum number of frames per video.</p></li>
+<li><p>‘num_coils’ (int): Number of coils for imaging.</p></li>
+<li><p>‘image_resolution’ (int): The resolution of the image (width and height in pixels).</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id9">
+<h3>Notes:<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>This method uses class-level memory (e.g., <cite>cls.mem_inputs</cite>, <cite>cls.mem_gts</cite>) to store data structures for each patient and video.</p></li>
+<li><p>The method also uses shared memory to allow multiple processes to access the data concurrently.</p></li>
+<li><p>This method only runs once to avoid re-initializing the data (controlled by <cite>cls.data_init_done</cite>).</p></li>
+</ul>
+</section>
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ACDC_radial_faster.ACDC_radial_ispace.data_init_done">
+<span class="sig-name descname"><span class="pre">data_init_done</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#ACDC_radial_faster.ACDC_radial_ispace.data_init_done" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ACDC_radial_faster.ACDC_radial_ispace.get_data">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pat_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vid_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ACDC_radial_faster.html#ACDC_radial_ispace.get_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ACDC_radial_faster.ACDC_radial_ispace.get_data" title="Link to this definition">¶</a></dt>
+<dd><p>AERS:
+Retrieves and reconstructs the stored input and ground truth data.</p>
+<p>This class method retrieves the scaled input and ground truth data for a specific patient ID (<cite>pat_id</cite>)
+and video ID (<cite>vid_id</cite>) from the class-level memory. The method then reconstructs the original input
+data by applying the inverse of the scaling operation.</p>
+<section id="id10">
+<h3>Parameters:<a class="headerlink" href="#id10" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>pat_id<span class="classifier">int or str</span></dt><dd><p>The patient ID used to retrieve the data from memory.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>vid_id<span class="classifier">int or str</span></dt><dd><p>The video ID used to retrieve the data from memory.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id11">
+<h3>Returns:<a class="headerlink" href="#id11" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>tuple of torch.Tensor</dt><dd><p>A tuple containing:
+- <cite>ret_inp</cite> (torch.Tensor): The reconstructed input data tensor.
+- <cite>ret_gt</cite> (torch.Tensor): The ground truth data tensor.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id12">
+<h3>Raises:<a class="headerlink" href="#id12" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>AssertionError</dt><dd><p>If the data for the specified <cite>pat_id</cite> and <cite>vid_id</cite> has not been stored yet.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id13">
+<h3>Notes:<a class="headerlink" href="#id13" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>The input data is reconstructed from its stored scaled version by reversing the normalization process.</p></li>
+<li><p>The ground truth data is also retrieved and returned as a float tensor.</p></li>
+</ul>
+</section>
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ACDC_radial_faster.ACDC_radial_ispace.mem_gts">
+<span class="sig-name descname"><span class="pre">mem_gts</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#ACDC_radial_faster.ACDC_radial_ispace.mem_gts" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ACDC_radial_faster.ACDC_radial_ispace.mem_inputs">
+<span class="sig-name descname"><span class="pre">mem_inputs</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#ACDC_radial_faster.ACDC_radial_ispace.mem_inputs" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ACDC_radial_faster.ACDC_radial_ispace.mem_inputs_max">
+<span class="sig-name descname"><span class="pre">mem_inputs_max</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#ACDC_radial_faster.ACDC_radial_ispace.mem_inputs_max" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ACDC_radial_faster.ACDC_radial_ispace.mem_inputs_min">
+<span class="sig-name descname"><span class="pre">mem_inputs_min</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#ACDC_radial_faster.ACDC_radial_ispace.mem_inputs_min" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ACDC_radial_faster.ACDC_radial_ispace.mem_stored_bool">
+<span class="sig-name descname"><span class="pre">mem_stored_bool</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#ACDC_radial_faster.ACDC_radial_ispace.mem_stored_bool" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ACDC_radial_faster.ACDC_radial_ispace.set_data">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">set_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pat_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vid_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ACDC_radial_faster.html#ACDC_radial_ispace.set_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ACDC_radial_faster.ACDC_radial_ispace.set_data" title="Link to this definition">¶</a></dt>
+<dd><p>AERS:
+Sets and scales input data, then stores it along with the ground truth data.</p>
+<p>This class method takes input data and ground truth data, scales the input, and stores both the scaled
+input and the ground truth data as 8-bit unsigned integers. The data is stored in memory, indexed by
+patient ID (<cite>pat_id</cite>) and video ID (<cite>vid_id</cite>).</p>
+<section id="id14">
+<h3>Parameters:<a class="headerlink" href="#id14" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>input<span class="classifier">torch.Tensor</span></dt><dd><p>The input data tensor to be scaled and stored. The tensor is expected to be multi-dimensional
+(e.g., a video or image stack).</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>gt<span class="classifier">torch.Tensor</span></dt><dd><p>The ground truth data tensor to be stored, typically in the same shape as <cite>input</cite>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>pat_id<span class="classifier">int or str</span></dt><dd><p>The patient ID used to index the data in memory.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>vid_id<span class="classifier">int or str</span></dt><dd><p>The video ID used to index the data in memory.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id15">
+<h3>Notes:<a class="headerlink" href="#id15" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>The input data is scaled to the range [0, 255] after subtracting the minimum value and dividing by the maximum value to ensure normalized intensity. The scaled data is then stored as 8-bit unsigned integers.</p></li>
+<li><p>The ground truth data is also scaled to the range [0, 255] and stored as 8-bit unsigned integers.</p></li>
+<li><p>This method updates the class-level memory (<cite>cls.mem_inputs</cite>, <cite>cls.mem_gts</cite>, etc.) for the corresponding patient and video IDs.</p></li>
+</ul>
+</section>
+</dd></dl>
+
+</section>
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="py function">
+<dt class="sig sig-object py" id="ACDC_radial_faster.seed_torch">
+<span class="sig-prename descclassname"><span class="pre">ACDC_radial_faster.</span></span><span class="sig-name descname"><span class="pre">seed_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ACDC_radial_faster.html#seed_torch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ACDC_radial_faster.seed_torch" title="Link to this definition">¶</a></dt>
+<dd><p>Sets the random seed for reproducibility across various libraries.</p>
+<section id="id16">
+<h2>Parameters:<a class="headerlink" href="#id16" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>seed<span class="classifier">int, optional</span></dt><dd><dl class="simple">
+<dt>The seed value to use.</dt><dd><p>Defaults to 0.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+<hr class="docutils" />
+</section>
+</dd></dl>
+
+</section>
+
+
+      </div>
+      <div class="bottomnav" role="navigation" aria-label="Bottom">
+      
+        <p>
+        «&#160;&#160;<a href="utils.myDatasets.html">utils.myDatasets</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="ACDC_radial.html">ACDC_radial module</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2024, AERS + NRM.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.4.7.
+    </div>
+  </body>
+</html>

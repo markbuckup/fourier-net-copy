@@ -14,3 +14,6 @@ FOURIER-Net
    periodLSTM
    utils.Trainers
    DDP_LSTMTrainer_nufft
+   utils.myDatasets
+   ACDC_radial_faster
+   ACDC_radial

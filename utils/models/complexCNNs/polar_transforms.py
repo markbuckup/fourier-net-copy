@@ -7,20 +7,22 @@ def convert_polar_to_cylindrical(
     magnitude: torch.Tensor,
     phase: torch.Tensor
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Convert the polar representation (i.e. magnitude and phase) to 
-        cylindrical representation (i.e. real and imaginary)
+    """
+    Convert the polar representation (i.e. magnitude and phase) to cylindrical representation (i.e. real and imaginary)
 
-    Parameters
-    ----------
-    magnitude : torch.Tensor
+    Parameters:
+    ------------
+    - magnitude : torch.Tensor
         The magnitude of the complex tensor
-    phase : torch.Tensor
+    - phase : torch.Tensor
         The phase of the complex tensor
 
-    Returns
-    -------
-    Tuple[torch.Tensor, torch.Tensor]
+    Returns:
+    ---------
+    - Tuple[torch.Tensor, torch.Tensor]
         The real and imaginary part of the complex tensor
+
+    ================================================================================================
     """
     real = magnitude * torch.cos(phase)
     imag = magnitude * torch.sin(phase)
@@ -34,17 +36,19 @@ def convert_cylindrical_to_polar(
     """Convert the cylindrical representation (i.e. real and imaginary) to
         polar representation (i.e. magnitude and phase)
 
-    Parameters
-    ----------
-    real : torch.Tensor
+    Parameters:
+    ------------
+    - real : torch.Tensor
         The real part of the complex tensor
-    imag : torch.Tensor
+    - imag : torch.Tensor
         The imaginary part of the complex tensor
     
-    Returns
-    -------
-    Tuple[torch.Tensor, torch.Tensor]
+    Returns:
+    ---------
+    - Tuple[torch.Tensor, torch.Tensor]
         The magnitude and phase of the complex tensor
+
+    ================================================================================================
     """
     mag = (real ** 2 + imag ** 2 + EPS) ** (0.5)
     phase = torch.atan2(imag, real+EPS)

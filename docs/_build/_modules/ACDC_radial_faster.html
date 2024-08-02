@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ACDC_radial_faster &#8212; FOURIER-Net 20240614 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=f63d8bfa" />
+    <link rel="stylesheet" type="text/css" href="../_static/haiku.css?v=dfa0e015" />
+    <script src="../_static/documentation_options.js?v=6ad00ebc"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+      <div class="header" role="banner"><h1 class="heading"><a href="../index.html">
+          <span>FOURIER-Net 20240614 documentation</span></a></h1>
+        <h2 class="heading"><span>ACDC_radial_faster</span></h2>
+      </div>
+      <div class="topnav" role="navigation" aria-label="Top">
+      
+        <p>
+        <a class="uplink" href="../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content" role="main">
+        
+        
+  <h1>Source code for ACDC_radial_faster</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torchvision</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span><span class="p">,</span> <span class="n">datasets</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data.dataset</span> <span class="kn">import</span> <span class="n">Dataset</span>
+
+<span class="n">EPS</span> <span class="o">=</span> <span class="mf">1e-10</span>
+<span class="n">CEPS</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">complex</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">EPS</span><span class="p">),</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">EPS</span><span class="p">))</span><span class="o">.</span><span class="n">exp</span><span class="p">()</span>
+
+<div class="viewcode-block" id="seed_torch">
+<a class="viewcode-back" href="../ACDC_radial_faster.html#ACDC_radial_faster.seed_torch">[docs]</a>
+<span class="k">def</span> <span class="nf">seed_torch</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sets the random seed for reproducibility across various libraries.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -------------</span>
+<span class="sd">    - seed : int, optional</span>
+<span class="sd">        The seed value to use. </span>
+<span class="sd">            Defaults to 0.</span>
+
+<span class="sd">    ================================================================================================</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;PYTHONHASHSEED&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">manual_seed_all</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span> <span class="c1"># if you are using multi-GPU.</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="o">.</span><span class="n">benchmark</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="o">.</span><span class="n">deterministic</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="ACDC_radial_ispace">
+<a class="viewcode-back" href="../ACDC_radial_faster.html#ACDC_radial_faster.ACDC_radial_ispace">[docs]</a>
+<span class="k">class</span> <span class="nc">ACDC_radial_ispace</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Custom dataset for ACDC radial data with in-memory storage optimization.</span>
+<span class="sd">    A memoised version of the ACDC_radial class defined further is this module</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">    -------------</span>
+<span class="sd">    - mem_inputs : list</span>
+<span class="sd">        List of tensors to store inputs.</span>
+<span class="sd">    - mem_inputs_min : list</span>
+<span class="sd">        List of tensors to store minimum values of inputs.</span>
+<span class="sd">    - mem_inputs_max : list</span>
+<span class="sd">        List of tensors to store maximum values of inputs.</span>
+<span class="sd">    - mem_gts : list</span>
+<span class="sd">        List of tensors to store ground truth data.</span>
+<span class="sd">    - mem_stored_bool : list</span>
+<span class="sd">        List of boolean flags to indicate stored data.</span>
+<span class="sd">    - data_init_done : bool</span>
+<span class="sd">        Flag to indicate if data initialization is done.</span>
+<span class="sd">    </span>
+<span class="sd">    Methods:</span>
+<span class="sd">    -------------</span>
+<span class="sd">    - set_data(input, gt, pat_id, vid_id)x: Sets the data for a given patient and video ID.</span>
+<span class="sd">    - get_data(pat_id, vid_id): Retrieves the data for a given patient and video ID.</span>
+<span class="sd">    - check_data(pat_id, vid_id): Checks if data for a given patient and video ID is stored.</span>
+<span class="sd">    - bulk_set_data(actual_pnums, vnums, inputs, gts): Sets data for multiple patients and videos in bulk.</span>
+<span class="sd">    - data_init(whole_num_vids_per_patient, parameters): Initializes data storage.</span>
+<span class="sd">    - __init__(path, parameters, device, train=True, visualise_only=False): Initializes the dataset.</span>
+<span class="sd">    - __getitem__(i): Retrieves an item from the dataset.</span>
+<span class="sd">    - __len__(): Returns the length of the dataset.</span>
+
+<span class="sd">    ==============================================================================================================</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># AERS: These class variables are created outside the functions, and each instance of the ACDC_radial_ispace class will have access to these variable (basically like global variables). </span>
+    <span class="c1"># This way, all dataloader workers (n=8/GPU in params.py) can access the memoized data without creating individual datasets (so memory doesn&#39;t run out.)</span>
+    <span class="c1"># These variables are initialized in data_init class method</span>
+
+    <span class="n">mem_inputs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">mem_inputs_min</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">mem_inputs_max</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">mem_gts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">mem_stored_bool</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">data_init_done</span> <span class="o">=</span> <span class="kc">False</span>   <span class="c1"># AERS: To avoid loading the data more than once, data_init_done is set to False. Then, once it is initialized and data are loaded, the data_init_done is set to True. Won&#39;t be repeated.</span>
+    
+<div class="viewcode-block" id="ACDC_radial_ispace.set_data">
+<a class="viewcode-back" href="../ACDC_radial_faster.html#ACDC_radial_faster.ACDC_radial_ispace.set_data">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">set_data</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">gt</span><span class="p">,</span> <span class="n">pat_id</span><span class="p">,</span> <span class="n">vid_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        AERS:</span>
+<span class="sd">        Sets and scales input data, then stores it along with the ground truth data.</span>
+
+<span class="sd">        This class method takes input data and ground truth data, scales the input, and stores both the scaled </span>
+<span class="sd">        input and the ground truth data as 8-bit unsigned integers. The data is stored in memory, indexed by </span>
+<span class="sd">        patient ID (`pat_id`) and video ID (`vid_id`).</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        ------------</span>
+<span class="sd">        - input : torch.Tensor</span>
+<span class="sd">            The input data tensor to be scaled and stored. The tensor is expected to be multi-dimensional </span>
+<span class="sd">            (e.g., a video or image stack).</span>
+<span class="sd">        - gt : torch.Tensor</span>
+<span class="sd">            The ground truth data tensor to be stored, typically in the same shape as `input`.</span>
+<span class="sd">        - pat_id : int or str</span>
+<span class="sd">            The patient ID used to index the data in memory.</span>
+<span class="sd">        - vid_id : int or str</span>
+<span class="sd">            The video ID used to index the data in memory.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">        -------</span>
+<span class="sd">        - The input data is scaled to the range [0, 255] after subtracting the minimum value and dividing by the maximum value to ensure normalized intensity. The scaled data is then stored as 8-bit unsigned integers.</span>
+<span class="sd">        - The ground truth data is also scaled to the range [0, 255] and stored as 8-bit unsigned integers.</span>
+<span class="sd">        - This method updates the class-level memory (`cls.mem_inputs`, `cls.mem_gts`, etc.) for the corresponding patient and video IDs.</span>
+
+<span class="sd">        ====================================================================================================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># print(&#39;setting&#39;, pat_id, vid_id)</span>
+        
+        <span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs_max</span><span class="p">[</span><span class="n">pat_id</span><span class="p">][</span><span class="n">vid_id</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs_min</span><span class="p">[</span><span class="n">pat_id</span><span class="p">][</span><span class="n">vid_id</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">input_scaled</span> <span class="o">=</span> <span class="nb">input</span> <span class="o">-</span> <span class="nb">input</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">keepdim</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">input_scaled</span> <span class="o">=</span> <span class="nb">input</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1e-10</span> <span class="o">+</span> <span class="nb">input</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">keepdim</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs</span><span class="p">[</span><span class="n">pat_id</span><span class="p">][</span><span class="n">vid_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">input_scaled</span><span class="o">*</span><span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">type</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">mem_gts</span><span class="p">[</span><span class="n">pat_id</span><span class="p">][</span><span class="n">vid_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">gt</span><span class="o">*</span><span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">type</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">mem_stored_bool</span><span class="p">[</span><span class="n">pat_id</span><span class="p">][</span><span class="n">vid_id</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span></div>
+
+
+<div class="viewcode-block" id="ACDC_radial_ispace.get_data">
+<a class="viewcode-back" href="../ACDC_radial_faster.html#ACDC_radial_faster.ACDC_radial_ispace.get_data">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">pat_id</span><span class="p">,</span> <span class="n">vid_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        AERS: </span>
+<span class="sd">        Retrieves and reconstructs the stored input and ground truth data.</span>
+
+<span class="sd">        This class method retrieves the scaled input and ground truth data for a specific patient ID (`pat_id`) </span>
+<span class="sd">        and video ID (`vid_id`) from the class-level memory. The method then reconstructs the original input </span>
+<span class="sd">        data by applying the inverse of the scaling operation.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        ------------</span>
+<span class="sd">        - pat_id : int or str</span>
+<span class="sd">            The patient ID used to retrieve the data from memory.</span>
+<span class="sd">        - vid_id : int or str</span>
+<span class="sd">            The video ID used to retrieve the data from memory.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">        - tuple of torch.Tensor</span>
+<span class="sd">            A tuple containing:</span>
+<span class="sd">            - `ret_inp` (torch.Tensor): The reconstructed input data tensor.</span>
+<span class="sd">            - `ret_gt` (torch.Tensor): The ground truth data tensor.</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">        -------</span>
+<span class="sd">        - AssertionError</span>
+<span class="sd">            If the data for the specified `pat_id` and `vid_id` has not been stored yet.</span>
+<span class="sd">        </span>
+<span class="sd">        Notes:</span>
+<span class="sd">        ------</span>
+<span class="sd">        - The input data is reconstructed from its stored scaled version by reversing the normalization process.</span>
+<span class="sd">        - The ground truth data is also retrieved and returned as a float tensor.</span>
+
+<span class="sd">        ====================================================================================================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># print(&#39;loading&#39;, pat_id, vid_id)</span>
+
+        <span class="n">maxs</span> <span class="o">=</span> <span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs_max</span><span class="p">[</span><span class="n">pat_id</span><span class="p">][</span><span class="n">vid_id</span><span class="p">])</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">mins</span> <span class="o">=</span> <span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs_min</span><span class="p">[</span><span class="n">pat_id</span><span class="p">][</span><span class="n">vid_id</span><span class="p">])</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">assert</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">mem_stored_bool</span><span class="p">[</span><span class="n">pat_id</span><span class="p">][</span><span class="n">vid_id</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">ret_inp</span> <span class="o">=</span> <span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs</span><span class="p">[</span><span class="n">pat_id</span><span class="p">][</span><span class="n">vid_id</span><span class="p">])</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">/</span><span class="mf">255.</span> 
+        <span class="n">ret_inp</span> <span class="o">=</span> <span class="n">ret_inp</span> <span class="o">*</span> <span class="p">(</span><span class="n">maxs</span><span class="o">-</span><span class="n">mins</span><span class="p">)</span>
+        <span class="n">ret_inp</span> <span class="o">=</span> <span class="n">ret_inp</span> <span class="o">+</span> <span class="n">mins</span>
+        <span class="n">ret_gt</span> <span class="o">=</span> <span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">mem_gts</span><span class="p">[</span><span class="n">pat_id</span><span class="p">][</span><span class="n">vid_id</span><span class="p">])</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">/</span><span class="mf">255.</span>
+        <span class="k">return</span> <span class="n">ret_inp</span><span class="p">,</span> <span class="n">ret_gt</span></div>
+
+
+<div class="viewcode-block" id="ACDC_radial_ispace.check_data">
+<a class="viewcode-back" href="../ACDC_radial_faster.html#ACDC_radial_faster.ACDC_radial_ispace.check_data">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">check_data</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">pat_id</span><span class="p">,</span> <span class="n">vid_id</span><span class="p">):</span>          <span class="c1"># AERS: checks if these data are stored yet?</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        AERS:</span>
+<span class="sd">        Checks if the data for a specific patient and video ID is stored in memory.</span>
+
+<span class="sd">        This class method verifies whether the input and ground truth data for the given patient ID (`pat_id`) </span>
+<span class="sd">        and video ID (`vid_id`) have already been stored in the class-level memory.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        - pat_id : int or str</span>
+<span class="sd">            The patient ID used to check the data in memory.</span>
+<span class="sd">        - vid_id : int or str</span>
+<span class="sd">            The video ID used to check the data in memory.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">        - bool</span>
+<span class="sd">            Returns `True` if the data for the specified `pat_id` and `vid_id` is stored, otherwise `False`.</span>
+<span class="sd">        </span>
+<span class="sd">        Notes:</span>
+<span class="sd">        ------</span>
+<span class="sd">        - This method is useful for determining whether data retrieval or initialization processes should be triggered.</span>
+
+<span class="sd">        ====================================================================================================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># print(&#39;checking&#39;, pat_id, vid_id)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">mem_stored_bool</span><span class="p">[</span><span class="n">pat_id</span><span class="p">][</span><span class="n">vid_id</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span></div>
+
+
+<div class="viewcode-block" id="ACDC_radial_ispace.bulk_set_data">
+<a class="viewcode-back" href="../ACDC_radial_faster.html#ACDC_radial_faster.ACDC_radial_ispace.bulk_set_data">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">bulk_set_data</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">actual_pnums</span><span class="p">,</span> <span class="n">vnums</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">gts</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        AERS:</span>
+<span class="sd">        Sets and stores input and ground truth data in bulk for multiple patients and videos.</span>
+
+<span class="sd">        This class method iterates over a batch of input and ground truth data, storing each item </span>
+<span class="sd">        individually for the corresponding patient ID (`pnum`) and video ID (`vnum`).</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        - actual_pnums : list of int or str</span>
+<span class="sd">            A list of patient IDs corresponding to the batch of data.</span>
+<span class="sd">        - vnums : list of int or str</span>
+<span class="sd">            A list of video IDs corresponding to the batch of data.</span>
+<span class="sd">        - inputs : torch.Tensor</span>
+<span class="sd">            A batch of input data tensors with shape `(B, 120, Chan, 256, 256)`, where `B` is the batch size.</span>
+<span class="sd">        - gts : torch.Tensor</span>
+<span class="sd">            A batch of ground truth data tensors with shape `(B, 120, 1, 256, 256)`, where `B` is the batch size.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">        -------</span>
+<span class="sd">        - AssertionError</span>
+<span class="sd">            If the `inputs` or `gts` tensors do not have 5 dimensions as expected.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">        ------</span>
+<span class="sd">        - This method ensures that the data for each patient and video in the batch is individually scaled </span>
+<span class="sd">        and stored using the `set_data` method.</span>
+<span class="sd">        - The 120 frames were set by NRM&#39;s experiment for ACDC dataset.</span>
+
+<span class="sd">        ====================================================================================================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">5</span><span class="p">)</span>
+        <span class="k">assert</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">gts</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">5</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,(</span><span class="n">pnum</span><span class="p">,</span> <span class="n">vnum</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">actual_pnums</span><span class="p">,</span> <span class="n">vnums</span><span class="p">)):</span>
+            <span class="c1"># input shape = B, 120, Chan, 256, 256</span>
+            <span class="c1"># GT shape = B, 120, 1, 256, 256</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">set_data</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">cpu</span><span class="p">()[</span><span class="n">i</span><span class="p">],</span> <span class="n">gts</span><span class="o">.</span><span class="n">cpu</span><span class="p">()[</span><span class="n">i</span><span class="p">],</span> <span class="n">pnum</span><span class="p">,</span> <span class="n">vnum</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ACDC_radial_ispace.data_init">
+<a class="viewcode-back" href="../ACDC_radial_faster.html#ACDC_radial_faster.ACDC_radial_ispace.data_init">[docs]</a>
+    <span class="nd">@classmethod</span>            <span class="c1"># AERS: class methods is used here because for image space data, each GPU will have a separate copy</span>
+    <span class="k">def</span> <span class="nf">data_init</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">whole_num_vids_per_patient</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        AERS:</span>
+<span class="sd">        Initializes the data storage for each patient and video.</span>
+
+<span class="sd">        This class method sets up the data structures needed to store input and ground truth data </span>
+<span class="sd">        for each patient and video during training or testing. The method initializes the memory </span>
+<span class="sd">        with zeros or empty structures based on the provided parameters.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        - whole_num_vids_per_patient : list of int</span>
+<span class="sd">            A list where each entry represents the number of videos per patient.</span>
+<span class="sd">        - parameters : dict</span>
+<span class="sd">                A dictionary of parameters that control the initialization process. </span>
+<span class="sd">                Expected keys include:</span>
+<span class="sd">                </span>
+<span class="sd">                - &#39;memoise_ispace&#39; (bool): Flag indicating whether to memoize image space data.</span>
+<span class="sd">                - &#39;coil_combine&#39; (str): Method for coil combination (&#39;SOS&#39; or other methods).</span>
+<span class="sd">                - &#39;init_skip_frames&#39; (int): Number of initial frames to skip.</span>
+<span class="sd">                - &#39;max_frames&#39; (int): Maximum number of frames per video.</span>
+<span class="sd">                - &#39;num_coils&#39; (int): Number of coils for imaging.</span>
+<span class="sd">                - &#39;image_resolution&#39; (int): The resolution of the image (width and height in pixels).</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">        ------</span>
+<span class="sd">        - This method uses class-level memory (e.g., `cls.mem_inputs`, `cls.mem_gts`) to store data structures for each patient and video.</span>
+<span class="sd">        - The method also uses shared memory to allow multiple processes to access the data concurrently.</span>
+<span class="sd">        - This method only runs once to avoid re-initializing the data (controlled by `cls.data_init_done`).</span>
+
+<span class="sd">        ====================================================================================================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">cls</span><span class="o">.</span><span class="n">data_init_done</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">for</span> <span class="n">n_vids</span> <span class="ow">in</span> <span class="n">whole_num_vids_per_patient</span><span class="p">:</span>  <span class="c1"># AERS: Load all data for training or testing</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>              <span class="c1"># AERS: Data initialization with zeros below. This needs to be modified if we want the image output to remain complex (not just the mag of complex data).</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs_max</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs_min</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">mem_gts</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">mem_stored_bool</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+            <span class="k">for</span> <span class="n">vi</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_vids</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;memoise_ispace&#39;</span><span class="p">]:</span>
+                    <span class="k">if</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;coil_combine&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;SOS&#39;</span><span class="p">:</span>
+                        <span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">max_frames</span> <span class="o">-</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;init_skip_frames&#39;</span><span class="p">],</span><span class="mi">1</span><span class="p">,</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_resolution&#39;</span><span class="p">],</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_resolution&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">type</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">uint8</span><span class="p">))</span>
+                        <span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs_max</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">max_frames</span> <span class="o">-</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;init_skip_frames&#39;</span><span class="p">],</span><span class="mi">1</span><span class="p">))</span>
+                        <span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs_min</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">max_frames</span> <span class="o">-</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;init_skip_frames&#39;</span><span class="p">],</span><span class="mi">1</span><span class="p">))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">max_frames</span> <span class="o">-</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;init_skip_frames&#39;</span><span class="p">],</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_coils&#39;</span><span class="p">],</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_resolution&#39;</span><span class="p">],</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_resolution&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">type</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">uint8</span><span class="p">))</span>
+                        <span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs_max</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">max_frames</span> <span class="o">-</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;init_skip_frames&#39;</span><span class="p">],</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_coils&#39;</span><span class="p">]))</span>
+                        <span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs_min</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">max_frames</span> <span class="o">-</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;init_skip_frames&#39;</span><span class="p">],</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_coils&#39;</span><span class="p">]))</span>
+                    <span class="bp">cls</span><span class="o">.</span><span class="n">mem_gts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">max_frames</span> <span class="o">-</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;init_skip_frames&#39;</span><span class="p">],</span><span class="mi">1</span><span class="p">,</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_resolution&#39;</span><span class="p">],</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_resolution&#39;</span><span class="p">]))</span>
+                <span class="bp">cls</span><span class="o">.</span><span class="n">mem_stored_bool</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+
+            <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">share_memory_</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">mem_inputs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>         <span class="c1"># AERS: Shares data to all workers</span>
+            <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">share_memory_</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">mem_gts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+            <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">share_memory_</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">mem_stored_bool</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+
+        <span class="bp">cls</span><span class="o">.</span><span class="n">data_init_done</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">train</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">visualise_only</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the ACDC_radial_ispace dataset.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -------------</span>
+<span class="sd">        - path : str</span>
+<span class="sd">            Path to the dataset.</span>
+<span class="sd">        - parameters : dict</span>
+<span class="sd">            Dictionary of parameters for dataset configuration.</span>
+<span class="sd">        - device : torch.device</span>
+<span class="sd">            Device to use for computations.</span>
+<span class="sd">        - train : bool, optional</span>
+<span class="sd">            Whether the dataset is for training. </span>
+<span class="sd">                Defaults to True.</span>
+<span class="sd">        - visualise_only : bool, optional</span>
+<span class="sd">            Whether to only visualize the data. </span>
+<span class="sd">                Defaults to False.</span>
+
+<span class="sd">        ==========================================================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">ACDC_radial_ispace</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="n">ACDC_radial_ispace</span><span class="o">.</span><span class="n">max_frames</span> <span class="o">=</span> <span class="mi">120</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train</span> <span class="o">=</span> <span class="n">train</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;loop_videos&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ACDC_radial_ispace</span><span class="o">.</span><span class="n">max_frames</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;init_skip_frames&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">90</span>
+        <span class="c1"># AERS: Creates ACDC_radial as a subvariable used to speed up training by not generating multi-coil output again and again. This class stores those multi-coil outputs. </span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orig_dataset</span> <span class="o">=</span> <span class="n">ACDC_radial</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">train</span> <span class="o">=</span> <span class="n">train</span><span class="p">,</span> <span class="n">visualise_only</span> <span class="o">=</span> <span class="n">visualise_only</span><span class="p">)</span>        
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_unskipped_frames</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_coils&#39;</span><span class="p">]</span><span class="o">*</span><span class="p">((</span><span class="n">ACDC_radial_ispace</span><span class="o">.</span><span class="n">max_frames</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;init_skip_frames&#39;</span><span class="p">])</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">orig_dataset</span><span class="o">.</span><span class="n">num_vids_per_patient</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span> <span class="c1"># AERS: Only image space data are memoized</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves an item from the dataset.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -------------</span>
+<span class="sd">        - i : int</span>
+<span class="sd">            Index of the item to retrieve.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        - tuple</span>
+<span class="sd">            A tuple containing the memory flag, data, and ground truth.</span>
+
+<span class="sd">        ==========================================================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ACDC_radial_ispace</span><span class="o">.</span><span class="n">data_init_done</span><span class="p">:</span>                  <span class="c1"># AERS: First thing it does is to make sure that the initialization is done</span>
+            <span class="n">ACDC_radial_ispace</span><span class="o">.</span><span class="n">data_init</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">orig_dataset</span><span class="o">.</span><span class="n">whole_num_vids_per_patient</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
+        <span class="n">pat_id</span><span class="p">,</span> <span class="n">vid_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">orig_dataset</span><span class="o">.</span><span class="n">index_to_location</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">pat_id</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">orig_dataset</span><span class="o">.</span><span class="n">offset</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">train</span><span class="p">:</span>
+            <span class="k">assert</span><span class="p">(</span><span class="n">pat_id</span> <span class="o">&lt;</span> <span class="mi">120</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span><span class="p">(</span><span class="n">pat_id</span> <span class="o">&gt;=</span> <span class="mi">120</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">ACDC_radial_ispace</span><span class="o">.</span><span class="n">check_data</span><span class="p">(</span><span class="n">pat_id</span><span class="p">,</span> <span class="n">vid_id</span><span class="p">):</span>          <span class="c1"># AERS: Checks if data are stored in memory</span>
+            <span class="n">mem</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">data</span><span class="p">,</span> <span class="n">gt</span> <span class="o">=</span> <span class="n">ACDC_radial_ispace</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">pat_id</span><span class="p">,</span> <span class="n">vid_id</span><span class="p">)</span> <span class="c1"># AERS: If yes, get those data</span>
+            <span class="k">return</span> <span class="n">mem</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">gt</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mem</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>                                  <span class="c1"># AERS: If not, it will return mem and the original input from the original dataset</span>
+            <span class="k">return</span> <span class="n">mem</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">orig_dataset</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>                      <span class="c1"># AERS: If mem = 0, expects huge dataset. If mem = 1, it expects data and gt. Calls the get item of the ACDC_radial class.</span>
+                                                                   <span class="c1"># AERS: set_data is called from the training script, not here (actually uses bulk_set_data).</span>
+
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the length of the dataset.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        int: The length of the dataset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">orig_dataset</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ACDC_radial">
+<a class="viewcode-back" href="../ACDC_radial_faster.html#ACDC_radial_faster.ACDC_radial">[docs]</a>
+<span class="k">class</span> <span class="nc">ACDC_radial</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Custom dataset for ACDC radial data.</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">    ----------</span>
+<span class="sd">    - index_to_location(i): Converts a flat index to patient and video IDs.</span>
+<span class="sd">    - __init__(path, parameters, device, train=True, visualise_only=False): Initializes the dataset.</span>
+<span class="sd">    - __getitem__(i): Retrieves an item from the dataset.</span>
+<span class="sd">    - __len__(): Returns the length of the dataset.</span>
+<span class="sd">    ===================================================================================================</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">train</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">visualise_only</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span> <span class="c1"># AERS: Each video has 150 frames, 120 are used in training and 30 are used in testing. </span>
+        <span class="c1"># AERS: ACTUALLY, as per Niraj, June 7th 11:30AM video 53:07. He doesn&#39;t use 120 frames for training because the memory runs out, so he used 32 defined in params.py &#39;loop_videos&#39;</span>
+<span class="w">    </span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the ACDC_radial dataset.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -------------</span>
+<span class="sd">        - path : str</span>
+<span class="sd">            Path to the dataset.</span>
+<span class="sd">        - parameters : dict</span>
+<span class="sd">            Dictionary of parameters for dataset configuration.</span>
+<span class="sd">        - device : torch.device</span>
+<span class="sd">            Device to use for computations.</span>
+<span class="sd">        - train : bool, optional</span>
+<span class="sd">            Whether the dataset is for training. </span>
+<span class="sd">                Defaults to True.</span>
+<span class="sd">        - visualise_only : bool, optional</span>
+<span class="sd">            Whether to only visualize the data. </span>
+<span class="sd">                Defaults to False.</span>
+
+<span class="sd">        ====================================================================================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ACDC_radial</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train</span> <span class="o">=</span> <span class="n">train</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_split</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;train_test_split&#39;</span><span class="p">]</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">final_resolution</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;image_resolution&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resolution</span> <span class="o">=</span> <span class="mi">256</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_coils</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_coils&#39;</span><span class="p">]</span>
+        <span class="k">assert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_coils</span> <span class="o">==</span> <span class="mi">8</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ft_num_radial_views</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;kspace_num_spokes&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">visualise_only</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">loop_videos</span> <span class="o">=</span> <span class="mi">120</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">loop_videos</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;loop_videos&#39;</span><span class="p">]</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;radial_faster/</span><span class="si">{}</span><span class="s1">_resolution_</span><span class="si">{}</span><span class="s1">_spokes&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">final_resolution</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ft_num_radial_views</span><span class="p">))</span>
+
+        <span class="c1"># AERS: Loads metadata and all relevant info to ACDC data</span>
+        <span class="n">metadic</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_path</span><span class="p">,</span> <span class="s1">&#39;metadata.pth&#39;</span><span class="p">))</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span> <span class="o">=</span> <span class="n">metadic</span><span class="p">[</span><span class="s1">&#39;num_patients&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">metadic</span><span class="p">[</span><span class="s1">&#39;num_vids_per_patient&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coil_masks</span> <span class="o">=</span> <span class="n">metadic</span><span class="p">[</span><span class="s1">&#39;coil_masks&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coil_variant_per_patient_per_video</span> <span class="o">=</span> <span class="n">metadic</span><span class="p">[</span><span class="s1">&#39;coil_variant_per_patient_per_video&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">GAs_per_patient_per_video</span> <span class="o">=</span> <span class="n">metadic</span><span class="p">[</span><span class="s1">&#39;GAs_per_patient_per_video&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">whole_num_patients</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">whole_num_vids_per_patient</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">actual_frames_per_vid_per_patient</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">metadic</span><span class="p">[</span><span class="s1">&#39;frames_per_vid_per_patient&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">metadic</span><span class="p">[</span><span class="s1">&#39;frames_per_vid_per_patient&#39;</span><span class="p">])</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">train</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_split</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_split</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_split</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;acdc_debug_mini&#39;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span> <span class="o">*=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actual_frames_per_vid_per_patient</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">actual_frames_per_vid_per_patient</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">GAs_per_patient_per_video</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAs_per_patient_per_video</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coil_variant_per_patient_per_video</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coil_variant_per_patient_per_video</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">num_patients</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">loop_videos</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span> <span class="o">*=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loop_videos</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vid_frame_cumsum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vid_cumsum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_videos</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_unskipped_frames</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;num_coils&#39;</span><span class="p">]</span><span class="o">*</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">frames_per_vid_per_patient</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;init_skip_frames&#39;</span><span class="p">])</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">num_vids_per_patient</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="ACDC_radial.index_to_location">
+<a class="viewcode-back" href="../ACDC_radial_faster.html#ACDC_radial_faster.ACDC_radial.index_to_location">[docs]</a>
+    <span class="k">def</span> <span class="nf">index_to_location</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span> <span class="c1"># AERS: See comment in getitem. i returns the patient number and video number</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Converts a flat index to patient and video IDs.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        --------------</span>
+<span class="sd">        - i : int</span>
+<span class="sd">            The flat index.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        ----------</span>
+<span class="sd">        - tuple</span>
+<span class="sd">            The patient and video IDs corresponding to the flat index.</span>
+<span class="sd">            </span>
+<span class="sd">        ====================================================================================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">p_num</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vid_cumsum</span> <span class="o">&lt;=</span> <span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">p_num</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">v_num</span> <span class="o">=</span> <span class="n">i</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">v_num</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">vid_cumsum</span><span class="p">[</span><span class="n">p_num</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">p_num</span><span class="p">,</span> <span class="n">v_num</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span> <span class="c1"># AERS: i indexes the video number for each patient. There is a cummulative sum of the number of videos for each patient (index_to_location). </span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves an item from the dataset.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -------------</span>
+<span class="sd">        - i : int</span>
+<span class="sd">            The index of the item to retrieve.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        - tuple</span>
+<span class="sd">            A tuple containing various data tensors related to the item.</span>
+
+<span class="sd">        ====================================================================================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">p_num</span><span class="p">,</span> <span class="n">v_num</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">index_to_location</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">actual_pnum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">+</span> <span class="n">p_num</span>  <span class="c1"># There is an offset to index the video frames. If we are training the network, the offset is 0. If we are testing the network, the offset is 120. </span>
+        <span class="n">index_coils_used</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coil_variant_per_patient_per_video</span><span class="p">[</span><span class="n">p_num</span><span class="p">][</span><span class="n">v_num</span><span class="p">]</span>
+        <span class="n">coils_used</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coil_masks</span><span class="p">[</span><span class="n">index_coils_used</span><span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">dims</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="n">GAs_used</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAs_per_patient_per_video</span><span class="p">[</span><span class="n">p_num</span><span class="p">][</span><span class="n">v_num</span><span class="p">][:</span><span class="bp">self</span><span class="o">.</span><span class="n">loop_videos</span><span class="p">,:]</span>
+
+        <span class="n">dic_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_path</span><span class="p">,</span> <span class="s1">&#39;patient_</span><span class="si">{}</span><span class="s1">/vid_</span><span class="si">{}</span><span class="s1">.pth&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">actual_pnum</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">v_num</span><span class="p">))</span>  <span class="c1"># AERS: Sets the path where data are stored</span>
+        <span class="n">dic</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">dic_path</span><span class="p">,</span> <span class="n">map_location</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cpu&#39;</span><span class="p">))</span>                                 <span class="c1"># AERS: Loads dictionary data, masks, ground truth and coilwise inputs, orignal number of frames (period)</span>
+        <span class="n">masks_applicable</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="s1">&#39;spoke_mask&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">type</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)[:</span><span class="bp">self</span><span class="o">.</span><span class="n">loop_videos</span><span class="p">,:,:,:]</span>              <span class="c1"># AERS: Note that this is loading the first &#39;loop_videos&#39; as defined in params.py</span>
+        <span class="n">og_video</span> <span class="o">=</span> <span class="p">((</span><span class="n">dic</span><span class="p">[</span><span class="s1">&#39;targ_video&#39;</span><span class="p">]</span><span class="o">/</span><span class="mf">255.</span><span class="p">)[:</span><span class="bp">self</span><span class="o">.</span><span class="n">loop_videos</span><span class="p">,:,:,:])</span>
+        <span class="n">undersampled_fts</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="s1">&#39;coilwise_input&#39;</span><span class="p">][:</span><span class="bp">self</span><span class="o">.</span><span class="n">loop_videos</span><span class="p">,:,:,:]</span>
+
+        <span class="k">if</span> <span class="s1">&#39;coilwise_targets&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dic</span><span class="p">:</span>
+            <span class="n">coilwise_targets</span> <span class="o">=</span> <span class="n">og_video</span> <span class="o">*</span> <span class="n">coils_used</span>
+            <span class="n">temp</span> <span class="o">=</span> <span class="p">((</span><span class="n">coilwise_targets</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">coilwise_targets</span> <span class="o">=</span> <span class="n">coilwise_targets</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1e-10</span> <span class="o">+</span> <span class="n">temp</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">coilwise_targets</span> <span class="o">=</span> <span class="p">(</span><span class="n">dic</span><span class="p">[</span><span class="s1">&#39;coilwise_targets&#39;</span><span class="p">]</span><span class="o">/</span><span class="mf">255.</span><span class="p">)[:</span><span class="bp">self</span><span class="o">.</span><span class="n">loop_videos</span><span class="p">,:,:,:]</span>
+
+        <span class="n">Nf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">actual_frames_per_vid_per_patient</span><span class="p">[</span><span class="n">p_num</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">actual_pnum</span><span class="p">,</span> <span class="n">v_num</span><span class="p">]),</span> <span class="n">masks_applicable</span><span class="p">,</span> <span class="n">og_video</span><span class="p">,</span> <span class="n">coilwise_targets</span><span class="p">,</span> <span class="n">undersampled_fts</span><span class="p">,</span> <span class="n">coils_used</span><span class="p">,</span> <span class="n">Nf</span>
+
+        
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the length of the dataset.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        - int </span>
+<span class="sd">            The length of the dataset.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_videos</span> </div>
+
+</pre></div>
+
+      </div>
+      <div class="bottomnav" role="navigation" aria-label="Bottom">
+      
+        <p>
+        <a class="uplink" href="../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2024, AERS + NRM.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.4.7.
+    </div>
+  </body>
+</html>

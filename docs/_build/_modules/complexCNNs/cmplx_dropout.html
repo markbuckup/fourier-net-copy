@@ -37,6 +37,31 @@
 <span class="k">class</span> <span class="nc">ComplexDropout</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        AERS:</span>
+<span class="sd">        Initializes the ComplexDropout layer.</span>
+
+<span class="sd">        This method sets up the ComplexDropout layer with the specified rank, dropout probability, </span>
+<span class="sd">        and whether the operation should be performed in-place.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        - rank : int</span>
+<span class="sd">            The rank of the tensor to which the dropout will be applied.</span>
+<span class="sd">        - p : float, optional</span>
+<span class="sd">            Probability of dropping out elements in the tensor. Must be between 0 and 1. </span>
+<span class="sd">                Default is 0.5.</span>
+<span class="sd">        - inplace : bool, optional</span>
+<span class="sd">            If True, performs the operation in-place without using extra memory for a new tensor. </span>
+<span class="sd">                Default is True.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">        -------</span>
+<span class="sd">        - ValueError</span>
+<span class="sd">            If the dropout probability `p` is not between 0 and 1.</span>
+
+<span class="sd">        ==========================================================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">ComplexDropout</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">p</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">p</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;dropout probability has to be between 0 and 1, &quot;</span>
@@ -48,6 +73,19 @@
 <div class="viewcode-block" id="ComplexDropout.extra_repr">
 <a class="viewcode-back" href="../../utils.models.complexCNNs.html#complexCNNs.cmplx_dropout.ComplexDropout.extra_repr">[docs]</a>
     <span class="k">def</span> <span class="nf">extra_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        AERS:</span>
+<span class="sd">        Returns a string representation of the layer&#39;s configuration.</span>
+
+<span class="sd">        This method provides an extra representation of the `ComplexDropout` layer&#39;s settings, specifically the dropout probability (`p`) and whether the operation is performed in-place.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">        -str</span>
+<span class="sd">            A string that represents the dropout probability and the in-place setting of the layer. The string format is &#39;p={}&#39; followed by &#39;, inplace&#39; if `inplace` is True.</span>
+
+<span class="sd">        ==========================================================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">inplace_str</span> <span class="o">=</span> <span class="s1">&#39;, inplace&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inplace</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span>
         <span class="k">return</span> <span class="s1">&#39;p=</span><span class="si">{}{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">inplace_str</span><span class="p">)</span></div>
 
@@ -55,6 +93,31 @@
 <div class="viewcode-block" id="ComplexDropout.forward">
 <a class="viewcode-back" href="../../utils.models.complexCNNs.html#complexCNNs.cmplx_dropout.ComplexDropout.forward">[docs]</a>
     <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        AERS:</span>
+<span class="sd">        Applies dropout to the input during training.</span>
+
+<span class="sd">        This method applies dropout to the input tensor by randomly setting a portion of the elements to zero </span>
+<span class="sd">        based on the dropout probability `p`. During evaluation (when `self.training` is `False`), </span>
+<span class="sd">        or if `p` is 0, the input is returned unchanged. If `p` is 1, the entire input is zeroed out.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        - input : torch.Tensor</span>
+<span class="sd">            The input tensor to which dropout will be applied. The tensor is expected to be a complex-valued tensor with the last dimension representing real and imaginary components.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">        - torch.Tensor</span>
+<span class="sd">            The tensor after applying dropout. If the layer is in training mode, a portion of the elements will be zeroed based on the dropout probability `p`. If in evaluation mode or if `p` is 0, the input is returned unchanged.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">        ------</span>
+<span class="sd">        - The dropout mask is applied equally to both the real and imaginary parts of the input tensor.</span>
+<span class="sd">        - The method handles edge cases where `p` is 0 or 1 to avoid unnecessary computations.</span>
+
+<span class="sd">        ==========================================================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>    
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="nb">input</span>
 
@@ -79,17 +142,19 @@
 <span class="sd">    The channels to zero are randomized on every forward call.</span>
 <span class="sd">    Usually the input comes from :class:`nn.Conv3d` modules.</span>
 
-<span class="sd">    Args:</span>
+<span class="sd">    Paramaters:</span>
 <span class="sd">    -----------</span>
-<span class="sd">    p : float, optional</span>
+<span class="sd">    - p : float, optional</span>
 <span class="sd">        Probability of an element to be zeroed.</span>
-<span class="sd">    inplace : bool, optional</span>
+<span class="sd">    - inplace : bool, optional</span>
 <span class="sd">        If set to ``True``, will do this operation in-place</span>
 
 <span class="sd">    Shape:</span>
 <span class="sd">    -----------</span>
 <span class="sd">        - Input: :math:`(N, C, D, H, W, 2)`</span>
 <span class="sd">        - Output: :math:`(N, C, D, H, W, 2)` (same shape as input)</span>
+
+<span class="sd">    ================================================================================================</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">ComplexDropout1d</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
@@ -108,11 +173,11 @@
 <span class="sd">    The channels to zero-out are randomized on every forward call.</span>
 <span class="sd">    Usually the input comes from :class:`nn.Conv2d` modules.</span>
 
-<span class="sd">    Args:</span>
+<span class="sd">    Paramaters:</span>
 <span class="sd">    -----------</span>
-<span class="sd">    p : float, optional</span>
+<span class="sd">    - p : float, optional</span>
 <span class="sd">        Probability of an element to be zero-ed.</span>
-<span class="sd">    inplace : bool, optional</span>
+<span class="sd">    - inplace : bool, optional</span>
 <span class="sd">        If set to ``True``, will do this operation in-place</span>
 
 <span class="sd">    Shape:</span>
@@ -120,6 +185,7 @@
 <span class="sd">        - Input: :math:`(N, C, H, W, 2)`</span>
 <span class="sd">        - Output: :math:`(N, C, H, W, 2)` (same shape as input)</span>
 
+<span class="sd">    ================================================================================================</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">ComplexDropout2d</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
@@ -138,11 +204,11 @@
 <span class="sd">    The channels to zero are randomized on every forward call.</span>
 <span class="sd">    Usually the input comes from :class:`nn.Conv3d` modules.</span>
 
-<span class="sd">    Args:</span>
+<span class="sd">    Paramaters:</span>
 <span class="sd">    -----------</span>
-<span class="sd">    p : float, optional</span>
+<span class="sd">    - p : float, optional</span>
 <span class="sd">        Probability of an element to be zeroed.</span>
-<span class="sd">    inplace : bool, optional </span>
+<span class="sd">    - inplace : bool, optional </span>
 <span class="sd">        If set to ``True``, will do this operation in-place</span>
 
 <span class="sd">    Shape:</span>
@@ -150,6 +216,7 @@
 <span class="sd">        - Input: :math:`(N, C, D, H, W, 2)`</span>
 <span class="sd">        - Output: :math:`(N, C, D, H, W, 2)` (same shape as input)</span>
 
+<span class="sd">    ================================================================================================</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">ComplexDropout3d</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>

@@ -28,11 +28,12 @@ class Identity(nn.Module):
     A simple identity module - placeholder for absent modules during ablation studies
 
     Attributes
-    --------
+    ------------
         n_rnn_cells : int
             Place holder argument
         m : nn.Module
             Place holder attribute so that the module has parameters.
+    ================================================================================================        
     """
 
     def __init__(self, n_rnn_cells = 1, image_lstm = False):   # AERS: Added param_dic because sphinx needed it
@@ -46,23 +47,25 @@ class Identity(nn.Module):
         """
         Place holder Forward pass - **will never be used**
 
-        Args:
-        --------
-        hist_mag : Tensor
+        Parameters:
+        -------------
+        - hist_mag : Tensor
             Historical magnitude data.
-        hist_phase : Tensor
+        - hist_phase : Tensor
             Historical phase data.
-        gt_mask : Tensor, optional
+        - gt_mask : Tensor, optional
             Ground truth mask.
-        mag_prev_outputs : Tensor, optional
+        - mag_prev_outputs : Tensor, optional
             Previous magnitude outputs.
-        phase_prev_outputs : Tensor, optional
+        - phase_prev_outputs : Tensor, optional
             Previous phase outputs.
 
-        Returns
-        --------
-            Tuple[List[Tensor], List[Tensor]]
-                The same outputs as input
+        Returns:
+        -------------
+        - Tuple: List[Tensor], List[Tensor]
+            The same outputs as input
+
+        ================================================================================================
         """
         new_mag_outputs = [hist_mag for i in range(self.n_rnn_cells)]
         new_phase_outputs = [hist_phase for i in range(self.n_rnn_cells)]
@@ -74,25 +77,31 @@ class Identity_param(nn.Module):
     A identity module - placeholder for absent modules during ablation studies
 
     Attributes:
-        m (nn.Module): Linear transformation layer.
+    ------------
+    - m : nn.Module
+        Linear transformation layer.
+
+    ================================================================================================
     """
 
     def __init__(self, parameters, proc_device):
         """
-        AERS
+        AERS:
         Initialize the Identity_param module.
 
         This method initializes an instance of the Identity_param module, setting up the internal 
         components and parameters. It includes a placeholder linear layer as an example.
 
-        Args:
-        -----
+        Parameters:
+        ------------
         - parameters (dict): 
             A dictionary containing the configuration parameters for the module. 
             The specific contents and structure of this dictionary depend on the use case.
         - proc_device (str): 
             The device on which the module's computations will be performed. Typically, this 
             is either 'cpu' or 'cuda' to specify the processing device.
+
+        ================================================================================================
         """
         super(Identity_param, self).__init__()
         self.m = nn.Linear(3,3)
@@ -101,11 +110,16 @@ class Identity_param(nn.Module):
         """
         Placeholder Forward pass of the Identity_param module.
 
-        Args:
-            x (Tensor): Input tensor.
+        Parameters:
+        ------------
+        - x : Tensor
+            Input tensor.
 
         Returns:
-            Tensor: x
+        ------------
+        - x : Tensor
+
+        ================================================================================================
         """
         return x
 
@@ -114,12 +128,18 @@ def mylog(x,base = 10):
     """
     Computes the logarithm of a tensor with a specified base.
 
-    Args:
-        x (Tensor): Input tensor.
-        base (int, optional): Logarithm base. Defaults to 10.
+    Parameters:
+    ------------
+    - x : Tensor
+        Input tensor.
+    - base :int, optional
+        Logarithm base. Defaults to 10.
 
     Returns:
+    ------------
         Tensor: Logarithm of the input tensor.
+
+    ================================================================================================
     """
     return x.log10()/torch.tensor(base).log10()
 
@@ -128,11 +148,17 @@ def gaussian_2d(shape, sigma=None):
     Generate a 2D Gaussian mask.
 
     Parameters:
-        shape (tuple): Shape of the output array (height, width).
-        sigma (float): Standard deviation of the Gaussian distribution.
+    ------------
+    - shape : tuple
+        Shape of the output array (height, width).
+    - sigma : float
+        Standard deviation of the Gaussian distribution.
 
     Returns:
-        numpy.ndarray: 2D Gaussian mask.
+    ------------
+    - numpy.ndarray: 2D Gaussian mask.
+
+    ================================================================================================
     """
     if sigma is None:
         sigma = shape[0]//5
@@ -153,13 +179,18 @@ def special_trim(x, l = 5, u = 95):
     """
     Trims the values of a tensor to be within the specified percentiles.
 
-    Args:
-        x (Tensor): Input tensor.
-        l (int, optional): Lower percentile. Defaults to 5.
-        u (int, optional): Upper percentile. Defaults to 95.
+    Parameters:
+    ------------
+    - x : Tensor
+        Input tensor.
+    - l : int, optional
+        Lower percentile. Defaults to 5.
+    - u : int, optional
+        Upper percentile. Defaults to 95.
 
     Returns:
-        Tensor: Trimmed tensor.
+    ------------
+    - Tensor : Trimmed tensor.
     """
     percentile_95 = np.percentile(x.detach().cpu(), u)
     percentile_5 = np.percentile(x.detach().cpu(), l)
@@ -170,12 +201,16 @@ def fetch_models(parameters):
     """
     Fetches the LSTM model types based on the given parameters.
 
-    Args:
-        parameters : dict
-            Dictionary of parameters.
+    Parameters:
+    ------------
+    - parameters : dict
+        Dictionary of parameters.
 
     Returns:
-        Tuple[Type[nn.Module], Type[nn.Module]]: LSTM model types for image and k-space.
+    ------------
+    - Tuple[Type[nn.Module], Type[nn.Module]]: LSTM model types for image and k-space.
+
+    ================================================================================================
     """
     ispace_name = parameters['ispace_architecture']
     kspace_name = parameters['kspace_architecture']
@@ -195,37 +230,46 @@ class concatConv(nn.Module):
     """
     Concatenated convolutional layers module.
 
-    Attributes
-    ----------
-    layerlist : nn.ModuleList
+    Attributes:
+    ------------
+    - layerlist : nn.ModuleList
         List of convolutional layers.
-    skip_connections : bool
+    - skip_connections : bool
         Flag for using skip connections.
-    relu_func : nn.Module
+    - relu_func : nn.Module
         ReLU activation function.
-    n_layers : int
+    - n_layers : int
         Number of layers.
+
+    ================================================================================================
     """
     def __init__(self, cnn_func, relu_func, gate_input_size = 8, hidden_channels = 32, gate_output_size = 1, n_layers = 4, skip_connections = True):
         """
         Initializes the concatConv module.
 
-        Args:
-        ----------
+        Parameters:
+        ------------
         - cnn_func : Type[nn.Module]
             Convolution function - real or complex.
         - relu_func : Type[nn.Module]
             ReLU function.
         - gate_input_size : int, optional
-            Input size of the gate. Defaults to 8.
+            Input size of the gate. 
+                Defaults to 8.
         - hidden_channels : int, optional
-            Number of hidden channels. Defaults to 32.
+            Number of hidden channels. 
+                Defaults to 32.
         - gate_output_size : int, optional
-            Output size of the gate. Defaults to 1.
+            Output size of the gate. 
+                Defaults to 1.
         - n_layers : int, optional
-            Number of layers. Defaults to 4.
+            Number of layers. 
+                Defaults to 4.
         - skip_connections : bool, optional
-            Flag for using skip connections. Defaults to True.
+            Flag for using skip connections. 
+                Defaults to True.
+
+        ================================================================================================
         """
         super(concatConv, self).__init__()
         self.layerlist = []
@@ -252,15 +296,16 @@ class concatConv(nn.Module):
         """
         Forward pass of the concatConv module.
 
-        Args:
-        ----------
-        x : Tensor
+        Parameters:
+        ------------
+        - x : Tensor
             Input tensor.
 
-        Returns
-        ----------
-        Tensor
-            Output tensor.
+        Returns:
+        ------------
+        - Output tensor : Tensor
+            
+        ================================================================================================
         """
         if self.n_layers == 1:
             return self.layerlist[0](x)
@@ -287,52 +332,56 @@ class RecurrentModule(nn.Module):
     """
     The Recurrent Module for undersampled k-space data processing. Contains the kspace-RNN and the image LSTM.
 
-    Attributes
-    ----------
-        Various attributes for LSTM cell configuration.
+    Attributes:
+    -----------
+        - Various attributes for LSTM cell configuration.
+
+    ================================================================================================
     """
     def __init__(self, history_length = 0, num_coils = 8, forget_gate_coupled = False, forget_gate_same_coils = False, forget_gate_same_phase_mag = False, rnn_input_mask = True, skip_connections = False, n_layers = 3, n_hidden = 12, n_rnn_cells = 1, coilwise = True, gate_cat_prev_output = False):
         """
         Initializes the convLSTMcell_kspace module.
 
-        Args:
-        ----------
-        history_length : int, optional
+        Parameters:
+        ------------
+        - history_length : int, optional
             Length of the history to append to the undersampled input. Appends historical frames from previous cardiac cycles. 
                 Defaults to 0.
-        num_coils : int, optional
+        - num_coils : int, optional
             Number of coils. 
                 Defaults to 8.
-        forget_gate_coupled : bool, optional
+        - forget_gate_coupled : bool, optional
             Flag for coupled forget gate - forget gate mask and input gate mask sum to 1. 
                 Defaults to False.
-        forget_gate_same_coils : bool, optional
+        - forget_gate_same_coils : bool, optional
             Flag for same forget gate for all coils. 
                 Defaults to False.
-        forget_gate_same_phase_mag : bool, optional
+        - forget_gate_same_phase_mag : bool, optional
             Flag for same forget gate for phase and magnitude. 
                 Defaults to False.
-        rnn_input_mask : bool, optional
+        - rnn_input_mask : bool, optional
             Flag for appending the mask of the locations of newly acquired data to the RNN input. 
                 Defaults to True.
-        skip_connections : bool, optional
+        - skip_connections : bool, optional
             Flag for having skip connections. 
                 Defaults to False.
-        n_layers : int, optional
+        - n_layers : int, optional
             Number of layers in the K-space RNN gates. 
                 Defaults to 3.
-        n_hidden :int, optional
+        - n_hidden :int, optional
             Number of channels in the K-space RNN gates. 
                 Defaults to 12.
-        n_rnn_cells : int, optional
+        - n_rnn_cells : int, optional
             Number of RNN cells - can be coupled one after the other. 
                 Defaults to 1.
-        coilwise : bool, optional
+        - coilwise : bool, optional
             If enabled, each coil of the input is processed independently. 
                 Defaults to True.
-        gate_cat_prev_output : bool, optional
+        - gate_cat_prev_output : bool, optional
             Flag for appending the previously predicted frame to the RNN input. 
                 Defaults to True.
+        
+        ================================================================================================
         """
         super(RecurrentModule, self).__init__()
         self.n_rnn_cells = n_rnn_cells
@@ -393,20 +442,42 @@ class RecurrentModule(nn.Module):
         """
         Forward pass of the RecurrentModule.
 
-        Args:
-            hist_mag (Tensor): Log Magnitude data. If history is provided, then this will have multiple frames appended as channnels.
-            hist_phase (Tensor): Phase data as angles. If history is provided, then this will have multiple frames appended as channnels.
-            background (Tensor, optional): Background mask. Defaults to None.
-            gt_mask (Tensor, optional): Ground truth mask. Defaults to None.
-            mag_prev_outputs (Tensor, optional): Previous magnitude outputs. Defaults to None.
-            phase_prev_outputs (Tensor, optional): Previous phase outputs. Defaults to None.
-            window_size (int, optional): Window size for gating. Defaults to np.inf.
-            mag_gates_remember (list, optional): List to remember magnitude gates to enforce windowing. Defaults to None.
-            phase_gates_remember (list, optional): List to remember phase gates to enforce windowing. Defaults to None.
-            eval (bool, optional): Evaluation flag - if yes, then do not compute loss. Defaults to False.
+        Parameters:
+        ------------
+        - hist_mag : Tensor
+            Log Magnitude data. If history is provided, then this will have multiple frames appended as channnels.
+        - hist_phase : Tensor
+            Phase data as angles. If history is provided, then this will have multiple frames appended as channnels.
+        - background : Tensor, optional
+            Background mask. 
+                Defaults to None.
+        - gt_mask : Tensor, optional
+            Ground truth mask. 
+                Defaults to None.
+        - mag_prev_outputs : Tensor, optional
+            Previous magnitude outputs. 
+                Defaults to None.
+        -  phase_prev_outputs : Tensor, optional
+            Previous phase outputs. 
+                Defaults to None.
+        - window_size : int, optional
+            Window size for gating. 
+                Defaults to np.inf.
+        - mag_gates_remember : list, optional
+            List to remember magnitude gates to enforce windowing. 
+                Defaults to None.
+        - phase_gates_remember : list, optional
+            List to remember phase gates to enforce windowing. 
+                Defaults to None.
+        - eval : bool, optional
+            Evaluation flag - if yes, then do not compute loss. 
+                Defaults to False.
 
         Returns:
-            Tuple[List[Tensor], List[Tensor], Tensor, Tensor, List, List]: New magnitude and phase outputs, loss for forget gate, loss for input gate, remembered magnitude gates, remembered phase gates.
+        ----------
+        - [New magnitude and phase outputs, loss for forget gate, loss for input gate, remembered magnitude gates, remembered phase gates] : Tuple[List[Tensor], List[Tensor], Tensor, Tensor, List, List]
+            
+        ================================================================================================
         """
         del gt_mask
         if background is None:
@@ -525,18 +596,34 @@ class convLSTMcell(nn.Module):
     A convolutional LSTM cell module.
 
     Attributes:
-        Various attributes for LSTM cell configuration.
+    ------------
+    - Various attributes for LSTM cell configuration.
+
+    ================================================================================================
     """
     def __init__(self, in_channels = 1, out_channels = 1, tanh_mode = False, real_mode = False, ilstm_gate_cat_prev_output = False):
         """
         Initializes the convLSTMcell module.
 
-        Args:
-            in_channels (int, optional): Number of input channels. Defaults to 1.
-            out_channels (int, optional): Number of output channels. Defaults to 1.
-            tanh_mode (bool, optional): Flag for using tanh activation for the output. Defaults to False.
-            real_mode (bool, optional): Flag for real mode for the layers. Defaults to False.
-            ilstm_gate_cat_prev_output (bool, optional): Flag for concatenating previous output to gate input. Defaults to False.
+        Parameters:
+        ------------
+        - in_channels : int, optional
+            Number of input channels. 
+                Defaults to 1.
+        - out_channels : int, optional
+            Number of output channels. 
+                Defaults to 1.
+        - tanh_mode : bool, optional
+            Flag for using tanh activation for the output. 
+                Defaults to False.
+        - real_mode : bool, optional
+            Flag for real mode for the layers. 
+                Defaults to False.
+        - ilstm_gate_cat_prev_output : bool, optional
+            Flag for concatenating previous output to gate input. 
+                Defaults to False.
+
+        ================================================================================================
         """
         super(convLSTMcell, self).__init__()
         self.tanh_mode = tanh_mode
@@ -587,13 +674,22 @@ class convLSTMcell(nn.Module):
         """
         Forward pass of the convLSTMcell module.
 
-        Args:
-            x (Tensor): Input tensor.
-            prev_state (Tensor, optional): Previous cell state. Defaults to None.
-            prev_output (Tensor, optional): Previous output. Defaults to None.
+        Parameters:
+        ------------
+        - x : Tensor
+            Input tensor.
+        - prev_state : Tensor, optional
+            Previous cell state. 
+                Defaults to None.
+        - prev_output : Tensor, optional
+            Previous output. 
+                Defaults to None.
 
         Returns:
-            Tuple[Tensor, Tensor]: New cell state and output.
+        ------------
+        - Tuple[Tensor, Tensor]: New cell state and output.
+
+        ================================================================================================
         """
         if prev_state is None:
             shape1 = (x.shape[0], self.out_channels, *x.shape[2:])

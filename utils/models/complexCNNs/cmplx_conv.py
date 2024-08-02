@@ -57,19 +57,21 @@ class ComplexConv(nn.Module):
         Considering a complex-valued input `z = x + iy` to be convolved by a complex-valued filter `h = a + ib`, 
         where the output `O = z * h` (where `*` is a complex convolution operator), then:
 
-        `O = (x * a) + i(x * b) + i(y * a) - (y * b)`
+                    `O = (x * a) + i(x * b) + i(y * a) - (y * b)`
 
         To calculate each of the 4 convolution operations in the equation, a simple way to implement this is by using two convolution layers: 
         one layer for the real weights `a` and the other for the imaginary weights `b`. This can be done by concatenating both the real 
         and imaginary parts of the input and convolving over both as follows:
 
-        :math:`c_r = [x; y] * a`, and :math:`c_i = [x; y] * b`
+                    :math:`c_r = [x; y] * a`, and :math:`c_i = [x; y] * b`
 
         So that:
 
         :math:`O_{\t{real}} = c_r[\t{real}] - c_i[\t{real}]` 
 
         :math:`O_{\t{imag}} = c_r[\t{imag}] - c_i[\t{imag}]`
+
+        ================================================================================================
         """
         input_real, input_imag = torch.unbind(input, dim=-1)
 
@@ -89,36 +91,38 @@ class ComplexConv1d(ComplexConv):
         - Input : :math:`(N, C_{in}, L_{in}, 2)`
         - Output : :math:`(N, C_{out}, L_{out}, 2)`
 
-    Args:
+    Paramaters:
     ------------
-    in_channels : int 
+    - in_channels : int 
         Number of channels in the input image
-    out_channels : int 
+    - out_channels : int 
         Number of channels produced by the convolution
-    kernel_size : int or tuple
+    - kernel_size : int or tuple
         Size of the convolving kernel
-    stride : int or tuple, optional
+    - stride : int or tuple, optional
         Stride of the convolution. 
             Default: 1
-    padding : int or tuple, optional 
+    - padding : int or tuple, optional 
         Zero-padding added to both sides of the input. 
             Default: 0
-    dilation :int or tuple, optional
+    - dilation :int or tuple, optional
         Spacing between kernel elements. 
             Default: 1
-    groups : int, optional
+    - groups : int, optional
         Number of blocked connections from input channels to output channels. 
             Default: 1
-    bias : bool, optional
+    - bias : bool, optional
         If ``True``, adds a learnable bias to the output. 
             Default: ``True``
 
     Attributes:
     ------------
-        weight : Tensor
-            The learnable weights of the module of shape (out_channels, in_channels, kernel_size, 2)
-        bias : Tensor   
-            The learnable bias of the module of shape (out_channels, 2)
+    - weight : Tensor
+        The learnable weights of the module of shape (out_channels, in_channels, kernel_size, 2)
+    - bias : Tensor   
+        The learnable bias of the module of shape (out_channels, 2)
+
+    ================================================================================================
     """
 
     def __init__(self, in_channels,
@@ -151,36 +155,38 @@ class ComplexConv2d(ComplexConv):
     - Input: :math:`(N, C_{in}, L_{in}, 2)`
     - Output: :math:`(N, C_{out}, L_{out}, 2)`
 
-    Args:
+    Paramaters:
     ------------
-    in_channels : int
+    - in_channels : int
         Number of channels in the input image
-    out_channels : int
+    - out_channels : int
         Number of channels produced by the convolution
-    kernel_size : int or tuple
+    - kernel_size : int or tuple
         Size of the convolving kernel
-    stride : int or tuple, optional
+    - stride : int or tuple, optional
         Stride of the convolution. 
             Default: 1
-    padding : int or tuple, optional)
+    - padding : int or tuple, optional)
         Zero-padding added to both sides of the input. 
             Default: 0
-    dilation : int or tuple, optional
+    - dilation : int or tuple, optional
         Spacing between kernel elements. 
             Default: 1
-    groups : int, optional
+    - groups : int, optional
         Number of blocked connections from input channels to output channels. 
             Default: 1
-    bias : bool, optional
+    - bias : bool, optional
         If ``True``, adds a learnable bias to the output. 
             Default: ``True``
 
     Attributes:
     ------------
-    weight : Tensor
+    - weight : Tensor
         The learnable weights of the module of shape (out_channels, in_channels, kernel_size, 2)
-    bias : Tensor 
+    - bias : Tensor 
         The learnable bias of the module of shape (out_channels, 2)
+
+    ================================================================================================
     """
 
     def __init__(self, in_channels,
@@ -208,27 +214,27 @@ class ComplexConv3d(ComplexConv):
     """
     Applies a 3D complex convolution over an input signal composed of several input planes.
 
-    Args:
+    Paramaters:
     ------------
-    in_channels : int
+    - in_channels : int
         Number of channels in the input image
-    out_channels : int
+    - out_channels : int
         Number of channels produced by the convolution
-    kernel_size : int or tuple
+    - kernel_size : int or tuple
         Size of the convolving kernel
-    stride int or tuple, optional
+    - stride int or tuple, optional
         Stride of the convolution. 
             Default: 1
-    padding : int or tuple, optional
+    - padding : int or tuple, optional
         Zero-padding added to both sides of the input. 
             Default: 0
-    dilation : int or tuple, optional
+    - dilation : int or tuple, optional
         Spacing between kernel elements. 
             Default: 1
-    groups : int, optional
+    - groups : int, optional
         Number of blocked connections from input channels to output channels. 
             Default: 1
-    bias : bool, optional
+    - bias : bool, optional
         If ``True``, adds a learnable bias to the output. 
             Default: ``True``
 
@@ -239,10 +245,12 @@ class ComplexConv3d(ComplexConv):
 
     Attributes:
     ------------
-    weight : Tensor
+    - weight : Tensor
         The learnable weights of the module of shape (out_channels, in_channels, kernel_size, 2)
-    bias : Tensor 
+    - bias : Tensor 
         The learnable bias of the module of shape (out_channels, 2)
+
+    ================================================================================================
     """
 
     def __init__(self, in_channels,

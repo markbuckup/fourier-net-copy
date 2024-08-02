@@ -33,14 +33,16 @@ def myimshow(x, cmap = 'gray', trim = False):
     """
     Displays an image with optional trimming.
 
-    Parameters
-    ----------
-    x : np.ndarray
+    Parameters:
+    ------------
+    - x : np.ndarray
         Image array to be displayed.
-    cmap : str
-        Colormap used for display. Default is 'gray'.
-    trim : bool
-        Whether to trim the image intensities at 5th and 95th percentiles. Default is False.
+    - cmap : str
+        Colormap used for display. 
+            Default is 'gray'.
+    - trim : bool
+        Whether to trim the image intensities at 5th and 95th percentiles. 
+            Default is False.
     """
     if trim:
         percentile_95 = np.percentile(x, 95)
@@ -56,19 +58,22 @@ def special_trim(x, l = 5, u = 95):
     """
     Trims the values of a tensor to be within the specified percentiles.
 
-    Parameters
-    ----------
-    x : torch.Tensor
+    Parameters:
+    ------------
+    - x : torch.Tensor
         Tensor to be trimmed.
-    l : int
-        Lower percentile for trimming. Default is 5.
-    u : int
-        Upper percentile for trimming. Default is 95.
+    - l : int
+        Lower percentile for trimming. 
+            Default is 5.
+    - u : int
+        Upper percentile for trimming. 
+            Default is 95.
 
-    Returns
+    Returns:
     ----------
-    torch.Tensor
+    - torch.Tensor
         Trimmed tensor.
+    ======================
     """
     percentile_95 = np.percentile(x.detach().cpu(), u)
     percentile_5 = np.percentile(x.detach().cpu(), l)
@@ -79,14 +84,14 @@ def torch_trim(x):
     """
     Normalizes and trims a 4D tensor along its last two dimensions.
 
-    Parameters
-    ----------
-    x : torch.Tensor
+    Parameters:
+    ------------
+    - x : torch.Tensor
         Input tensor of shape (B, C, H, W).
 
-    Returns
+    Returns:
     ----------
-    torch.Tensor
+    - torch.Tensor
         Normalized and trimmed tensor.
     """
     B,C,row,col = x.shape
@@ -116,16 +121,16 @@ def show_difference_image(im1, im2):
     """
     Displays the absolute difference between two images.
 
-    Parameters
-    ----------
-    im1 : np.ndarray
+    Parameters:
+    ------------
+    - im1 : np.ndarray
         First image array.
-    im2 : np.ndarray
+    - im2 : np.ndarray
         Second image array.
 
-    Returns
+    Returns:
     ----------
-    np.ndarray
+    - np.ndarray
         Absolute difference image reshaped to a 1D array.
     """
     diff = (im1-im2)
@@ -138,29 +143,29 @@ class Trainer(nn.Module):
     """
     Trainer class for handling the training and evaluation of models in a distributed setup.
 
-    Attributes
-    ----------
-    recurrent_model : nn.Module
+    Attributes:
+    ------------
+    - recurrent_model : nn.Module
         The recurrent module consisting of the k-space RNN and the image lstm.
-    coil_combine_unet : nn.Module
+    - coil_combine_unet : nn.Module
         The U-Net model for combining coils.
-    trainset : Dataset
+    - trainset : Dataset
         Training dataset.
-    testset : Dataset
+    - testset : Dataset
         Testing dataset.
-    ispace_trainset : Dataset
+    - ispace_trainset : Dataset
         Training dataset that can memoise the recurrent module prediction for a fast U-Net training.
-    ispace_testset : Dataset
+    - ispace_testset : Dataset
         Testing dataset that can memoise the recurrent module prediction for a fast U-Net training
-    parameters : dict
+    - parameters : dict
         Dictionary of training parameters loaded from params.py
-    device : torch.device
+    - device : torch.device
         Device on which the training is conducted.
-    ddp_rank : int 
+    - ddp_rank : int 
         Rank of the current process in distributed training.
-    ddp_world_size : int 
+    - ddp_world_size : int 
         Total number of processes in distributed training.
-    args : Namespace
+    - args : Namespace
         argparse arguments
     """
 
@@ -306,16 +311,17 @@ class Trainer(nn.Module):
         """
         Trains the model for one epoch.
 
-        Parameters
-        ----------
-        epoch : int
+        Parameters:
+        ------------
+        - epoch : int
             The current epoch number.
-        print_loss : bool
-            Whether to print the loss values. Default is False.
+        - print_loss : bool
+            Whether to print the loss values. 
+                Default is False.
 
-        Returns
+        Returns:
         ---------- 
-        tuple
+        - tuple
             Averaged losses and scores for the epoch.
         """
 
@@ -592,18 +598,20 @@ class Trainer(nn.Module):
         """
         Evaluates the model after training for one epoch.
 
-        Parameters
-        ----------
-        epoch : int
+        Parameters:
+        ------------
+        - epoch : int
             The current epoch number.
-        train : bool
-            Whether to evaluate on the training set. Default is False.
-        print_loss : bool
-            Whether to print the loss values. Default is False.
+        - train : bool
+            Whether to evaluate on the training set. 
+                Default is False.
+        - print_loss : bool
+            Whether to print the loss values. 
+                Default is False.
 
-        Returns
+        Returns:
         ----------
-        tuple
+        - tuple
             Averaged losses and scores for the evaluation.
         """
         if epoch < self.parameters['num_epochs_recurrent']:
@@ -764,7 +772,7 @@ class Trainer(nn.Module):
         """
         Analyzes and prints the average time per frame for the model inference.
 
-        Returns
+        Returns:
         ----------
         None
         """
@@ -783,14 +791,14 @@ class Trainer(nn.Module):
         """
         Visualizes the model predictions on actual data and saves the plots.
 
-        Parameters
-        ----------
-        epoch : int
+        Parameters:
+        ------------
+        - epoch : int
             The current epoch number.
 
-        Returns
+        Returns:
         ----------
-        None
+        - None
         """
         print('Saving plots for actual data', flush = True)
         path = os.path.join(self.save_path, 'images/actual_data')
@@ -907,16 +915,17 @@ class Trainer(nn.Module):
         """
         Visualizes and saves the model predictions on the training or testing data.
 
-        Parameters
-        ----------
-        epoch : int 
+        Parameters:
+        ------------
+        - epoch : int 
             The current epoch number.
-        train : bool
-            Whether to visualize the training set. Default is False.
+        - train : bool
+            Whether to visualize the training set. 
+                Default is False.
 
-        Returns
+        Returns:
         ----------
-        None
+        - None
         """
         
         if train:

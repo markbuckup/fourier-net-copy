@@ -13,6 +13,7 @@
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="utils.myDatasets" href="utils.myDatasets.html" />
     <link rel="prev" title="utils.models" href="utils.Trainers.html" /> 
   </head><body>
       <div class="header" role="banner"><h1 class="heading"><a href="index.html">
@@ -25,6 +26,8 @@
         «&#160;&#160;<a href="utils.Trainers.html">utils.models</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="utils.myDatasets.html">utils.myDatasets</a>&#160;&#160;»
         </p>
 
       </div>
@@ -38,284 +41,337 @@
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">DDP_LSTMTrainer_nufft.</span></span><span class="sig-name descname"><span class="pre">Trainer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recurrent_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coil_combine_unet</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ispace_trainset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ispace_testset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trainset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">testset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ddp_rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ddp_world_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#Trainer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
 <p>Trainer class for handling the training and evaluation of models in a distributed setup.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.recurrent_model">
-<span class="sig-name descname"><span class="pre">recurrent_model</span></span><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.recurrent_model" title="Link to this definition">¶</a></dt>
-<dd><p>The recurrent module consisting of the k-space RNN and the image lstm.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>nn.Module</p>
+<section id="attributes">
+<h2>Attributes:<a class="headerlink" href="#attributes" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>recurrent_model<span class="classifier">nn.Module</span></dt><dd><p>The recurrent module consisting of the k-space RNN and the image lstm.</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.coil_combine_unet">
-<span class="sig-name descname"><span class="pre">coil_combine_unet</span></span><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.coil_combine_unet" title="Link to this definition">¶</a></dt>
-<dd><p>The U-Net model for combining coils.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>nn.Module</p>
+</li>
+<li><dl class="simple">
+<dt>coil_combine_unet<span class="classifier">nn.Module</span></dt><dd><p>The U-Net model for combining coils.</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.trainset">
-<span class="sig-name descname"><span class="pre">trainset</span></span><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.trainset" title="Link to this definition">¶</a></dt>
-<dd><p>Training dataset.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Dataset</p>
+</li>
+<li><dl class="simple">
+<dt>trainset<span class="classifier">Dataset</span></dt><dd><p>Training dataset.</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.testset">
-<span class="sig-name descname"><span class="pre">testset</span></span><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.testset" title="Link to this definition">¶</a></dt>
-<dd><p>Testing dataset.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Dataset</p>
+</li>
+<li><dl class="simple">
+<dt>testset<span class="classifier">Dataset</span></dt><dd><p>Testing dataset.</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.ispace_trainset">
-<span class="sig-name descname"><span class="pre">ispace_trainset</span></span><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.ispace_trainset" title="Link to this definition">¶</a></dt>
-<dd><p>Training dataset that can memoise the recurrent module prediction for a fast U-Net training.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Dataset</p>
+</li>
+<li><dl class="simple">
+<dt>ispace_trainset<span class="classifier">Dataset</span></dt><dd><p>Training dataset that can memoise the recurrent module prediction for a fast U-Net training.</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.ispace_testset">
-<span class="sig-name descname"><span class="pre">ispace_testset</span></span><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.ispace_testset" title="Link to this definition">¶</a></dt>
-<dd><p>Testing dataset that can memoise the recurrent module prediction for a fast U-Net training</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Dataset</p>
+</li>
+<li><dl class="simple">
+<dt>ispace_testset<span class="classifier">Dataset</span></dt><dd><p>Testing dataset that can memoise the recurrent module prediction for a fast U-Net training</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.parameters">
-<span class="sig-name descname"><span class="pre">parameters</span></span><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.parameters" title="Link to this definition">¶</a></dt>
-<dd><p>Dictionary of training parameters loaded from params.py</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>dict</p>
+</li>
+<li><dl class="simple">
+<dt>parameters<span class="classifier">dict</span></dt><dd><p>Dictionary of training parameters loaded from params.py</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.device">
-<span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.device" title="Link to this definition">¶</a></dt>
-<dd><p>Device on which the training is conducted.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>torch.device</p>
+</li>
+<li><dl class="simple">
+<dt>device<span class="classifier">torch.device</span></dt><dd><p>Device on which the training is conducted.</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.ddp_rank">
-<span class="sig-name descname"><span class="pre">ddp_rank</span></span><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.ddp_rank" title="Link to this definition">¶</a></dt>
-<dd><p>Rank of the current process in distributed training.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>int</p>
+</li>
+<li><dl class="simple">
+<dt>ddp_rank<span class="classifier">int</span></dt><dd><p>Rank of the current process in distributed training.</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.ddp_world_size">
-<span class="sig-name descname"><span class="pre">ddp_world_size</span></span><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.ddp_world_size" title="Link to this definition">¶</a></dt>
-<dd><p>Total number of processes in distributed training.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>int</p>
+</li>
+<li><dl class="simple">
+<dt>ddp_world_size<span class="classifier">int</span></dt><dd><p>Total number of processes in distributed training.</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.args">
-<span class="sig-name descname"><span class="pre">args</span></span><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.args" title="Link to this definition">¶</a></dt>
-<dd><p>argparse arguments</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Namespace</p>
+</li>
+<li><dl class="simple">
+<dt>args<span class="classifier">Namespace</span></dt><dd><p>argparse arguments</p>
 </dd>
 </dl>
-</dd></dl>
-
+</li>
+</ul>
 <p>Initialize internal Module state, shared by both nn.Module and ScriptModule.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.evaluate">
 <span class="sig-name descname"><span class="pre">evaluate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_loss</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#Trainer.evaluate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.evaluate" title="Link to this definition">¶</a></dt>
 <dd><p>Evaluates the model after training for one epoch.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>epoch</strong> (<em>int</em>) – The current epoch number.</p></li>
-<li><p><strong>train</strong> (<em>bool</em>) – Whether to evaluate on the training set. Default is False.</p></li>
-<li><p><strong>print_loss</strong> (<em>bool</em>) – Whether to print the loss values. Default is False.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Averaged losses and scores for the evaluation.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>tuple</p>
+<section id="parameters">
+<h3>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>epoch<span class="classifier">int</span></dt><dd><p>The current epoch number.</p>
 </dd>
 </dl>
+</li>
+<li><dl class="simple">
+<dt>train<span class="classifier">bool</span></dt><dd><dl class="simple">
+<dt>Whether to evaluate on the training set.</dt><dd><p>Default is False.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>print_loss<span class="classifier">bool</span></dt><dd><dl class="simple">
+<dt>Whether to print the loss values.</dt><dd><p>Default is False.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="returns">
+<h3>Returns:<a class="headerlink" href="#returns" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>tuple</dt><dd><p>Averaged losses and scores for the evaluation.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.time_analysis">
 <span class="sig-name descname"><span class="pre">time_analysis</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#Trainer.time_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.time_analysis" title="Link to this definition">¶</a></dt>
 <dd><p>Analyzes and prints the average time per frame for the model inference.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>None</p>
-</dd>
-</dl>
+<section id="id1">
+<h3>Returns:<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<p>None</p>
+</section>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.train">
 <span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_loss</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#Trainer.train"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.train" title="Link to this definition">¶</a></dt>
 <dd><p>Trains the model for one epoch.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>epoch</strong> (<em>int</em>) – The current epoch number.</p></li>
-<li><p><strong>print_loss</strong> (<em>bool</em>) – Whether to print the loss values. Default is False.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Averaged losses and scores for the epoch.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>tuple</p>
+<section id="id2">
+<h3>Parameters:<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>epoch<span class="classifier">int</span></dt><dd><p>The current epoch number.</p>
 </dd>
 </dl>
+</li>
+<li><dl class="simple">
+<dt>print_loss<span class="classifier">bool</span></dt><dd><dl class="simple">
+<dt>Whether to print the loss values.</dt><dd><p>Default is False.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id3">
+<h3>Returns:<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>tuple</dt><dd><p>Averaged losses and scores for the epoch.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.visualise">
 <span class="sig-name descname"><span class="pre">visualise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#Trainer.visualise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.visualise" title="Link to this definition">¶</a></dt>
 <dd><p>Visualizes and saves the model predictions on the training or testing data.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>epoch</strong> (<em>int</em>) – The current epoch number.</p></li>
-<li><p><strong>train</strong> (<em>bool</em>) – Whether to visualize the training set. Default is False.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
+<section id="id4">
+<h3>Parameters:<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>epoch<span class="classifier">int</span></dt><dd><p>The current epoch number.</p>
 </dd>
 </dl>
+</li>
+<li><dl class="simple">
+<dt>train<span class="classifier">bool</span></dt><dd><dl class="simple">
+<dt>Whether to visualize the training set.</dt><dd><p>Default is False.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id5">
+<h3>Returns:<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>None</p></li>
+</ul>
+</section>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.Trainer.visualise_on_real">
 <span class="sig-name descname"><span class="pre">visualise_on_real</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#Trainer.visualise_on_real"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.Trainer.visualise_on_real" title="Link to this definition">¶</a></dt>
 <dd><p>Visualizes the model predictions on actual data and saves the plots.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>epoch</strong> (<em>int</em>) – The current epoch number.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
+<section id="id6">
+<h3>Parameters:<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>epoch<span class="classifier">int</span></dt><dd><p>The current epoch number.</p>
 </dd>
 </dl>
+</li>
+</ul>
+</section>
+<section id="id7">
+<h3>Returns:<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>None</p></li>
+</ul>
+</section>
 </dd></dl>
 
+</section>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.myimshow">
 <span class="sig-prename descclassname"><span class="pre">DDP_LSTMTrainer_nufft.</span></span><span class="sig-name descname"><span class="pre">myimshow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gray'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#myimshow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.myimshow" title="Link to this definition">¶</a></dt>
 <dd><p>Displays an image with optional trimming.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>np.ndarray</em>) – Image array to be displayed.</p></li>
-<li><p><strong>cmap</strong> (<em>str</em>) – Colormap used for display. Default is ‘gray’.</p></li>
-<li><p><strong>trim</strong> (<em>bool</em>) – Whether to trim the image intensities at 5th and 95th percentiles. Default is False.</p></li>
-</ul>
+<section id="id8">
+<h2>Parameters:<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>x<span class="classifier">np.ndarray</span></dt><dd><p>Image array to be displayed.</p>
 </dd>
 </dl>
+</li>
+<li><dl class="simple">
+<dt>cmap<span class="classifier">str</span></dt><dd><dl class="simple">
+<dt>Colormap used for display.</dt><dd><p>Default is ‘gray’.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>trim<span class="classifier">bool</span></dt><dd><dl class="simple">
+<dt>Whether to trim the image intensities at 5th and 95th percentiles.</dt><dd><p>Default is False.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.show_difference_image">
 <span class="sig-prename descclassname"><span class="pre">DDP_LSTMTrainer_nufft.</span></span><span class="sig-name descname"><span class="pre">show_difference_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">im1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">im2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#show_difference_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.show_difference_image" title="Link to this definition">¶</a></dt>
 <dd><p>Displays the absolute difference between two images.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>im1</strong> (<em>np.ndarray</em>) – First image array.</p></li>
-<li><p><strong>im2</strong> (<em>np.ndarray</em>) – Second image array.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Absolute difference image reshaped to a 1D array.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>np.ndarray</p>
+<section id="id9">
+<h2>Parameters:<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>im1<span class="classifier">np.ndarray</span></dt><dd><p>First image array.</p>
 </dd>
 </dl>
+</li>
+<li><dl class="simple">
+<dt>im2<span class="classifier">np.ndarray</span></dt><dd><p>Second image array.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id10">
+<h2>Returns:<a class="headerlink" href="#id10" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>np.ndarray</dt><dd><p>Absolute difference image reshaped to a 1D array.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.special_trim">
 <span class="sig-prename descclassname"><span class="pre">DDP_LSTMTrainer_nufft.</span></span><span class="sig-name descname"><span class="pre">special_trim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">95</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#special_trim"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.special_trim" title="Link to this definition">¶</a></dt>
 <dd><p>Trims the values of a tensor to be within the specified percentiles.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>torch.Tensor</em>) – Tensor to be trimmed.</p></li>
-<li><p><strong>l</strong> (<em>int</em>) – Lower percentile for trimming. Default is 5.</p></li>
-<li><p><strong>u</strong> (<em>int</em>) – Upper percentile for trimming. Default is 95.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Trimmed tensor.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>torch.Tensor</p>
+<section id="id11">
+<h2>Parameters:<a class="headerlink" href="#id11" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>x<span class="classifier">torch.Tensor</span></dt><dd><p>Tensor to be trimmed.</p>
 </dd>
 </dl>
+</li>
+<li><dl class="simple">
+<dt>l<span class="classifier">int</span></dt><dd><dl class="simple">
+<dt>Lower percentile for trimming.</dt><dd><p>Default is 5.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>u<span class="classifier">int</span></dt><dd><dl class="simple">
+<dt>Upper percentile for trimming.</dt><dd><p>Default is 95.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="id12">
+<h2>Returns:<a class="headerlink" href="#id12" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>torch.Tensor</dt><dd><p>Trimmed tensor.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
 </dd></dl>
 
+<hr class="docutils" />
 <dl class="py function">
 <dt class="sig sig-object py" id="DDP_LSTMTrainer_nufft.torch_trim">
 <span class="sig-prename descclassname"><span class="pre">DDP_LSTMTrainer_nufft.</span></span><span class="sig-name descname"><span class="pre">torch_trim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DDP_LSTMTrainer_nufft.html#torch_trim"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DDP_LSTMTrainer_nufft.torch_trim" title="Link to this definition">¶</a></dt>
 <dd><p>Normalizes and trims a 4D tensor along its last two dimensions.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>x</strong> (<em>torch.Tensor</em>) – Input tensor of shape (B, C, H, W).</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Normalized and trimmed tensor.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>torch.Tensor</p>
+<section id="id13">
+<h2>Parameters:<a class="headerlink" href="#id13" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>x<span class="classifier">torch.Tensor</span></dt><dd><p>Input tensor of shape (B, C, H, W).</p>
 </dd>
 </dl>
+</li>
+</ul>
+</section>
+<section id="id14">
+<h2>Returns:<a class="headerlink" href="#id14" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>torch.Tensor</dt><dd><p>Normalized and trimmed tensor.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
 </dd></dl>
 
 </section>
@@ -328,6 +384,8 @@
         «&#160;&#160;<a href="utils.Trainers.html">utils.models</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="utils.myDatasets.html">utils.myDatasets</a>&#160;&#160;»
         </p>
 
       </div>
