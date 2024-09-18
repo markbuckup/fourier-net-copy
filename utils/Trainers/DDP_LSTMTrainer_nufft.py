@@ -910,7 +910,7 @@ class Trainer(nn.Module):
 
                     pbar.update(1)
 
-#################### AERS: Visualize ####################
+#################### AERS: Visualize  ####################
 
     def visualise(self, epoch, train = False):
         """
