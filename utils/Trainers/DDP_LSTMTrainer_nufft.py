@@ -910,6 +910,7 @@ class Trainer(nn.Module):
 
                     pbar.update(1)
 
+#################### AERS: Visualize ####################
 
     def visualise(self, epoch, train = False):
         """
@@ -965,7 +966,8 @@ class Trainer(nn.Module):
                 num_vids = 1
                 batch = num_vids
                 num_plots = num_vids*num_frames
-                if not (self.parameters['skip_kspace_rnn'] and (not self.parameters['image_lstm'])):
+                if not (self.parameters['skip_kspace_rnn'] and (not self.parameters['image_lstm'])): # AERS: forward call of the model:  
+                    # AERS: Returns the k-space and image space predictions
                     predr, predr_kspace, loss_mag, loss_phase, loss_real, loss_forget_gate, loss_input_gate, (_,_,_) = self.recurrent_model(undersampled_fts[:num_vids], masks[:num_vids], self.device, periods[:num_vids].clone(), targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None)
                     if predr_kspace is None:
                         predr_kspace = predr

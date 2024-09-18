@@ -327,7 +327,7 @@ class concatConv(nn.Module):
         return self.layerlist[-1](input)
 
 
-
+# AERS: k-space RNN
 class RecurrentModule(nn.Module):
     """
     The Recurrent Module for undersampled k-space data processing. Contains the kspace-RNN and the image LSTM.
@@ -425,6 +425,13 @@ class RecurrentModule(nn.Module):
         else:
             forget_gate_output_size = self.num_coils
 
+        # AERS: This is not describe in the thesis document or presentation (Video June 10th, Part 3,  55:20  min)
+        # AERS: In order for the mag and phase to match, the forget masks of both need to be the same. To achieve this, there is a common NN that forgets the forget mask for both phase and mag.
+        #       Those are imposed per coil, regardless of their location.
+                
+    # AERS: Gates definition
+        # AERS: Input gate for the magnitude. It uses a concatConv class (from LSTM cell, see Definition) because it has three layers of convolutions. This allows control over the number of layers (it adds convolutional layers and ReLus),
+        # while concatenating the gt to each layer and avoid losing information across layers. NRM: It is actually adding the values in the end.
         self.mag_inputGates = nn.ModuleList([concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, skip_connections = self.skip_connections) for i in range(self.n_rnn_cells)])
         if not self.forget_gate_same_phase_mag:
             self.phase_inputGates = nn.ModuleList([concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, skip_connections = self.skip_connections) for i in range(self.n_rnn_cells)])
@@ -437,7 +444,7 @@ class RecurrentModule(nn.Module):
         self.mag_inputProcs = nn.ModuleList([concatConv(mag_cnn_func, mag_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, skip_connections = self.skip_connections) for i in range(self.n_rnn_cells)])
         self.phase_inputProcs = nn.ModuleList([concatConv(phase_cnn_func, phase_relu_func, gate_input_size, hidden_channels, forget_gate_output_size, n_layers = n_layers, skip_connections = self.skip_connections) for i in range(self.n_rnn_cells)])
         
-
+    # AERS: Forward pass of the k-space RNN
     def forward(self, hist_mag, hist_phase, background = None, gt_mask = None, mag_prev_outputs = None, phase_prev_outputs = None, window_size = np.inf, mag_gates_remember = None, phase_gates_remember = None, eval = False):
         """
         Forward pass of the RecurrentModule.
@@ -483,6 +490,8 @@ class RecurrentModule(nn.Module):
         if background is None:
             background = torch.ones_like(hist_mag) == 1
         foreground = torch.logical_not(background).float().to(hist_mag.device)
+
+        # AERS: If mag_prev_outputs is None, this is the first frame and everything is initialized to zeros
         if mag_prev_outputs is None:
             if self.coilwise:
                 mag_shape1 = (hist_mag.shape[0], self.num_coils, *hist_mag.shape[2:])
@@ -494,6 +503,7 @@ class RecurrentModule(nn.Module):
             phase_prev_outputs = [torch.zeros(phase_shape1, device = hist_phase.device) for _ in range(self.n_rnn_cells)]
 
 
+        # AERS: Everything gets reshaped from Batch,Channels to Batch*Channels
         og_B, og_C, _,_ = hist_mag.shape
         if self.coilwise:
             hist_mag = hist_mag.reshape(og_B*og_C, 1, *hist_mag.shape[2:])
@@ -515,8 +525,12 @@ class RecurrentModule(nn.Module):
             if not self.forget_gate_same_phase_mag:
                 phase_gates_remember = [[] for i in range(self.n_rnn_cells)]
 
+        # AERS:
+        # mag_inp_cat: magnitude input concatenated
+        # foreground: mask
+
         for i_cell in range(self.n_rnn_cells):
-            if self.rnn_input_mask:
+            if self.rnn_input_mask:             # AERS: Input concatenation. Niraj tested not concatenating that masks, but we do need them. 
                 if self.gate_cat_prev_output:
                     mag_inp_cat = torch.cat((new_mag_outputs[i_cell], hist_mag, foreground), 1)
                     phase_inp_cat = torch.cat((new_phase_outputs[i_cell], hist_phase, foreground), 1)
@@ -531,32 +545,35 @@ class RecurrentModule(nn.Module):
                     mag_inp_cat = hist_mag
                     phase_inp_cat = hist_phase
 
-
-            mag_it = torch.sigmoid(self.mag_inputGates[i_cell](mag_inp_cat))
+            # AERS: mag_it, mag_ot and phase_ot are computed
+            mag_it = torch.sigmoid(self.mag_inputGates[i_cell](mag_inp_cat))   
             mag_ot = torch.sigmoid(self.mag_outputGates[i_cell](mag_inp_cat))
             phase_ot = torch.sigmoid(self.phase_outputGates[i_cell](phase_inp_cat))
 
             if not self.forget_gate_same_phase_mag:
                 phase_it = torch.sigmoid(self.phase_inputGates[i_cell](phase_inp_cat))
             else:
-                phase_it = mag_it
+                phase_it = mag_it       # AERS: now, we replace phase_it with mag_it so that they have the same computation
 
-            
+            # AERS: mag_it should be remembered and look more like the foreground (mask)
             loss_forget_gate += criterionL1(mag_it*foreground, foreground)
+
+            # AERS: imposes that all coils have the same forget gate
             if self.forget_gate_same_coils:
                 mag_it = mag_it.repeat(1,self.input_gate_output_size,1,1)
                 phase_it = phase_it.repeat(1,self.input_gate_output_size,1,1)
             mag_ot = mag_ot.repeat(1,self.input_gate_output_size,1,1)
             phase_ot = phase_ot.repeat(1,self.input_gate_output_size,1,1)
 
+            # AERS: for each forward pass, rememebr the its and remember them for a few frames. After a few frames, delete this information.
             mag_gates_remember[i_cell].append(mag_it.detach().cpu())
             if not self.forget_gate_same_phase_mag:
                 phase_gates_remember[i_cell].append(phase_it.detach().cpu())
 
             if window_size == np.inf:
-                mag_ft = 1 - mag_it
+                mag_ft = 1 - mag_it     # AERS: by definition, forget gate = 1 - input gate. Niraj added this because he actually trained with it, not ft
                 phase_ft = 1 - phase_it
-            else:
+            else:                       # AERS: unclear from video (June 1-th, Part 3, 1:10 hr), but seems to be the part that forgets past frames outside the window
                 if len(mag_gates_remember[i_cell][-window_size:-1]) >= 1:
                     mag_ft = torch.stack(mag_gates_remember[i_cell][-window_size:-1], -1).max(-1)[0].to(mag_it.device) - 5*mag_it
                     mag_ft = mag_ft.clip(0,1)
@@ -573,9 +590,11 @@ class RecurrentModule(nn.Module):
             mag_Cthat = self.mag_inputProcs[i_cell](mag_inp_cat)
             phase_Cthat = self.phase_activation(self.phase_inputProcs[i_cell](phase_inp_cat))
             if not eval:
-                loss_input_gate += criterionL1(mag_Cthat*foreground, hist_mag*foreground)
+                loss_input_gate += criterionL1(mag_Cthat*foreground, hist_mag*foreground)       # AERS: Calculates the input gate loss for phase and mag by comparing locations inside the mask
                 loss_input_gate += criterionL1(phase_Cthat*foreground, hist_phase*foreground)
 
+            # AERS: Appends the new states (new state = new output)
+            #       Note that phase it/ft = mag it/ft  However, Ct hat is different between mag and phase
             new_mag_outputs.append(mag_ot*((mag_ft * mag_prev_outputs[i_cell]) + (mag_it * mag_Cthat)))
             new_phase_outputs.append(phase_ot*((phase_ft * phase_prev_outputs[i_cell]) + (phase_it * phase_Cthat)))
 
@@ -585,13 +604,14 @@ class RecurrentModule(nn.Module):
 
 
         if self.coilwise:
-            for i_cell in range(self.n_rnn_cells):
+            for i_cell in range(self.n_rnn_cells):  # AERS: Reshapes back to original size
                 new_mag_outputs[i_cell+1] = new_mag_outputs[i_cell+1].reshape(og_B,og_C,*new_mag_outputs[i_cell+1].shape[2:])
                 new_phase_outputs[i_cell+1] = new_phase_outputs[i_cell+1].reshape(og_B,og_C,*new_phase_outputs[i_cell+1].shape[2:])
 
         return new_mag_outputs[1:], new_phase_outputs[1:], loss_forget_gate, loss_input_gate, mag_gates_remember, phase_gates_remember
 
-class convLSTMcell(nn.Module):
+# AERS: Image space LSTM. This is very close to the standard LSTM code available elsewhere.
+class convLSTMcell(nn.Module): 
     """
     A convolutional LSTM cell module.
 
@@ -631,6 +651,8 @@ class convLSTMcell(nn.Module):
         self.in_channels = in_channels
         self.real_mode = real_mode
         self.ilstm_gate_cat_prev_output = ilstm_gate_cat_prev_output
+
+        # AERS: option from parameters: use a complex convolution of an RNN conv
         if real_mode:
             cnn_func = nn.Conv2d
             relu_func = nn.ReLU
@@ -648,6 +670,7 @@ class convLSTMcell(nn.Module):
         else:
             gate_input_size = self.in_channels
 
+        # AERS: Image space LSTM gates
         self.inputGate = nn.Sequential(
                 cnn_func(gate_input_size, 2*self.in_channels, (3,3), stride = (1,1), padding = (1,1)),
                 relu_func(),
@@ -663,6 +686,7 @@ class convLSTMcell(nn.Module):
                 relu_func(),
                 cnn_func(2*self.in_channels, self.out_channels, (1,1), stride = (1,1), padding = (0,0)),
             )
+        # AERS: This is a NN that generates CT hat
         self.inputProc = nn.Sequential(
                 cnn_func(gate_input_size, 2*self.in_channels, (3,3), stride = (1,1), padding = (1,1)),
                 relu_func(),
@@ -691,7 +715,8 @@ class convLSTMcell(nn.Module):
 
         ================================================================================================
         """
-        if prev_state is None:
+        # AERS: If prev_state is None, this is the first frame and it is initialized to zeros 
+        if prev_state is None: 
             shape1 = (x.shape[0], self.out_channels, *x.shape[2:])
             prev_state = torch.zeros(shape1, device = x.device)
             if self.ilstm_gate_cat_prev_output:
@@ -701,32 +726,39 @@ class convLSTMcell(nn.Module):
         else:
             inp_cat = x
 
+        # AERS: predictions are computed with the forget gate, input gate, and output gave and then a sigmoid is applied to them
         ft = torch.sigmoid(self.forgetGate(inp_cat))
         it = torch.sigmoid(self.inputGate(inp_cat))
         ot = torch.sigmoid(self.outputGate(inp_cat))
-        
-        Cthat = self.activation(self.inputProc(inp_cat))
+
+        # AERS: use those outputs to compute CT hat (intermediate cell state)
+        Cthat = self.activation(self.inputProc(inp_cat))   # AERS: the cell route activate in a tanh, but we don't use that here (unclear Video Jun 10th, Part 3, 51 min)
         Ct_new = (ft * prev_state) + (it * Cthat)
         ht = self.activation(Ct_new)*ot
         
         return Ct_new, ht
 
+# AERS: K-space model call in DDP paradigms and LSTM Trainer
 class convLSTM_Kspace1(nn.Module):
-    def __init__(self, parameters, proc_device, two_cell = False):
+    def __init__(self, parameters, proc_device, two_cell = False):      # AERS: arguments– parameters dictionary from the experiment file, GPU # (to initialize sall masks used in every forward pass). two_cell is NOT used. It allows for concatenating LSTMs (I think).
+        # AERS: 1) Stores paramters:
         super(convLSTM_Kspace1, self).__init__()
-        self.param_dic = parameters
-        self.history_length = self.param_dic['history_length']
+        self.param_dic = parameters                                     # AERS: This is not called self.parameters because when the optimizer is defined in the DDP_LSTMTrainer_nufft.py it takes in the model parameters. The model already has a function with that name, so param_dic is used instead.
+        self.history_length = self.param_dic['history_length']          # AERS: History length. If we use ARKS, we want to specify how many past frames we want to use. Currently at 0. 
         self.n_coils = self.param_dic['num_coils']
 
 
         self.real_mode = True
 
+        # AERS: Two other modes were initially tested in previous versions. They were deleted and only this one remained because it is the only one that worked.
         # if not self.param_dic['skip_kspace_rnn']:   # AERS: Original from Niraj
         if not self.param_dic.get('skip_kspace_rnn', False):     # AERS: Edited because sphinx was having an issue with this line
+        
+        # AERS: Define the recurrrent model:
             self.kspace_m = RecurrentModule(
                         num_coils = self.n_coils,
                         history_length = self.history_length,
-                        forget_gate_coupled = self.param_dic['forget_gate_coupled'],
+                        forget_gate_coupled = self.param_dic['forget_gate_coupled'], 
                         forget_gate_same_coils = self.param_dic['forget_gate_same_coils'],
                         forget_gate_same_phase_mag = self.param_dic['forget_gate_same_phase_mag'],
                         rnn_input_mask = self.param_dic.get('rnn_input_mask', None),
@@ -745,8 +777,10 @@ class convLSTM_Kspace1(nn.Module):
             # AERS: Edited line 575 from n_rnn_cells = self.param_dic['n_rnn_cells'],
 
         else:
+            #AERS: If you want to skip the recurrent network (ablation study).
             self.kspace_m = Identity(n_rnn_cells = self.param_dic['n_rnn_cells'], image_lstm = self.param_dic['image_lstm'])
 
+        # AERS: 2) If you want an image model (optional), it is defined using either a U-Net or another convLSTM for image space:
         if self.param_dic['image_lstm']:
             if self.param_dic['unet_instead_of_ilstm']:
                 self.ispacem = UNet(
@@ -754,14 +788,15 @@ class convLSTM_Kspace1(nn.Module):
                         out_channels = 1, 
                     )
             else:
-                self.ispacem = convLSTMcell(
+                self.ispacem = convLSTMcell(            # AERS: convLSTMcell is built specially for image space
                         tanh_mode = False, 
                         real_mode = True, 
                         in_channels = 1, 
                         out_channels = 1, 
                         ilstm_gate_cat_prev_output = self.param_dic['ilstm_gate_cat_prev_output'],
                     )
-        self.SSIM = kornia.metrics.SSIM(11)
+        # AERS: 3) Define a loss mask:
+        self.SSIM = kornia.metrics.SSIM(11)             # AERS: SSIM metric
 
         if self.param_dic['center_weighted_loss']:
             mask = gaussian_2d((self.param_dic['image_resolution'],self.param_dic['image_resolution'])).reshape(1,1,self.param_dic['image_resolution'],self.param_dic['image_resolution'])
@@ -769,10 +804,13 @@ class convLSTM_Kspace1(nn.Module):
         else:
             mask = np.ones((1,1,self.param_dic['image_resolution'],self.param_dic['image_resolution']))
 
+        # AERS: Loss mask for the real values. Instead of a crop loss, a Gaussian loss mask so that the center weight more, because the periphery doesn't change as much. This makes the model focus more on the center of k-sapce. 
+        # AERS: The size of the Gaussian can be changed with the sigma error below (related to image_resolution). It is currently very narrow (per Niraj).
+        # AERS: This worked better the the crop loss mask because masking everything ouside the crop box to zero implies that the model can predict anything in the periphery.
         self.lossmask = torch.FloatTensor(mask).to(proc_device)
 
         mask = torch.FloatTensor(gaussian_2d((self.param_dic['image_resolution'],self.param_dic['image_resolution']), sigma = self.param_dic['image_resolution']//10))
-        mask = torch.fft.fftshift(mask)
+        mask = torch.fft.fftshift(mask) 
         mask = mask - mask.min()
         mask = mask / (mask.max() + EPS)
         mask = (1-mask).unsqueeze(0).unsqueeze(0).unsqueeze(0)
@@ -837,6 +875,8 @@ class convLSTM_Kspace1(nn.Module):
 
                 curr_mask = None
                 random_window_size = np.random.choice(self.param_dic['window_size'])
+
+                # AERS: This is the forward pass
                 prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(
                                                                                                                                                         hist_mag,
                                                                                                                                                         hist_phase,
@@ -878,13 +918,24 @@ class convLSTM_Kspace1(nn.Module):
 
         return times
 
-
+    # AERS: note that the argument fft is fft_exp, meaning the exponential of. 
     def forward(self, fft_exp, gt_masks = None, device = torch.device('cpu'), periods = None, targ_phase = None, targ_mag_log = None, targ_real = None, og_video = None, epoch = np.inf):
+        # AERS: Per Niraj's video from June 10th 2024, Part 2, min 15: Summary of what this function does:
+        #  Forward pass where, given the sequence of video frames, we pass each frame to the network, one by one.
+        # The LSTM has its own cell state and output. So that the LSTM returns a current state and output. These get appended to the LSTM, for the next loop iteration.
+        # They are stored and appended again to the next forward pass. This is why it is called a recurrent network. 
+        # For every for loop iteration, we get a prediction and have the ground truth. Thus, the loss is computed for every forward pass, and it is stored in a variable.
+        # The predictions and losses are what is returned by this function.   
 
+        # AERS: This line ensures that the log is not 0 or NaN (because where the mask is zeros, the log would be NaN). However, where there is no data, it should be 0.
+        # What this does is that it clips the log so that all small values are -5 and adds 5 to it, so all the small values are 0. And the max value doesn't need to be limited.  
         mag_log = mylog(fft_exp.abs().clip(1e-5,1e20), base = self.param_dic['logarithm_base']) + 5
-        phase = fft_exp / (EPS + fft_exp.abs())
-        phase = torch.stack((phase.real, phase.imag), -1)
 
+        # AERS: Computes the phase:
+        phase = fft_exp / (EPS + fft_exp.abs())                 
+        phase = torch.stack((phase.real, phase.imag), -1)       # AERS: cos(theta) + i*sin(theta). These are not combined into theta here because of testing of different conditions 
+                                                                # like cosine mode, unit vector mode, etc. They get combined after that (~line 990: using torch.atan2)
+ 
         prev_outputs1 = None
         prev_outputs2 = None
         prev_state3 = None
@@ -902,15 +953,17 @@ class convLSTM_Kspace1(nn.Module):
         dists = torch.FloatTensor(dists+1).to(device).unsqueeze(0).unsqueeze(0)
         if not self.param_dic['center_weighted_loss']:
             dists = torch.ones_like(dists, device = device).unsqueeze(0).unsqueeze(0)
+
+        # AERS: Cycle mask are variables that will store the answers: mag_log, phase and predr.
         cycle_mask = ((x_arr - cell[0])**2 + (y_arr - cell[1])**2)**2
         cycle_mask[cycle_mask > cycle_mask[0,x_size//2]] = -1
         cycle_mask[cycle_mask > -1] = 1
         cycle_mask[cycle_mask == -1] = 0
         cycle_mask = torch.FloatTensor(cycle_mask).to(device).unsqueeze(0).unsqueeze(0)
-        predr = torch.zeros(*mag_log.shape[0:2], ans_coils, *mag_log.shape[3:]).to(device)
+        predr = torch.zeros(*mag_log.shape[0:2], ans_coils, *mag_log.shape[3:]).to(device)  # AERS: answers are the same size as the mag_log, but with multiple coils.
 
-
-        if targ_mag_log is not None:
+        # AERS: Declaring 0 variables. 
+        if targ_mag_log is not None:                             # AERS: If targer phase is None (which means we are evaluating), then we do not send the ground truth and do not return all losses. This ensures that the ground truth is not used in evaluation/testing. 
             targ_mag_log *= cycle_mask.unsqueeze(0)
             targ_phase *= cycle_mask.unsqueeze(0).unsqueeze(-1)
 
@@ -921,7 +974,7 @@ class convLSTM_Kspace1(nn.Module):
 
         if targ_phase is not None:
             loss_phase = 0
-            loss_mag = 0
+            loss_mag = 0 
             loss_forget_gate = 0
             loss_input_gate = 0
             loss_real = 0
@@ -941,31 +994,102 @@ class convLSTM_Kspace1(nn.Module):
             loss_l2 = 0
             loss_ss1 = 0
 
-        for ti in range(mag_log.shape[1]):
-            if periods is None:
+        for ti in range(mag_log.shape[1]):          # AERS: Shape of mag_log is batch size (usually 1, B), number of frames (Nf), number of coils (Nc), Nr, Nr (resolution or matrix size)
+            if periods is None:                     
                 hist_phase = phase[:,ti]
                 hist_mag = mag_log[:,ti]
-            else:
+            else:                                   # AERS: This is for ARKS (hist_mag, hist_phase, hist_ind). Actual ARKS angle need to be implemented. This is performing GA.
+                # AERS: From June 10th, part 2, min 27 video
+                # If Batch size = 3
+                # periods = 30, 35 and 90 (originally 40) frames
+                # history length = 2
+                # number of frames that we have in mag_log = 120
+                # and we are trying to predict ti (follow up index, same as frame?) 118
+                
+                # Solution:  (AERS: Need to double check, I didn't get to this exact solution because numbers get changed twice in the video.)
+                #   1st video should get frames 118, 88, 58
+                #   2nd video should get frames 118, 83, 48
+                #   3rd video should get frames 118, 28, NaN (previously 118, 78, 38)
+                
                 hist_ind = (torch.arange(self.history_length+1).repeat(mag_log.shape[0],1) - self.history_length)
+                # torch.arange(self.history_length+1) = [0, 1, 2], and repeated mag_log.shape[0] (which is the number of videos in the batch). So:
+                # hist_ind [0, 1, 2] - self.history_length = [-2, -1, 0] for all 3 videos, so:
+                # hist_ind = [-2, -1, 0]
+                #            [-2, -1, 0]
+                #            [-2, -1, 0]
+
                 hist_ind = hist_ind * periods.reshape(-1,1).cpu()
+                # periods = [30, 35, 40] becomes a column and multplied times hist_ind results in:
+                # hist_ind = [-60, -30, 0]
+                #            [-70, -35, 0]
+                #            [-180, -90, 0] (for a period of 90, rather than 40)
+
                 hist_ind += ti
-                temp1 = hist_ind.clone()
+                # hist_ind = [118-60, 118-30, 118]
+                #            [118-70, 118-35, 118]
+                #            [118-180, 118-90, 118]
+
+                temp1 = hist_ind.clone()                # AERS: Then it gets cloned into temp1
+                # temp1 = [118-60, 118-30, 118]
+                #         [118-70, 118-35, 118]
+                #         [118-180, 118-90, 118]
+                                
+                # AERS: For example, if we are at frame 38, and have a history of 3. There is only one previous history timepoint. And the others do not exist. Those values of temp1 become negative and replaced with 9999999999.
                 temp1[temp1 < 0] = 9999999999
-                min_vals = temp1.min(1)[0]
-                base = torch.zeros(temp1.shape) + min_vals.reshape(-1,1)
+                # temp1 = [118-60, 118-30, 118]
+                #         [118-70, 118-35, 118]
+                #         [9999999999, 118-90, 118]     # AERS: Assuming only this one doesn't exist
+
+                min_vals = temp1.min(1)[0]              # AERS: Returns the min values along the columns direction. [0] specifies the values, [1] return the indexes
+                # min_vals = [118-60]
+                #            [118-70]
+                #            [118-90]  
+                
+                base = torch.zeros(temp1.shape) + min_vals.reshape(-1,1)  
+                # base = [118-60, 118-60, 118-60]
+                #        [118-70, 118-70, 118-70]
+                #        [118-90, 118-90, 118-90]
 
                 hist_ind = hist_ind - base
+                # hist_ind = [118-60, 118-30, 118] - [118-60, 118-60, 118-60]
+                #            [118-70, 118-35, 118] - [118-70, 118-70, 118-70]
+                #            [118-90, 118-90, 118] - [118-90, 118-90, 118-90]
+
+                # hist_ind = [0, 30, 60]
+                #            [0, 35, 70]
+                #            [-90, 0, 90 ]
+
                 hist_ind[hist_ind < 0] = 0
-                hist_ind = (hist_ind + base).long()
+                # hist_ind = [0, 30, 60]
+                #            [0, 35, 70]
+                #            [0, 0, 90 ]
+
+                hist_ind = (hist_ind + base).long() 
+                # hist_ind = [118-60, 118-30, 118]
+                #            [118-70, 118-35, 118]
+                #            [118-90, 118-90, 118]
 
                 mult = (torch.arange(mag_log.shape[0])*mag_log.shape[1]).reshape(-1,1)
+                # mult = [ 0 ]
+                #        [120]
+                #        [240]
+
                 hist_ind = hist_ind + mult      
+                # hist_ind = [  118-60+0,   118-30+0,   118+0] = [ 58,  88, 118]
+                #            [118-70+120, 118-35+120, 118+120] = [168, 203, 238]
+                #            [118-90+240, 118-90+240, 118+240] = [268, 268, 358]                
 
                 hist_phase = phase.reshape(-1, *phase.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *phase.shape[3:])
+                 # phase then becomes:
+                 # phase = B*Nf, Nc, Nr, Nr , instead of B, Nf, Nc, Nr, Nr          # AERS: This way, the first 120 frames, will be the first batch, the second 120 frames, will be the 2nd batch, and so on.
+
                 hist_mag = mag_log.reshape(-1, *mag_log.shape[2:])[hist_ind.reshape(-1)].reshape(hist_ind.shape[0], -1, *mag_log.shape[3:])
 
             background = ((hist_phase[:,:,:,:,1].abs() + hist_phase[:,:,:,:,0].abs()) < 1)
-            hist_phase = torch.atan2(hist_phase[:,:,:,:,1]+EPS,hist_phase[:,:,:,:,0]) + 4
+            # AERS: Take the atan of first and second coordinate, which are sin and cos. Results in the phase angles, but the background needs to be 0s.
+            #       The tange of the output of ata2 is -pi to pi. However, with the background = 0, it would be confusing for the NN (it would think that 0 is a valid angle). 
+            #       So, an offset of 4 is added to everything and then multiplied times the background mask. The important part is that the phase now ranges from 4-pi to 4+pi, not passing by 0.
+            hist_phase = torch.atan2(hist_phase[:,:,:,:,1]+EPS,hist_phase[:,:,:,:,0]) + 4       
             hist_phase[background] = 0
             hist_mag[background] = 0
 
@@ -979,7 +1103,11 @@ class convLSTM_Kspace1(nn.Module):
             if epoch < self.param_dic['num_epochs_recurrent'] - self.param_dic['num_epochs_windowed']:
                 random_window_size = np.inf
             else:
+                # AERS: Forward pass for the k-space RNN. A single cell of a k-space RNN–every cell is going to have multiple forward passes for every frame.
                 random_window_size = np.random.choice(self.param_dic['window_size'])
+            
+            # AERS: This is the actual forward pass!
+            # AERS: Steady-state loop invariant: prev_outputs2 (gt magnitude) and prev_outputs1 (gt phase). Then 4 and 5 are subtracted to get them to their original value.
             prev_outputs2, prev_outputs1, loss_forget_gate_curr, loss_input_gate_curr, mag_gates_remember, phase_gates_remember = self.kspace_m(
                                                                                                                                                         hist_mag,
                                                                                                                                                         hist_phase,
@@ -992,21 +1120,36 @@ class convLSTM_Kspace1(nn.Module):
                                                                                                                                                         phase_gates_remember = phase_gates_remember,
                                                                                                                                                         eval = False
                                                                                                                                                     )
-            prev_outputs2 = [(x - 5)*cycle_mask for x in prev_outputs2]
-            prev_outputs1 = [(x - 4)*cycle_mask for x in prev_outputs1]
+            # AERS: about the mag_gates_remember and phase_gates_remember: These are the forget and input gates, they are the same thing because forget_gate(t) = input_gate(t-1).
+            #       In this code, the inpute gates or forget gates of all previous gates are stacked. However, if the search window is, for example, 2 frames. 
+            #       Then, the code checks what is remembered for the last 2 frames and it is the only thing that is kept from the previous cell state. Everything else from previous cell state is deleted.
+            #       The window size is controlled (I believe in the parameters), but actually, it doesn't have to be a fixed value. It could be varied for example, if we check the ECG and we are too far 
+            #       from a period of interest (systole or diastole), then we can increase the window size. As sytole/diastole approaches, we can then decrease the window size and reduce the lag.
+
+            # AERS: the forget get mask will suppose there is new data added at a location and will forget the previous state or data of that location regardless of the previous value.
+            # However, this will only work for the spokes, not for background/edges? regions. When the FT is computer to try and predict the image space in a future frame, there will be -5 or -4 values, giving incorrect results.
+            # So, we need to multiply by a mask that zeros out these values.
+
+            # AERS: These are the predictions for the k-space RNN
+            prev_outputs2 = [(x - 5)*cycle_mask for x in prev_outputs2]     # Magnitude
+            prev_outputs1 = [(x - 4)*cycle_mask for x in prev_outputs1]     # Phase
 
             del hist_mag
             del hist_phase
             
+            # AERS: for loop over cells (comments assume only one cell exists)
             for i_cell in range(self.param_dic['n_rnn_cells']):
+
+                # AERS: The mode was set as theta, so the phase is computed as cos,sine and we have a stacked phase. Then the FT is computed.
                 phase_ti = torch.complex(torch.cos(prev_outputs1[i_cell]), torch.sin(prev_outputs1[i_cell]))
                 stacked_phase = torch.stack((phase_ti.real, phase_ti.imag), -1)
 
+                # AERS: This is the FFT predicted by the k-space RNN, not LSTM (variable name was not updated from previous versions). Then take the inverse FT (predr_ti) and clip values
                 lstm_predicted_fft = (self.param_dic['logarithm_base']**prev_outputs2[i_cell])*phase_ti
-                predr_ti = torch.fft.ifft2(torch.fft.ifftshift(lstm_predicted_fft, dim = (-2,-1)))
-                predr_ti = predr_ti.abs().clip(-10,10)
+                predr_ti = torch.fft.ifft2(torch.fft.ifftshift(lstm_predicted_fft, dim = (-2,-1)))          
+                predr_ti = predr_ti.abs().clip(-10,10)                                                         # AERS: Image-based prediction of the k-space RNN
 
-                if self.param_dic['image_lstm']:
+                if self.param_dic['image_lstm']:   # AERS: If image-space LSTM is active (according to the parameters). prev_output3 is the final prediction predr that is returned
                     B,C,numr, numc = predr_ti.shape
                     predr_ti = predr_ti.reshape(B*C, 1, numr, numc)
                     if prev_output3 is not None:
@@ -1021,27 +1164,34 @@ class convLSTM_Kspace1(nn.Module):
                     prev_output3 = predr_ti.clone()
                 
                 
-
-
+                ########## LOSS FUNCTION ##########
+                # AERS: For the first few frames, the results are really bad because the memory has not accumulated yet. So the loss are not computed for those (init_skip_frames). 
                 if ti >= self.param_dic['init_skip_frames']:
                     if targ_phase is not None:
-
+                        
+                        # AERS: (?) This is the loos for the k-space RNN. Crop loss:
                         loss_mag += criterionL1((dists*prev_outputs2[i_cell]), dists*cycle_mask*(targ_mag_log[:,ti,:,:,:].to(device)))/(mag_log.shape[1]*self.param_dic['n_rnn_cells'])
+
+                        # AERS: Forget gate and input gate loss. These are returned by the k-sapce RNN forward pass. This just adds those losses.
                         loss_forget_gate += loss_forget_gate_curr/(mag_log.shape[1]*self.param_dic['n_rnn_cells'])
                         loss_input_gate += loss_input_gate_curr/(mag_log.shape[1]*self.param_dic['n_rnn_cells'])
 
+                        # AERS: To compute the target angles atan2 of the gt and the phase loss is computed as the L1 loss of the previous output (k-space RNN phase predictions) and the target angles.
+                        #       This is the loss for the k-space magnitude, phase and the gates 
                         targ_angles = torch.atan2((targ_phase[:,ti,:,:,:,1])+EPS,(targ_phase[:,ti,:,:,:,0])).to(device)
                         loss_phase += criterionL1(prev_outputs1[i_cell], cycle_mask*targ_angles)/(mag_log.shape[1]*self.param_dic['n_rnn_cells'])
                         
+                        # AERS: We want to have a loss on the real data, as well. So here, it is calculated.
                         targ_now = targ_real[:,ti,:,:,:].to(device)
 
-                        if prev_output3 is not None:
+                        if prev_output3 is not None: # AERS: If there was an image LSTM, then prev_output3 will have some values and it will calculate the L2 loss on those data
                             if epoch < self.param_dic['num_epochs_recurrent'] - self.param_dic['num_epochs_ilstm']:
                                 loss_real += 1e-10*criterionL2(prev_output3*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_rnn_cells'])
                             else:
                                 loss_real += 8*criterionL2(prev_output3*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_rnn_cells'])
                         loss_real += criterionL2(predr_ti*self.lossmask, targ_now*self.lossmask)/(mag_log.shape[1]*self.param_dic['n_rnn_cells'])
                 
+                        # AERS: other output loss statistics 
                         with torch.no_grad():
                             loss_l1 += (predr_ti- targ_now).reshape(predr_ti.shape[0]*predr_ti.shape[1], -1).abs().mean(1).sum().detach().cpu()/self.param_dic['n_rnn_cells']
                             loss_l2 += (((predr_ti- targ_now).reshape(predr_ti.shape[0]*predr_ti.shape[1], -1) ** 2).mean(1).sum()).detach().cpu()/self.param_dic['n_rnn_cells']
@@ -1049,11 +1199,12 @@ class convLSTM_Kspace1(nn.Module):
                             ss1 = ss1.reshape(ss1.shape[0],-1)
                             loss_ss1 += ss1.mean(1).sum().detach().cpu() / (self.param_dic['n_rnn_cells'])
 
-            
+            # AERS: For the image LSTM, the output is detached (here prev_output3), but not the cell state. 
+            # Meaning, detach from the tree, so that the tree can pursue the tree path when the final loss backwards (video Juen 10th Part 3, min 44)
             if self.param_dic['image_lstm']:
                 prev_output3 = prev_output3.detach()
             
-
+            # AERS: previous outputs are detached after each for loop, and same for the image LSTM
             if self.param_dic['image_lstm']:
                 predr_kspace[:,ti,:,:] = predr_ti.detach().cpu()
             predr[:,ti,:,:] = prev_output3.detach()
@@ -1164,7 +1315,8 @@ class CoupledUpReal(nn.Module):
     def train_mode_set(self, bool = True):
         self.train_mode = bool
 
-class ImageSpaceModel1(nn.Module):
+# AERS: MDCNN architecture
+class ImageSpaceModel1(nn.Module): 
     def __init__(self, parameters, proc_device):
         super(ImageSpaceModel1, self).__init__()
         self.param_dic = parameters
@@ -1175,6 +1327,8 @@ class ImageSpaceModel1(nn.Module):
         else:
             self.input_size = self.param_dic['num_coils']
         if self.final_prediction_real:
+
+            # AERS: Block 1 (Described in Video June 10th, Part 3, 46:30 min)
             self.block1 = nn.Sequential(
                     nn.Conv2d(self.input_size, 16, (3,3), stride = (1,1), padding = (1,1), bias = False),
                     nn.ReLU(),
@@ -1236,6 +1390,7 @@ class ImageSpaceModel1(nn.Module):
             x8 = self.finalblock(torch.cat((x7,x2hat),1))
         return time.time() - start
 
+    # AERS: These is where the connections of the MCDNN are defined
     def forward(self, x):
         x1 = self.block1(x)+x
         x2hat, x2 = self.down1(x1)
